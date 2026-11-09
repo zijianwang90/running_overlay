@@ -34,8 +34,6 @@ struct ParameterPanelView: View {
                 DistanceTimelineOverlayDetailView(elementID: elementID)
             } else if element.type == .elevationChart {
                 ElevationChartOverlayDetailView(elementID: elementID)
-            } else if element.type == .runningGauge {
-                RunningGaugeOverlayDetailView(elementID: elementID)
             } else if element.type == .intervalHUDBar {
                 IntervalHUDBarOverlayDetailView(elementID: elementID)
             } else if element.type == .intervalTimeline {
@@ -714,8 +712,10 @@ private enum InspectorTheme {
 }
 
 extension OverlayElementType {
+    /// The pool tile catalog is keyed by display name during the migration to
+    /// declarative components; legacy native types reuse its icons.
     var inspectorIcon: String {
-        OverlayTileInfo.all.first { $0.type == self }?.systemImage ?? "square.stack.3d.up"
+        OverlayTileInfo.all.first { $0.label == label }?.systemImage ?? "square.stack.3d.up"
     }
 }
 

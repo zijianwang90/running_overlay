@@ -177,7 +177,7 @@ struct ExportPerformanceTests {
             overlayProfiles: [
                 OverlayExportOverlayProfile(
                     overlayID: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
-                    overlayType: .runningGauge,
+                    overlayType: .distanceTimeline,
                     renderRectX: 100,
                     renderRectY: 200,
                     renderRectWidth: 300,
@@ -256,7 +256,7 @@ struct ExportPerformanceTests {
         #expect(decoded.overlayDrawCount == 180)
         #expect(decoded.segments.first?.slowFrames.first?.frameIndex == 12)
         #expect(decoded.segments.first?.overlayProfiles.count == 2)
-        #expect(decoded.segments.first?.overlayProfiles.first?.overlayType == .runningGauge)
+        #expect(decoded.segments.first?.overlayProfiles.first?.overlayType == .distanceTimeline)
         #expect(decoded.segments.first?.segmentName == "camera.mov")
 
         let csv = profile.csvString()
@@ -362,7 +362,7 @@ struct ExportPerformanceTests {
             settings: settings,
             activity: sampleRouteActivity(),
             overlayLayout: OverlayLayout(elements: [
-                OverlayElement(type: .runningGauge, position: CGPoint(x: 0.5, y: 0.5), scale: 0.5, style: .default)
+                OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 0.5, style: .default)
             ]),
             segments: [OverlayExportSegment(startTime: 2, duration: 1, sourceFileName: "clip.mov")]
         )
@@ -405,7 +405,7 @@ struct ExportPerformanceTests {
             settings: settings,
             activity: sampleRouteActivity(),
             overlayLayout: OverlayLayout(elements: [
-                OverlayElement(type: .runningGauge, position: CGPoint(x: 0.5, y: 0.5), scale: 0.5, style: .default)
+                OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 0.5, style: .default)
             ]),
             segments: [OverlayExportSegment(startTime: 2, duration: 0.2, sourceFileName: "clip.mov")]
         )
@@ -491,13 +491,13 @@ struct ExportPerformanceTests {
             overlays = [OverlayElement(type: .routeMap, position: CGPoint(x: 0.5, y: 0.5), scale: 2.0, style: style)]
         case .perOverlay:
             overlays = [
-                OverlayElement(type: .runningGauge, position: CGPoint(x: 0.1, y: 0.15), scale: 0.4, style: .default),
-                OverlayElement(type: .runningGauge, position: CGPoint(x: 0.9, y: 0.85), scale: 0.4, style: .default)
+                OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.1, y: 0.15), scale: 0.4, style: .default),
+                OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.9, y: 0.85), scale: 0.4, style: .default)
             ]
         case .layeredRegion:
             overlays = [
                 OverlayElement(type: .decorSolidColor, position: CGPoint(x: 0.2, y: 0.2), scale: 1, style: .default),
-                OverlayElement(type: .runningGauge, position: CGPoint(x: 0.7, y: 0.7), scale: 0.5, style: .default)
+                OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.7, y: 0.7), scale: 0.5, style: .default)
             ]
         }
         let plan = ExportRenderPlan(overlays: overlays, canvasSize: canvasSize, activity: sampleRouteActivity())
@@ -570,8 +570,8 @@ struct ExportPerformanceTests {
             settings: settings,
             activity: sampleRouteActivity(),
             overlayLayout: OverlayLayout(elements: [
-                OverlayElement(type: .runningGauge, position: CGPoint(x: 0.15, y: 0.2), scale: 0.4, style: .default),
-                OverlayElement(type: .runningGauge, position: CGPoint(x: 0.85, y: 0.8), scale: 0.4, style: .default)
+                OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.15, y: 0.2), scale: 0.4, style: .default),
+                OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.85, y: 0.8), scale: 0.4, style: .default)
             ]),
             segments: [OverlayExportSegment(startTime: 2, duration: 1, sourceFileName: "clip.mov")],
             writesProfile: true,
@@ -601,7 +601,7 @@ struct ExportPerformanceTests {
     @Test func renderPlanSeparatesStaticAndDynamicOverlays() {
         let activity = ActivityTimeline.empty
         let staticOverlay = OverlayElement(type: .decorSolidColor, position: CGPoint(x: 0.2, y: 0.2), scale: 1, style: .default)
-        let dynamicOverlay = OverlayElement(type: .runningGauge, position: CGPoint(x: 0.7, y: 0.7), scale: 0.5, style: .default)
+        let dynamicOverlay = OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.7, y: 0.7), scale: 0.5, style: .default)
 
         let plan = ExportRenderPlan(
             overlays: [staticOverlay, dynamicOverlay],
@@ -610,7 +610,7 @@ struct ExportPerformanceTests {
         )
 
         #expect(plan.staticOverlays.map(\.type) == [.decorSolidColor])
-        #expect(plan.dynamicOverlays.map(\.type) == [.runningGauge])
+        #expect(plan.dynamicOverlays.map(\.type) == [.distanceTimeline])
         #expect(plan.dynamicRenderRect.width > 0)
         #expect(plan.dynamicRenderRect.height > 0)
         #expect(plan.dynamicRenderAreaRatio < 0.85)
@@ -620,7 +620,7 @@ struct ExportPerformanceTests {
 
     @Test func renderPlanDynamicUnionIncludesSafePadding() throws {
         let activity = ActivityTimeline.empty
-        let element = OverlayElement(type: .runningGauge, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: .default)
+        let element = OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: .default)
         let canvasSize = CGSize(width: 1920, height: 1080)
         let context = OverlayRenderContext(canvasSize: canvasSize, activity: activity, elapsedTime: 0)
         let rawRect = try #require(ExportRenderPlan.renderRect(for: element, context: context))
@@ -651,8 +651,8 @@ struct ExportPerformanceTests {
     }
 
     @Test func renderPlanUsesPerOverlayPathWhenFullFrameUnionHasSmallIndividualAreas() {
-        let first = OverlayElement(type: .runningGauge, position: CGPoint(x: 0.08, y: 0.13), scale: 0.4, style: .default)
-        let second = OverlayElement(type: .runningGauge, position: CGPoint(x: 0.92, y: 0.87), scale: 0.4, style: .default)
+        let first = OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.08, y: 0.13), scale: 0.4, style: .default)
+        let second = OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.92, y: 0.87), scale: 0.4, style: .default)
         let canvasSize = CGSize(width: 1280, height: 720)
 
         let plan = ExportRenderPlan(overlays: [first, second], canvasSize: canvasSize, activity: .empty)
@@ -1073,7 +1073,7 @@ struct ExportPerformanceTests {
         let readouts = [
             CGPoint(x: 0.031, y: 0.739), CGPoint(x: 0.031, y: 0.792), CGPoint(x: 0.030, y: 0.847),
             CGPoint(x: 0.856, y: 0.844), CGPoint(x: 0.856, y: 0.901), CGPoint(x: 0.029, y: 0.905)
-        ].map { OverlayElement(type: .runningGauge, position: $0, scale: 0.25, style: .default) }
+        ].map { OverlayElement(type: .distanceTimeline, position: $0, scale: 0.25, style: .default) }
         return readouts + [
             OverlayElement(type: .routeMap, position: CGPoint(x: 0.879, y: 0.195), scale: 0.75, style: .default),
             OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.069), scale: 1, style: .default),

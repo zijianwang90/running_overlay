@@ -139,55 +139,6 @@ import Testing
         }
     }
 
-    @Test func runningGaugeRoadRun() async throws {
-        try await OverlayPreferenceFixtures.withDefaults {
-            var style = OverlayStyle.default
-            style.gauge = .preset(.roadRun)
-            style.gauge.fontName = "Helvetica Neue"
-            let element = OverlayElement(
-                type: .runningGauge,
-                position: CGPoint(x: 0.5, y: 0.5),
-                scale: 1,
-                style: style
-            )
-            try await compare(
-                layout: OverlayLayout(elements: [element]),
-                elapsedTime: 242,
-                label: "gauge-road-run"
-            )
-        }
-    }
-
-    @Test func runningGaugeGlassGlow() async throws {
-        try await OverlayPreferenceFixtures.withDefaults {
-            var style = OverlayStyle.default
-            var gauge = RunningGaugeStyle.preset(.premiumGlass)
-            gauge.layoutPreset = .topThreeMiddleBottom
-            gauge.regions = RunningGaugeStyle.defaultRegions(
-                for: .topThreeMiddleBottom
-            )
-            gauge.fontName = "Helvetica Neue"
-            gauge.glassEffectEnabled = true
-            gauge.glowEnabled = true
-            gauge.glowRadius = 8
-            gauge.glowOpacity = 0.7
-            gauge.progressRingEnabled = true
-            gauge.progressRoundedCaps = false
-            style.gauge = gauge
-            let element = OverlayElement(
-                type: .runningGauge,
-                position: CGPoint(x: 0.5, y: 0.5),
-                scale: 1.25,
-                style: style
-            )
-            try await compare(
-                layout: OverlayLayout(elements: [element]),
-                elapsedTime: 242,
-                label: "gauge-glass-glow"
-            )
-        }
-    }
-
     @Test func elevationChartGradientArea() async throws {
         try await OverlayPreferenceFixtures.withDefaults {
             let element = elevationElement(.gradientArea)

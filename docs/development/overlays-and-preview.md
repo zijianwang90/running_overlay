@@ -45,8 +45,8 @@ Current implementation:
 - Components are top-leading anchored. Preview drag of a component uses the canvas pointer location plus a grab offset and the top-leading snap/clamp path, the behavior native numeric overlays had.
 - `NumericOverlayDetailView`'s shared swatch and font shortcuts live in `InspectorPresets`; the `InspectorDense*` primitives are unchanged in `InspectorDenseComponents.swift`.
 - Shared background Fade Out uses `OverlayFeatherMaskRenderer`, a distance-field rounded-rectangle alpha mask reused by SwiftUI preview and Route Map rendering. The mask fades only the background surface to transparent; it does not fade foreground text/icons or sample/blur the underlying video.
-- Running Gauge is available as a composite circular dashboard overlay with distance, elapsed time, pace, and heart rate in one module.
-- Running Gauge supports Minimal Sport, High Contrast, Trail Adventure, Tech Future, and Retro Digital style presets through the Inspector.
+- Running Gauge is the bundled `studio.running-gauge` component, a composite circular dashboard with distance, elapsed time, pace, and heart rate in one module. The native `runningGauge` element type was removed without migration (ADR 0015); its Skia renderer remains as the component's drawing module.
+- The running gauge component exposes its dial, ring, tick, divider, region, and typography parameters through the generated component Inspector.
 - Route Map is available as a featured overlay module backed by FIT GPS latitude/longitude when present.
 - Route Map exposes line color mode and Glow controls through the Inspector.
 - Route Map preview attempts a MapKit snapshot when the map background is enabled and falls back to a local dark grid when a snapshot is unavailable.
@@ -88,7 +88,7 @@ Current implementation:
 - Interval Work Summary is available as a short-lived post-work-lap summary card for structured workouts. It uses `ActivityTimeline.lastActiveLap(at:)`, renders only within the configured display window after an active lap ends, and shares `OverlayRenderModel.intervalWorkSummaryLayout(for:in:)` between preview and export. See `docs/design/overlays/interval-work-summary/interval-work-summary-overlay-ui.md` and `docs/overlay-modules/interval-work-summary-overlay.md`.
 - Zone Edge Bar is available as an independent HR/pace zone overlay for edge-pinned or free placement. It reads Project Settings HR/pace zones and thresholds, renders current and threshold markers, supports horizontal and vertical bars, and shares the HR-zone palette used by Project Settings and Interval HUD Bar. See `docs/design/overlays/zone-edge-bar/zone-edge-bar-overlay-ui.md` and `docs/overlay-modules/zone-edge-bar-overlay.md`.
 - Elevation chart overlays render line/area charts with playhead markers; Smoothing filters quantized elevation samples and draws curved paths in both preview and export, including Progress mode. Current marker sizes are resolved in `OverlayRenderModel` from the shared canvas scale and the marker size multiplier so preview and SwiftUI export remain proportional.
-- Running Gauge overlays render circular ticks, a progress ring, section dividers, and core run metrics in both preview and export.
+- Running gauge components render circular ticks, a progress ring, section dividers, and core run metrics in both preview and export.
 - Route Map overlays render the route path, start marker, finish marker, and current-position marker in both preview and export.
 - `OverlayRenderModel` provides the shared layout data used by SwiftUI preview and AVFoundation export rendering.
 - Preview overlay positions, drag deltas, guides, font sizes, padding, and chart dimensions are based on the fitted project canvas inside the preview area, so resizing split panes keeps overlays anchored to the same normalized video position.

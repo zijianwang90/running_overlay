@@ -670,7 +670,7 @@ struct OverlayComponentIntegrationTests {
         #expect(!OverlayTileInfo.all.isEmpty)
         for tile in OverlayTileInfo.all {
             let matches = items.filter { $0.id == tile.componentID }
-            #expect(matches.count == 1, "\(tile.type) maps to \(tile.componentID)")
+            #expect(matches.count == 1, "\(tile.id) maps to \(tile.componentID)")
             let item = try #require(matches.first)
             _ = try OverlayComponentLibrary.reference(for: item)
         }

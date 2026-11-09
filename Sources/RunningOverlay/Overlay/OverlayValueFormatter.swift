@@ -212,8 +212,6 @@ enum OverlayValueFormatter {
             return OverlayValueComponents(label: "Distance", shortLabel: "DIST", value: String(format: "%.2f / %.2f", activity.distance(at: elapsedTime) / 1000, activity.distanceMeters / 1000), unit: "km")
         case .elevationChart:
             return OverlayValueComponents(label: "Elevation", shortLabel: "ELEV", value: activity.elevation(at: elapsedTime).map { "\(Int($0.rounded()))" } ?? "--", unit: "m")
-        case .runningGauge:
-            return OverlayValueComponents(label: "Running Gauge", shortLabel: "GAUGE", value: String(format: "%.2f", activity.distance(at: elapsedTime) / 1000), unit: "km")
         case .intervalHUDBar:
             return OverlayValueComponents(label: "Interval HUD Bar", shortLabel: "INTERVAL", value: "", unit: "")
         case .intervalTimeline:

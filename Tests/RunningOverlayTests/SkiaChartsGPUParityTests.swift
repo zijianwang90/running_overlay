@@ -37,23 +37,6 @@ struct SkiaChartsGPUParityTests {
         )
     }
 
-    @Test func runningGaugeGPUParity() throws {
-        var style = OverlayStyle.default
-        style.gauge = .preset(.roadRun)
-        style.gauge.fontName = "Helvetica Neue"
-        let element = OverlayElement(
-            type: .runningGauge,
-            position: CGPoint(x: 0.5031, y: 0.4969),
-            scale: 1,
-            style: style
-        )
-        try compare(
-            label: "running-gauge",
-            layout: OverlayLayout(elements: [element]),
-            elapsedTime: 242
-        )
-    }
-
     @Test func elevationGradientGPUParity() throws {
         try compare(
             label: "elevation-gradient-area",

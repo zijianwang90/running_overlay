@@ -87,7 +87,6 @@ import Testing
         let types: [OverlayElementType] = [
             .decorSolidColor,
             .distanceTimeline,
-            .runningGauge,
             .elevationChart,
             .routeMap,
             .weatherWidget,
@@ -577,7 +576,6 @@ import Testing
             make(.decorText, 0.82, 0.46, decorTextStyle),
             make(.routeMap, 0.18, 0.72, routeStyle),
             make(.distanceTimeline, 0.50, 0.10),
-            make(.runningGauge, 0.50, 0.40),
             make(.elevationChart, 0.50, 0.70),
             make(.weatherWidget, 0.80, 0.70),
             make(.intervalTimeline, 0.50, 0.90),

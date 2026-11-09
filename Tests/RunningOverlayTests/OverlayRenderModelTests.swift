@@ -449,32 +449,6 @@ struct OverlayRenderModelTests {
         }
     }
 
-    @Test func runningGaugeLayoutCarriesCoreMetricsAndProgress() {
-        let element = OverlayElement(type: .runningGauge, position: CGPoint(x: 0.4, y: 0.6), scale: 1, style: .default)
-        let context = OverlayRenderContext(
-            canvasSize: OverlayRenderContext.referenceCanvasSize,
-            activity: sampleActivity(),
-            elapsedTime: 5
-        )
-
-        let layout = OverlayRenderModel.runningGaugeLayout(for: element, in: context)
-
-        // Default style preset is `.roadRun` whose layout preset is
-        // `.topTwoMiddleBottom`. Verify the canonical four regions land in
-        // the right slots with expected metric values bound.
-        let regions = Dictionary(uniqueKeysWithValues: layout.regions.map { ($0.config.region, $0) })
-        #expect(regions[.top]?.components.value == "0.05")
-        #expect(regions[.middleLeft]?.components.value == "--'--\"")
-        #expect(regions[.middleRight]?.components.value == "00:00:05")
-        #expect(regions[.bottom]?.components.value == "110")
-        #expect(layout.progress == 0.5)
-        #expect(layout.rect.width == 300)
-        #expect(layout.rect.midX == 512)
-        #expect(layout.rect.midY == 432)
-        #expect(layout.style.layoutPreset == .topTwoMiddleBottom)
-        #expect(layout.style.stylePreset == .roadRun)
-    }
-
     @Test func weatherWidgetLayoutHonorsManualOpenMeteoAndFITTemperatureOverride() {
         var style = OverlayStyle.default
         style.weatherWidget = .preset(.simpleCard)
@@ -1716,16 +1690,16 @@ struct OverlayRenderModelTests {
     }
 
     @MainActor
-    @Test func selectedExporterWritesRunningGaugePNG() async throws {
+    @Test func selectedExporterWritesDistanceTimelinePNG() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer {
             try? FileManager.default.removeItem(at: directory)
         }
 
-        let outputURL = directory.appendingPathComponent("running-gauge.png")
+        let outputURL = directory.appendingPathComponent("distance-timeline.png")
         let layout = OverlayLayout(elements: [
-            OverlayElement(type: .runningGauge, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: .default)
+            OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: .default)
         ])
         try await renderFramePNG(
             to: outputURL,

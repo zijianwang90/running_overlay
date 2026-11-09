@@ -2946,13 +2946,12 @@ enum OverlayComponentSkiaRenderer {
         var hostStyle = OverlayStyle.default
         hostStyle.shadowEnabled = false
         hostStyle.glowEnabled = false
-        let element = OverlayElement(
-            type: .runningGauge,
-            position: .zero,
-            scale: space.elementScale,
-            style: hostStyle
+        SkiaRunningGaugeRenderer.draw(
+            canvas: canvas,
+            layout: layout,
+            opacity: 1,
+            effects: hostStyle
         )
-        SkiaRunningGaugeRenderer.draw(canvas: canvas, element: element, layout: layout)
     }
 
     // MARK: - Distance timeline

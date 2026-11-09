@@ -205,8 +205,6 @@ struct ExportRenderPlan: Equatable {
             return OverlayRenderModel.routeMapLayout(for: element, in: context).rect
         case .elevationChart:
             return OverlayRenderModel.elevationChartLayout(for: element, in: context).rect
-        case .runningGauge:
-            return OverlayRenderModel.runningGaugeLayout(for: element, in: context).rect
         case .intervalHUDBar:
             return OverlayRenderModel.intervalHUDBarLayout(for: element, in: context).rect
         case .intervalTimeline:
@@ -356,8 +354,6 @@ enum ExportRenderModelProbe {
                 withExtendedLifetime(RouteMapSnapshotRequestBuilder.request(for: element, layout: layout)) {}
             case .elevationChart:
                 withExtendedLifetime(OverlayRenderModel.elevationChartLayout(for: element, in: context)) {}
-            case .runningGauge:
-                withExtendedLifetime(OverlayRenderModel.runningGaugeLayout(for: element, in: context)) {}
             case .intervalHUDBar:
                 withExtendedLifetime(OverlayRenderModel.intervalHUDBarLayout(for: element, in: context)) {}
             case .intervalTimeline:
@@ -1905,12 +1901,6 @@ private struct SwiftUIOverlayFrameView: View {
                         OverlaySharedElevationChartView(
                             element: element,
                             layout: OverlayRenderModel.elevationChartLayout(for: element, in: context)
-                        )
-                    case .runningGauge:
-                        OverlaySharedRunningGaugeView(
-                            element: element,
-                            layout: OverlayRenderModel.runningGaugeLayout(for: element, in: context),
-                            isInteractive: false
                         )
                     case .intervalHUDBar:
                         OverlaySharedIntervalHUDBarView(

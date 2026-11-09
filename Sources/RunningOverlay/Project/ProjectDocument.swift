@@ -1763,55 +1763,6 @@ final class ProjectDocument: ObservableObject {
         return Double(value)
     }
 
-    func setOverlayGaugePreset(_ elementID: OverlayElement.ID, gaugePreset: OverlayGaugePreset) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.gaugePreset = gaugePreset
-        // Re-seed the gauge style block so visual parameters track the picked
-        // preset. The user can then continue tweaking individual fields via
-        // `mutateGaugeStyle(_:_:)`.
-        overlayLayout.elements[index].style.gauge = RunningGaugeStyle.preset(gaugePreset)
-    }
-
-    /// Generic mutator for the Running Gauge sub-style. Used by the gauge
-    /// inspector to update individual fields (layout, region configs, dial,
-    /// ring, ticks, dividers, color, effects). Registers a single undo
-    /// checkpoint per call so continuous controls (sliders) should still
-    /// route through `finishContinuousEdit()` when committing.
-    func mutateGaugeStyle(_ elementID: OverlayElement.ID, _ mutate: (inout RunningGaugeStyle) -> Void) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        mutate(&overlayLayout.elements[index].style.gauge)
-    }
-
-    /// Updates the layout preset and regenerates the per-region defaults.
-    func setOverlayGaugeLayout(_ elementID: OverlayElement.ID, layout: RunningGaugeLayoutPreset) {
-        mutateGaugeStyle(elementID) { gauge in
-            gauge.layoutPreset = layout
-            gauge.regions = RunningGaugeStyle.defaultRegions(for: layout)
-        }
-    }
-
-    /// Updates a single region config in place. The region is identified by
-    /// its `RunningGaugeRegion` since each region appears at most once per
-    /// layout preset.
-    func updateOverlayGaugeRegion(
-        _ elementID: OverlayElement.ID,
-        region: RunningGaugeRegion,
-        _ mutate: (inout RunningGaugeRegionConfig) -> Void
-    ) {
-        mutateGaugeStyle(elementID) { gauge in
-            guard let regionIndex = gauge.regions.firstIndex(where: { $0.region == region }) else {
-                return
-            }
-            mutate(&gauge.regions[regionIndex])
-        }
-    }
-
     /// Toggle the map background visibility. Off → `.none`, on → restore the
     /// previously selected map style (or `.dark` if the previous value was
     /// already `.none`). Map provider is recomputed by the layout from the
@@ -4867,7 +4818,7 @@ final class ProjectDocument: ObservableObject {
     static func droppedLegacyElementsMessage(_ count: Int) -> String? {
         guard count > 0 else { return nil }
         let noun = count == 1 ? "overlay" : "overlays"
-        return "Removed \(count) legacy numeric \(noun); add Numeric components from the Overlay Pool."
+        return "Removed \(count) legacy \(noun) with no migration; add the matching component from the Overlay Pool."
     }
 
     private func migrateLegacyOpenWeatherAPIKeyIfNeeded(from settings: ProjectSettings) -> String? {

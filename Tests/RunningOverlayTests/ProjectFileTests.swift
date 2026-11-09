@@ -199,24 +199,27 @@ struct ProjectFileTests {
         var elements = try #require(object["overlayElements"] as? [[String: Any]])
         var legacy = elements[0]
         legacy["type"] = "heartRate"
+        var gauge = elements[0]
+        gauge["type"] = "runningGauge"
         var custom = elements[0]
         custom["type"] = "customNumeric"
         elements.insert(legacy, at: 1)
+        elements.insert(gauge, at: 2)
         elements.append(custom)
         object["overlayElements"] = elements
         try JSONSerialization.data(withJSONObject: object).write(to: url)
 
         let snapshot = try ProjectFileFormat.decode(Data(contentsOf: url))
-        #expect(snapshot.overlayElements.droppedLegacyCount == 2)
+        #expect(snapshot.overlayElements.droppedLegacyCount == 3)
         #expect(snapshot.overlayElements.elements.map(\.type) == [.decorSolidColor, .distanceTimeline])
 
         let reopened = fixture.makeProject()
         try reopened.loadProject(from: url)
         #expect(reopened.overlayLayout.elements.map(\.type) == [.decorSolidColor, .distanceTimeline])
-        #expect(reopened.statusMessage == ProjectDocument.droppedLegacyElementsMessage(2))
-        #expect(reopened.statusMessage.contains("Removed 2 legacy numeric overlays"))
+        #expect(reopened.statusMessage == ProjectDocument.droppedLegacyElementsMessage(3))
+        #expect(reopened.statusMessage.contains("Removed 3 legacy overlays with no migration"))
         #expect(ProjectDocument.droppedLegacyElementsMessage(0) == nil)
-        #expect(ProjectDocument.droppedLegacyElementsMessage(1)?.contains("1 legacy numeric overlay;") == true)
+        #expect(ProjectDocument.droppedLegacyElementsMessage(1)?.contains("1 legacy overlay with no migration;") == true)
 
         // Saving again writes only the surviving elements.
         try reopened.writeProject(to: url)

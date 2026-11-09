@@ -80,8 +80,9 @@ Two alternatives were considered and rejected:
    users may inspect them and duplicate one into an editable custom component,
    but cannot edit a bundled definition in place. Legacy element types remain
    readable for the foreseeable future; there is no flag-day migration.
-   ADR 0014 is the exception: native numeric types were removed without
-   migration once `studio.numeric` reached parity.
+   ADR 0014 and ADR 0015 are the exceptions: native numeric types and
+   ported visual types are removed without migration once their component
+   reaches parity and bundled templates convert.
 6. **Projects store component instances, not just references.** An instance
    records component id, semantic version, definition digest and params, plus
    an embedded definition when the component is not bundled with the app. This
@@ -124,7 +125,8 @@ Negative and risks:
   templates still contain native element types. Removal therefore depends on a
   documented legacy-style-to-params mapping and a separate, human-reviewed
   decision on migrating saved projects. For numeric overlays that decision was
-  to drop them without migration (ADR 0014). Where native semantics differ from
+  to drop them without migration (ADR 0014); for ported visual overlays the
+  same policy is staged per type (ADR 0015). Where native semantics differ from
   component semantics (for example numeric background padding scales with the
   canvas but not the element), the mapping converts values per element instead
   of copying the quirk into the format.

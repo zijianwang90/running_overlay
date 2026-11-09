@@ -23,7 +23,6 @@ enum OverlayPasteCategory: String, Equatable {
     case decor
     case distanceTimeline
     case elevationChart
-    case runningGauge
     case intervalHUDBar
     case intervalTimeline
     case intervalCountdown
@@ -37,7 +36,6 @@ enum OverlayPasteCategory: String, Equatable {
 enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     case distanceTimeline
     case elevationChart
-    case runningGauge
     case intervalHUDBar
     case intervalTimeline
     case intervalCountdown
@@ -58,21 +56,22 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     /// excluded from the add-overlay catalog and the per-type test sweeps.
     static var allCases: [OverlayElementType] {
         [
-            .distanceTimeline, .elevationChart, .runningGauge,
+            .distanceTimeline, .elevationChart,
             .intervalHUDBar, .intervalTimeline, .intervalCountdown,
             .intervalWorkSummary, .zoneEdgeBar, .routeMap,
             .weatherWidget, .decorSolidColor, .decorIcon, .decorText
         ]
     }
 
-    /// Raw values of the native numeric element types removed without
-    /// migration (ADR 0014). Saved elements of these types are dropped on load.
-    static let removedNumericRawValues: Set<String> = [
+    /// Raw values of native element types removed without migration
+    /// (ADR 0014 for numeric overlays, ADR 0015 for ported visual overlays).
+    /// Saved elements of these types are dropped on load.
+    static let removedRawValues: Set<String> = [
         "heartRate", "heartRateZone", "pace", "avgPace", "lapPace", "calories",
         "elapsedTime", "realTime", "date", "distance", "elevation", "cadence",
         "power", "verticalOscillation", "groundContactTime", "strideLength",
         "verticalRatio", "groundContactBalance", "temperature", "grade",
-        "customNumeric"
+        "customNumeric", "runningGauge"
     ]
 
     var id: String { rawValue }
@@ -81,7 +80,6 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .distanceTimeline: "Distance Timeline"
         case .elevationChart: "Elevation Chart"
-        case .runningGauge: "Running Gauge"
         case .intervalHUDBar: "Interval HUD Bar"
         case .intervalTimeline: "Interval Timeline"
         case .intervalCountdown: "Interval Countdown"
@@ -111,8 +109,6 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
             return .distanceTimeline
         case .elevationChart:
             return .elevationChart
-        case .runningGauge:
-            return .runningGauge
         case .intervalHUDBar:
             return .intervalHUDBar
         case .intervalTimeline:
@@ -235,7 +231,6 @@ enum OverlayTextAlignment: String, CaseIterable, Identifiable, Codable {
 }
 
 struct OverlayStyle: Equatable, Codable {
-    var gaugePreset: OverlayGaugePreset
     var routeMapProvider: OverlayRouteMapProvider
     var routeMapShape: OverlayRouteMapShape
     var routeMapEdgeFade: OverlayRouteMapEdgeFade
@@ -343,12 +338,6 @@ struct OverlayStyle: Equatable, Codable {
     /// See `docs/design/overlays/elevation-chart/elevation-chart-overlay-ui.md`.
     var elevationChart: ElevationChartStyle
 
-    /// Running Gauge style. Used only by overlays of type `.runningGauge` —
-    /// safely ignored otherwise. Stored as a sub-struct so the gauge can grow
-    /// dial / ring / tick / region settings without polluting the rest of the
-    /// overlay style namespace. See `Sources/RunningOverlay/Overlay/RunningGaugeModel.swift`.
-    var gauge: RunningGaugeStyle
-
     /// Stats bar attached below the route map container. Visible = false by
     /// default so existing projects are unaffected.
     var routeMapStatsBar: OverlayRouteMapStatsBarConfig
@@ -376,7 +365,6 @@ struct OverlayStyle: Equatable, Codable {
     var zoneEdgeBar: ZoneEdgeBarStyle
 
     static let `default` = OverlayStyle(
-        gaugePreset: .minimalSport,
         routeMapProvider: .none,
         routeMapShape: .square,
         routeMapEdgeFade: .solid,
@@ -453,7 +441,6 @@ struct OverlayStyle: Equatable, Codable {
         glowIntensity: 0,
         distanceTimeline: .default,
         elevationChart: .default,
-        gauge: RunningGaugeStyle.default,
         routeMapStatsBar: .default,
         decor: .default,
         weatherWidget: .preset(.simpleCard),
@@ -465,7 +452,6 @@ struct OverlayStyle: Equatable, Codable {
     )
 
     init(
-        gaugePreset: OverlayGaugePreset = .minimalSport,
         routeMapProvider: OverlayRouteMapProvider = .none,
         routeMapShape: OverlayRouteMapShape = .square,
         routeMapEdgeFade: OverlayRouteMapEdgeFade = .solid,
@@ -542,7 +528,6 @@ struct OverlayStyle: Equatable, Codable {
         glowIntensity: Double = 0,
         distanceTimeline: DistanceTimelineStyle = .default,
         elevationChart: ElevationChartStyle = .default,
-        gauge: RunningGaugeStyle = .default,
         routeMapStatsBar: OverlayRouteMapStatsBarConfig = .default,
         decor: DecorStyle = .default,
         weatherWidget: WeatherWidgetStyle = .preset(.simpleCard),
@@ -552,7 +537,6 @@ struct OverlayStyle: Equatable, Codable {
         intervalWorkSummary: IntervalWorkSummaryStyle = .default,
         zoneEdgeBar: ZoneEdgeBarStyle = .default
     ) {
-        self.gaugePreset = gaugePreset
         self.routeMapProvider = routeMapProvider
         self.routeMapShape = routeMapShape
         self.routeMapEdgeFade = routeMapEdgeFade
@@ -629,7 +613,6 @@ struct OverlayStyle: Equatable, Codable {
         self.glowIntensity = glowIntensity
         self.distanceTimeline = distanceTimeline
         self.elevationChart = elevationChart
-        self.gauge = gauge
         self.routeMapStatsBar = routeMapStatsBar
         self.decor = decor
         self.weatherWidget = weatherWidget
@@ -642,7 +625,6 @@ struct OverlayStyle: Equatable, Codable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        gaugePreset = try container.decodeIfPresent(OverlayGaugePreset.self, forKey: .gaugePreset) ?? Self.default.gaugePreset
         routeMapProvider = try container.decodeIfPresent(OverlayRouteMapProvider.self, forKey: .routeMapProvider) ?? Self.default.routeMapProvider
         routeMapShape = try container.decodeIfPresent(OverlayRouteMapShape.self, forKey: .routeMapShape) ?? Self.default.routeMapShape
         routeMapEdgeFade = try container.decodeIfPresent(OverlayRouteMapEdgeFade.self, forKey: .routeMapEdgeFade) ?? Self.default.routeMapEdgeFade
@@ -719,14 +701,6 @@ struct OverlayStyle: Equatable, Codable {
         glowIntensity = min(max(try container.decodeIfPresent(Double.self, forKey: .glowIntensity) ?? Self.default.glowIntensity, 0), 1)
         distanceTimeline = try container.decodeIfPresent(DistanceTimelineStyle.self, forKey: .distanceTimeline) ?? .default
         elevationChart = try container.decodeIfPresent(ElevationChartStyle.self, forKey: .elevationChart) ?? .default
-        if let storedGauge = try container.decodeIfPresent(RunningGaugeStyle.self, forKey: .gauge) {
-            gauge = storedGauge
-        } else {
-            // Migrate older projects: seed RunningGaugeStyle from the legacy
-            // top-level `gaugePreset` so existing layouts keep working until
-            // the user re-applies a preset from the new gauge inspector.
-            gauge = RunningGaugeStyle.preset(gaugePreset)
-        }
         routeMapStatsBar = try container.decodeIfPresent(OverlayRouteMapStatsBarConfig.self, forKey: .routeMapStatsBar) ?? .default
         decor = try container.decodeIfPresent(DecorStyle.self, forKey: .decor) ?? .default
         weatherWidget = try container.decodeIfPresent(WeatherWidgetStyle.self, forKey: .weatherWidget) ?? .preset(.simpleCard)

@@ -57,9 +57,6 @@ import Testing
         elements.append(
             element(.distanceTimeline, at: CGPoint(x: 0.15, y: 0.78), style: style)
         )
-        elements.append(
-            element(.runningGauge, at: CGPoint(x: 0.62, y: 0.30), style: style)
-        )
 
         var routeStyle = style
         routeStyle.routeMapBackgroundStyle = .none

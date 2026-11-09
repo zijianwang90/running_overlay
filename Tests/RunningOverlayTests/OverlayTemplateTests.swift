@@ -14,7 +14,6 @@ struct OverlayTemplateTests {
         project.moveOverlay(elementID, to: CGPoint(x: 0.2, y: 0.8))
         project.setOverlayScale(elementID, scale: 1.5)
         project.setOverlayForegroundColor(elementID, color: .cyan)
-        project.setOverlayGaugePreset(elementID, gaugePreset: .techFuture)
         project.saveOverlayTemplate(named: "Race Layout")
 
         let loadedProject = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL))
@@ -29,7 +28,6 @@ struct OverlayTemplateTests {
         #expect(template.elements[0].positionY == 0.8)
         #expect(template.elements[0].scale == 1.5)
         #expect(template.elements[0].style.foregroundColor == .cyan)
-        #expect(template.elements[0].style.gaugePreset == .techFuture)
     }
 
     @Test func overlayStyleDecodesLegacyTemplatesWithDefaultStylePresets() throws {
@@ -47,13 +45,13 @@ struct OverlayTemplateTests {
 
         let style = try JSONDecoder().decode(OverlayStyle.self, from: Data(json.utf8))
 
-        #expect(style.gaugePreset == .minimalSport)
         #expect(style.distanceTimeline.preset == .minimal)
         #expect(style.manualTemperatureCelsius == nil)
     }
 
-    /// Templates saved with native numeric overlays (ADR 0014) still import;
-    /// those elements are dropped and counted, the rest decode strictly.
+    /// Templates saved with native numeric or ported visual overlays
+    /// (ADR 0014, ADR 0015) still import; those elements are dropped and
+    /// counted, the rest decode strictly.
     @Test func templateDecodingDropsLegacyNumericElements() throws {
         let template = OverlayTemplate(
             name: "Legacy",
@@ -69,6 +67,9 @@ struct OverlayTemplateTests {
         var pace = elements[0]
         pace["type"] = "pace"
         elements.insert(pace, at: 0)
+        var gauge = elements[0]
+        gauge["type"] = "runningGauge"
+        elements.insert(gauge, at: 0)
         object["elements"] = elements
 
         let decoded = try JSONDecoder().decode(
@@ -76,7 +77,7 @@ struct OverlayTemplateTests {
             from: JSONSerialization.data(withJSONObject: object)
         )
 
-        #expect(decoded.droppedLegacyElementCount == 1)
+        #expect(decoded.droppedLegacyElementCount == 2)
         #expect(decoded.elements.map(\.type) == [.decorText, .routeMap])
 
         var unknown = elements[1]

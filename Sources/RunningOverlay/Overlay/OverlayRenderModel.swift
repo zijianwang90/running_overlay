@@ -382,61 +382,6 @@ enum OverlayRenderModel {
         }
     }
 
-    static func runningGaugeLayout(for element: OverlayElement, in context: OverlayRenderContext) -> OverlayRunningGaugeRenderLayout {
-        let style = element.style.gauge
-        let diameter = context.scaled(300 * element.scale)
-        let rect = centeredRect(for: element, size: CGSize(width: diameter, height: diameter), canvasSize: context.canvasSize)
-        let progress = computeGaugeProgress(style: style, context: context)
-
-        let regionFrames = RunningGaugeLayoutEngine.regionFrames(
-            for: style.layoutPreset,
-            in: CGSize(width: diameter, height: diameter)
-        )
-        let baseValueSize = diameter * 0.145
-        let baseLabelSize = diameter * 0.038
-        let baseUnitSize = diameter * 0.045
-        let regions: [OverlayRunningGaugeRegionLayout] = regionFrames.compactMap { frame in
-            guard let config = style.regions.first(where: { $0.region == frame.region }) else {
-                return nil
-            }
-            let canvasRect = CGRect(
-                x: rect.minX + frame.rect.minX,
-                y: rect.minY + frame.rect.minY,
-                width: frame.rect.width,
-                height: frame.rect.height
-            )
-            let valueSize = max(baseValueSize * config.valueFontScale, 8)
-            let labelSize = max(baseLabelSize * (config.labelFontScale / 0.32), 7)
-            let unitSize = max(baseUnitSize * (config.unitFontScale / 0.42), 7)
-            let components = OverlayValueFormatter.components(
-                for: config.metric.overlayMetric,
-                activity: context.activity,
-                elapsedTime: context.elapsedTime
-            )
-            return OverlayRunningGaugeRegionLayout(
-                config: config,
-                rect: canvasRect,
-                components: components,
-                valueFontSize: valueSize,
-                labelFontSize: labelSize,
-                unitFontSize: unitSize
-            )
-        }
-
-        return OverlayRunningGaugeRenderLayout(
-            style: style,
-            rect: rect,
-            diameter: diameter,
-            progress: clampedProgress(progress),
-            regions: regions,
-            outerRingWidth: max(diameter * style.outerRingWidthScale, 1.5),
-            progressRingWidth: max(diameter * style.progressRingWidthScale, 1.5),
-            tickLength: diameter * 0.025,
-            majorTickLength: diameter * 0.040,
-            safeRadius: diameter * 0.40
-        )
-    }
-
     static func intervalHUDBarLayout(for element: OverlayElement, in context: OverlayRenderContext) -> IntervalHUDBarRenderLayout {
         let style = element.style.intervalHUDBar
         let width = context.scaled(style.width * element.scale)
@@ -1708,29 +1653,6 @@ enum OverlayRenderModel {
         case (.time, .elapsed): "elapsed"
         case (.distance, .remaining): "distance left"
         case (.distance, .elapsed): "distance"
-        }
-    }
-
-    private static func computeGaugeProgress(style: RunningGaugeStyle, context: OverlayRenderContext) -> Double {
-        switch style.progressMode {
-        case .none:
-            return 0
-        case .distanceTarget:
-            return context.activity.distanceMeters > 0
-                ? context.activity.distance(at: context.elapsedTime) / context.activity.distanceMeters
-                : 0
-        case .elapsedTimeTarget:
-            return context.activity.duration > 0
-                ? context.elapsedTime / context.activity.duration
-                : 0
-        case .heartRateZone, .powerZone, .paceIntensity:
-            // Zone modes: fall back to elapsed-time progression until the
-            // user wires a custom max into the project model.
-            return context.activity.duration > 0
-                ? context.elapsedTime / context.activity.duration
-                : 0
-        case .customPercentage:
-            return 0.5
         }
     }
 

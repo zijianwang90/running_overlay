@@ -24,8 +24,9 @@ entries in `project-log.md`.
 | Media import and alignment | `docs/architecture.md#media-import`, `docs/architecture.md#alignment-engine` |
 | Timeline behavior | `docs/architecture.md#timeline`, `docs/design/panels/timeline/` |
 | Numeric overlays | `docs/adr/0014-remove-native-numeric-overlays.md`, `docs/overlay-components/` (`studio.numeric`), `docs/requirements.md` |
+| Ported visual overlays | `docs/adr/0015-remove-native-visual-overlays.md`, `docs/overlay-components/`, matching module doc under `docs/overlay-modules/` |
 | Featured overlays | `docs/overlay-modules/README.md`, matching module and design directory |
-| Overlay component format | `docs/adr/0013-declarative-overlay-components.md`, `docs/adr/0014-remove-native-numeric-overlays.md`, `docs/overlay-components/` |
+| Overlay component format | `docs/adr/0013-declarative-overlay-components.md`, `docs/adr/0014-remove-native-numeric-overlays.md`, `docs/adr/0015-remove-native-visual-overlays.md`, `docs/overlay-components/` |
 | Preview | `docs/architecture.md#preview`, `docs/design/panels/preview/` |
 | Skia SDK or GPU backend experiments | `docs/development/skia-sdk.md`, `docs/adr/0010-skia-ganesh-metal-renderer.md` |
 | Export or performance | `docs/architecture.md#export`, `docs/export-performance.md` |

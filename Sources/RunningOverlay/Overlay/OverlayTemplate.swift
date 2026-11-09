@@ -275,7 +275,7 @@ struct OverlayTemplateElementList: Codable, Equatable {
         while !container.isAtEnd {
             let elementDecoder = try container.superDecoder()
             let probe = try TypeProbe(from: elementDecoder)
-            if OverlayElementType.removedNumericRawValues.contains(probe.type) {
+            if OverlayElementType.removedRawValues.contains(probe.type) {
                 droppedLegacyCount += 1
                 continue
             }

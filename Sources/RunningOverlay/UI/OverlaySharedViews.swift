@@ -85,20 +85,6 @@ struct OverlaySharedElevationChartView: View {
     }
 }
 
-struct OverlaySharedRunningGaugeView: View {
-    let element: OverlayElement
-    let layout: OverlayRunningGaugeRenderLayout
-    let isInteractive: Bool
-
-    var body: some View {
-        RunningGaugeOverlayView(
-            element: element,
-            layout: layout,
-            isSelected: isInteractive
-        )
-    }
-}
-
 struct OverlaySharedIntervalHUDBarView: View {
     let element: OverlayElement
     let layout: IntervalHUDBarRenderLayout

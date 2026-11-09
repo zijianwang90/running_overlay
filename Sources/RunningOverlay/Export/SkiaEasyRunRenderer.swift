@@ -46,7 +46,6 @@ final class SkiaEasyRunRenderer {
     /// D/E lands each renderer; unported types stay on the SwiftUI fallback.
     private static let portedChartTypes: Set<OverlayElementType> = [
         .distanceTimeline,
-        .runningGauge,
         .elevationChart
     ]
 
