@@ -360,37 +360,62 @@ struct ActivityTimeline: Equatable, Codable {
     }
 
     var routePoints: [RoutePoint] {
-        records.compactMap { record in
-            guard let latitude = record.latitude, let longitude = record.longitude else {
-                return nil
-            }
-            return RoutePoint(
-                elapsedTime: record.elapsedTime,
-                latitude: latitude,
-                longitude: longitude,
-                distanceMeters: record.distanceMeters,
-                paceSecondsPerKilometer: record.paceSecondsPerKilometer,
-                heartRate: record.heartRate,
-                elevationMeters: record.elevationMeters
-            )
-        }
+        records.compactMap(routePoint(from:))
     }
 
+    private func routePoint(from record: ActivityRecord) -> RoutePoint? {
+        guard let latitude = record.latitude, let longitude = record.longitude else {
+            return nil
+        }
+        return RoutePoint(
+            elapsedTime: record.elapsedTime,
+            latitude: latitude,
+            longitude: longitude,
+            distanceMeters: record.distanceMeters,
+            paceSecondsPerKilometer: record.paceSecondsPerKilometer,
+            heartRate: record.heartRate,
+            elevationMeters: record.elevationMeters
+        )
+    }
+
+    /// Interpolated route position at `elapsedTime`.
+    ///
+    /// Reads `records` directly instead of materializing `routePoints`: the
+    /// route map layout asks for one point per frame, and building several
+    /// thousand `RoutePoint` values for a single lookup dominated that path.
     func routePoint(at elapsedTime: TimeInterval) -> RoutePoint? {
-        let points = routePoints
-        guard !points.isEmpty else {
+        guard !records.isEmpty else {
             return nil
         }
 
         let elapsedTime = clampedElapsedTime(elapsedTime)
-        if let exact = points.first(where: { $0.elapsedTime == elapsedTime }) {
+        let insertion = firstRecordIndex(atOrAfter: elapsedTime)
+        if insertion < records.count,
+           records[insertion].elapsedTime == elapsedTime,
+           let exact = routePoint(from: records[insertion]) {
             return exact
         }
 
-        guard let before = points.last(where: { $0.elapsedTime <= elapsedTime }) else {
-            return points.first
+        var beforeIndex = insertion - 1
+        while beforeIndex >= 0, !records[beforeIndex].hasRouteCoordinate {
+            beforeIndex -= 1
         }
-        guard let after = points.first(where: { $0.elapsedTime >= elapsedTime }),
+        guard beforeIndex >= 0, let before = routePoint(from: records[beforeIndex]) else {
+            // The playhead precedes the first coordinate: clamp to it, like
+            // the previous `points.first` fallback.
+            var index = insertion
+            while index < records.count, !records[index].hasRouteCoordinate {
+                index += 1
+            }
+            return index < records.count ? routePoint(from: records[index]) : nil
+        }
+
+        var afterIndex = insertion
+        while afterIndex < records.count, !records[afterIndex].hasRouteCoordinate {
+            afterIndex += 1
+        }
+        guard afterIndex < records.count,
+              let after = routePoint(from: records[afterIndex]),
               after.elapsedTime > before.elapsedTime else {
             return before
         }
@@ -415,28 +440,67 @@ struct ActivityTimeline: Equatable, Codable {
         interpolate(at: elapsedTime) { $0[keyPath: keyPath].map(Double.init) }
     }
 
+    /// Interpolates a metric at `elapsedTime`.
+    ///
+    /// Records are stored in elapsed-time order by every parser. Resolving a
+    /// chart series asks for hundreds of values per frame (`samples` up to
+    /// 1024), so the neighbours are found by binary search. A linear scan made
+    /// each lookup touch every record; a full-series resolve then cost tens of
+    /// millions of closure calls and dominated preview frame time.
     private func interpolate(at elapsedTime: TimeInterval, value: (ActivityRecord) -> Double?) -> Double? {
         let elapsedTime = clampedElapsedTime(elapsedTime)
         guard !records.isEmpty else {
             return nil
         }
 
-        if let exact = records.first(where: { $0.elapsedTime == elapsedTime }), let exactValue = value(exact) {
+        let insertion = firstRecordIndex(atOrAfter: elapsedTime)
+        if insertion < records.count,
+           records[insertion].elapsedTime == elapsedTime,
+           let exactValue = value(records[insertion]) {
             return exactValue
         }
 
-        let before = records.last { $0.elapsedTime <= elapsedTime && value($0) != nil }
-        let after = records.first { $0.elapsedTime >= elapsedTime && value($0) != nil }
-
-        guard let before, let beforeValue = value(before) else {
-            return after.flatMap(value)
+        var beforeIndex = insertion - 1
+        while beforeIndex >= 0, value(records[beforeIndex]) == nil {
+            beforeIndex -= 1
         }
-        guard let after, let afterValue = value(after), after.elapsedTime > before.elapsedTime else {
+        var afterIndex = insertion
+        while afterIndex < records.count, value(records[afterIndex]) == nil {
+            afterIndex += 1
+        }
+
+        guard beforeIndex >= 0 else {
+            return afterIndex < records.count ? value(records[afterIndex]) : nil
+        }
+        let before = records[beforeIndex]
+        guard let beforeValue = value(before) else {
+            return afterIndex < records.count ? value(records[afterIndex]) : nil
+        }
+        guard afterIndex < records.count,
+              let afterValue = value(records[afterIndex]),
+              records[afterIndex].elapsedTime > before.elapsedTime else {
             return beforeValue
         }
 
-        let progress = (elapsedTime - before.elapsedTime) / (after.elapsedTime - before.elapsedTime)
+        let progress = (elapsedTime - before.elapsedTime)
+            / (records[afterIndex].elapsedTime - before.elapsedTime)
         return beforeValue + (afterValue - beforeValue) * progress
+    }
+
+    /// Index of the first record whose elapsed time is greater than or equal to
+    /// `time`, or `records.count` when every record precedes it.
+    private func firstRecordIndex(atOrAfter time: TimeInterval) -> Int {
+        var low = 0
+        var high = records.count
+        while low < high {
+            let mid = low + (high - low) / 2
+            if records[mid].elapsedTime < time {
+                low = mid + 1
+            } else {
+                high = mid
+            }
+        }
+        return low
     }
 
     private func clampedElapsedTime(_ elapsedTime: TimeInterval) -> TimeInterval {
@@ -618,6 +682,14 @@ struct ActivityRecord: Identifiable, Equatable, Codable {
         temperatureCelsius = try container.decodeIfPresent(Double.self, forKey: .temperatureCelsius)
         gradePercent = try container.decodeIfPresent(Double.self, forKey: .gradePercent)
         genericFields = try container.decodeIfPresent([String: Double].self, forKey: .genericFields) ?? [:]
+    }
+}
+
+extension ActivityRecord {
+    /// Whether this record can contribute a route position. Route lookups skip
+    /// records without a coordinate instead of materializing every point.
+    var hasRouteCoordinate: Bool {
+        latitude != nil && longitude != nil
     }
 }
 
