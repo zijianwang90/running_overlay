@@ -339,6 +339,7 @@ struct OverlayTileInfo: Identifiable {
         OverlayTileInfo(id: "interval-work-summary", label: "Interval Work Summary", componentID: "studio.interval-work-summary", hint: "work summary", systemImage: "flag.checkered.2.crossed", category: .visuals, isAccent: true),
         OverlayTileInfo(id: "zone-edge-bar", label: "Zone Edge Bar", componentID: "studio.zone-edge-bar", hint: "HR / Pace zones", systemImage: "rectangle.compress.vertical", category: .visuals, isAccent: true),
         OverlayTileInfo(id: "route-map", label: "Route Map", componentID: "studio.route-map", hint: "GPS path", systemImage: "map", category: .visuals, isAccent: true),
+        OverlayTileInfo(id: "stats-bar", label: "Stats Bar", componentID: "studio.stats-bar", hint: "metric strip", systemImage: "rectangle.split.2x1", category: .visuals),
         OverlayTileInfo(id: "weather-widget", label: "Weather Widget", componentID: "studio.weather-widget", hint: "current weather", systemImage: "cloud.sun.fill", category: .visuals, isAccent: true),
         OverlayTileInfo(id: "decor-shape", label: "Solid Color", componentID: "studio.decor-shape", hint: "shape", systemImage: "square.fill", category: .decor),
         OverlayTileInfo(id: "decor-icon", label: "Icon", componentID: "studio.decor-icon", hint: "symbol", systemImage: "star", category: .decor),
