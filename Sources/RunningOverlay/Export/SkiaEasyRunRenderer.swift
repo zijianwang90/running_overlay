@@ -368,7 +368,6 @@ final class SkiaEasyRunRenderer {
     private func drawWeatherWidget(_ element: OverlayElement, renderContext: OverlayRenderContext) {
         let layout = OverlayRenderModel.weatherWidgetLayout(for: element, in: renderContext)
         let style = layout.style
-        guard style.preset == .simpleCard else { return }
         let rect = layout.rect
         let scale = rect.width / max(style.width, 1)
         let cornerRadius = style.cardCornerRadius * rect.width / max(style.width, 1)

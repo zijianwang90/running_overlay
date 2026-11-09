@@ -92,7 +92,7 @@ import Testing
     }
 
     private static func weatherWidget() -> WeatherWidgetStyle {
-        var widget = WeatherWidgetStyle.preset(.simpleCard)
+        var widget = WeatherWidgetStyle.simpleCard
         widget.dataSource = .openMeteo
         widget.cachedWeather = WeatherPayload(
             condition: .rain,

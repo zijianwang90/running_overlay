@@ -46,6 +46,18 @@ struct OverlayComponentIntervalHUDBarTests {
         #expect(!result.nodes.isEmpty)
         #expect(package.definition.id == "studio.interval-hud-bar")
     }
+
+    @Test func typographyFontParamsUseFontPicker() throws {
+        let package = try OverlayComponentLoader.load(data: Self.data())
+        let fontParamIDs = [
+            "labelFontFamily", "primaryValueFontFamily", "phaseFontFamily",
+            "phaseDetailFontFamily", "metricValueFontFamily", "metricUnitFontFamily",
+        ]
+        for id in fontParamIDs {
+            let parameter = try #require(package.definition.params.first { $0.id == id })
+            #expect(parameter.kind == .font, "\(id) should offer the font menu, not free-form text")
+        }
+    }
 }
 
 #if canImport(CSkiaBridge)

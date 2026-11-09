@@ -15,20 +15,11 @@
         { "value": "openMeteo", "label": "Open-Meteo API" },
         { "value": "openWeather", "label": "OpenWeather API" }
       ] },
-    { "id": "preset", "type": "enum", "label": "Preset", "default": "simpleCard",
-      "options": [
-        { "value": "simpleCard", "label": "Simple Card" },
-        { "value": "compactStrip", "label": "Compact Strip" },
-        { "value": "forecastTile", "label": "Forecast Tile" },
-        { "value": "minimalText", "label": "Minimal Text" },
-        { "value": "dashboardBar", "label": "Dashboard Bar" }
-      ] },
     { "id": "locationText", "type": "string", "label": "Location", "maxLength": 80, "default": "" },
     { "id": "temperatureUnit", "type": "enum", "label": "Unit", "default": "celsius",
       "options": [ { "value": "celsius", "label": "Celsius" }, { "value": "fahrenheit", "label": "Fahrenheit" } ] },
     { "id": "palette", "type": "enum", "label": "Palette", "default": "blueGlass",
       "options": [
-        { "value": "presetDefault", "label": "Preset Default" },
         { "value": "blueGlass", "label": "Blue Glass" },
         { "value": "lightGlass", "label": "Light Glass" },
         { "value": "graphite", "label": "Graphite" },
@@ -42,13 +33,8 @@
   "nodes": [
     {
       "type": "weatherWidget",
-      "frame": [
-        0, 0,
-        "=preset == \"compactStrip\" ? 220 : preset == \"forecastTile\" ? 180 : preset == \"minimalText\" ? 160 : preset == \"dashboardBar\" ? 560 : 300",
-        "=preset == \"compactStrip\" ? 56 : preset == \"forecastTile\" ? 180 : preset == \"minimalText\" ? 92 : preset == \"dashboardBar\" ? 112 : 110"
-      ],
+      "frame": [0, 0, 300, 110],
       "dataSource": "=dataSource",
-      "preset": "=preset",
       "locationText": "=locationText",
       "temperatureUnit": "=temperatureUnit",
       "palette": "=palette",

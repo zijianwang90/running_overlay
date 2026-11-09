@@ -402,8 +402,8 @@ Current implementation status:
 - A muted red playhead with a small downward-pointing triangle inside the ruler band is shown on timeline tracks. The vertical line starts from inside the ruler and extends down through the visible tracks; neither the line nor the triangle is allowed to extend above the ruler.
 - The Distance Timeline overlay renders a configurable compact progress module with minimal, dense, sport, splits, glass, neon, lower-third, and route presets.
 - Distance Timeline Value can show either `current / total unit` or only `current unit`; existing projects default to showing total distance.
-- Distance Timeline Stats Bars must remain outside progress, axis-label, and marker-label content in every placement. Inside mode groups the bar with the timeline background/border without overlaying that content.
-- Activity metric dropdowns for composite overlays must use the shared activity metric catalog so new numeric activity metrics can surface consistently in Distance Timeline custom values, Stats Bar slots, Running Gauge regions, and Interval HUD Bar metric rows.
+- Metrics for a free-standing strip are provided by the bundled `studio.stats-bar` component; Distance Timeline, Elevation Chart and Route Map must not draw attached stats bars.
+- Activity metric dropdowns for composite overlays must use the shared activity metric catalog so new numeric activity metrics can surface consistently in Distance Timeline custom values, Running Gauge regions, and Interval HUD Bar metric rows.
 - Distance Timeline presets can control value/label/percent content, background, border, padding, track height, ticks, current marker, glow, fade amount, media slot for applicable presets, route elevation underlay, and GPS sampled route geometry for the route preset.
 - Distance Timeline media slots support system icons plus embedded static or animated SVG assets. Embedded SVG assets must persist through overlay templates and render deterministically in preview and export.
 - The live elevation chart overlay renders as a compact line chart with a playhead marker.
@@ -533,14 +533,12 @@ Current implementation status:
   `trkpt` latitude/longitude into the same activity records.
 - FIT timer pause spans should be represented as non-destructive activity annotations on the Activity layer. Paused spans use a muted gray color and a hover tooltip labeled `Timer Paused`, while keeping the underlying timeline based on real elapsed time so video alignment is not shifted. Interval lap phase spans also expose English hover tooltips with lap kind, lap number, elapsed range, and duration.
 - `ActivityTimeline` exposes route points and interpolated current route point lookup.
-- Route Map is the bundled `studio.route-map` component (ADR 0015); the native element type and its Inspector were removed without migration. The generated component Inspector exposes route line color mode, glow, border, edge fade, zoom, points of interest, typography and Stats Bar controls, drawn by the native Skia route module.
+- Route Map is the bundled `studio.route-map` component (ADR 0015); the native element type and its Inspector were removed without migration. The generated component Inspector exposes route line color mode, glow, border, edge fade, zoom, points of interest, typography controls, drawn by the native Skia route module.
 - Preview and export render route path, start marker, finish marker, and current-position marker.
 - MapKit is the first provider abstraction and the preview attempts `MKMapSnapshotter` when the map background is enabled.
 - When MapKit snapshot loading is unavailable, Route Map falls back to a local dark grid background.
 - The component renderer expands route-map nodes into the same snapshot requests and preloaded assets as the native route element, so component maps participate in map caching, preview and export.
-- Route Map and Distance Timeline share one Stats Bar inspector component and one full control set; Enabled is in the section header, and all row controls are aligned between modules.
-- Route Map Stats Bar inside mode reserves map content padding for the bar lane (route geometry does not render underneath the bar).
-- Route Map Stats Bar on left/right edges renders as top-to-bottom stack, and `Item Gap` is applied as vertical spacing.
+- Attached Stats Bar requirements are retired (2026-11-09). The component resolver always hides the native preset bars, and users add the standalone `studio.stats-bar` component wherever they want metric strips.
 
 Remaining:
 

@@ -24,7 +24,7 @@ struct OverlayComponentWeatherWidgetTests {
         #expect(!result.nodes.isEmpty)
     }
 
-    @Test func presetSizeFollowsPresetUnlessOverridden() throws {
+    @Test func defaultSizeAndOverrides() throws {
         let package = try OverlayComponentLoader.load(data: Self.data())
         let data = OverlayComponentActivityData(
             activity: OverlayComponentWeatherWidgetParityTests.activity(),
@@ -43,16 +43,27 @@ struct OverlayComponentWeatherWidgetTests {
         }
         #expect(try frame([:]) == CGRect(x: 0, y: 0, width: 300, height: 110))
         #expect(
-            try frame(["preset": .string("compactStrip")])
-                == CGRect(x: 0, y: 0, width: 220, height: 56)
-        )
-        #expect(
             try frame([
-                "usePresetSize": .boolean(false),
                 "componentWidth": .number(400),
                 "componentHeight": .number(140)
             ]) == CGRect(x: 0, y: 0, width: 400, height: 140)
         )
+    }
+
+    @Test func bundledDefinitionHasNoPresetFeature() throws {
+        let package = try OverlayComponentLoader.load(data: Self.data())
+        let ids = Set(package.definition.params.map(\.id))
+        #expect(!ids.contains("preset"))
+        #expect(!ids.contains("usePresetSize"))
+
+        let layoutIDs = package.definition.params.compactMap { parameter -> String? in
+            guard let section = parameter.section else { return nil }
+            let name = section.resolve().trimmingCharacters(in: .whitespacesAndNewlines)
+            let isLayout = name.caseInsensitiveCompare("Layout") == .orderedSame || name == "布局"
+            return isLayout ? parameter.id : nil
+        }
+        #expect(layoutIDs.contains("componentWidth"))
+        #expect(layoutIDs.contains("componentHeight"))
     }
 
     @Test func manualSourceIgnoresHostSnapshot() throws {
@@ -75,7 +86,7 @@ struct OverlayComponentWeatherWidgetTests {
             let node = try #require(result.nodes.first)
             guard case let .weatherWidget(_, style) = node else {
                 Issue.record("expected a weather node")
-                return .preset(.simpleCard)
+                return .simpleCard
             }
             return style
         }
@@ -143,7 +154,6 @@ struct OverlayComponentWeatherWidgetParityTests {
     }
 
     private static func style(
-        preset: WeatherWidgetPreset = .simpleCard,
         condition: WeatherCondition = .sunny,
         temperature: Double = 13,
         humidity: Double = 87,
@@ -169,7 +179,7 @@ struct OverlayComponentWeatherWidgetParityTests {
         cached: WeatherPayload? = nil,
         dataSource: WeatherDataSource = .manual
     ) -> WeatherWidgetStyle {
-        var style = WeatherWidgetStyle.preset(preset)
+        var style = WeatherWidgetStyle.simpleCard
         style.dataSource = dataSource
         style.cachedWeather = cached
         style.manualCondition = condition
@@ -199,7 +209,7 @@ struct OverlayComponentWeatherWidgetParityTests {
         if showHighLow { slots.append(.highLow) }
         if showWind { slots.append(.wind) }
         if showFeelsLike { slots.append(.feelsLike) }
-        style.metricSlots = slots.isEmpty ? preset.defaultMetricSlots : slots
+        style.metricSlots = slots.isEmpty ? style.metricSlots : slots
         return style
     }
 
@@ -225,10 +235,8 @@ struct OverlayComponentWeatherWidgetParityTests {
 
     private static func parameters(_ style: WeatherWidgetStyle) -> [String: OverlayJSONValue] {
         var result: [String: OverlayJSONValue] = [
-            "usePresetSize": .boolean(false),
             "componentWidth": .number(style.width),
             "componentHeight": .number(style.height),
-            "preset": .string(style.preset.rawValue),
             "condition": .string(style.manualCondition.rawValue),
             "temperatureC": .number(style.manualTemperatureCelsius),
             "humidity": .number(style.manualHumidity),
@@ -289,10 +297,6 @@ struct OverlayComponentWeatherWidgetParityTests {
             )
             let cases: [(String, WeatherWidgetStyle, Double, TimeInterval)] = [
                 ("simple-card", Self.style(location: "Shanghai"), 1, 90),
-                ("compact-strip", Self.style(preset: .compactStrip, location: "Shanghai"), 1, 90),
-                ("forecast-tile", Self.style(preset: .forecastTile, location: "Shanghai"), 1, 90),
-                ("minimal-text", Self.style(preset: .minimalText, location: "Shanghai"), 1, 90),
-                ("dashboard-bar", Self.style(preset: .dashboardBar, location: "Shanghai"), 1, 90),
                 ("rain", Self.style(condition: .rain, location: "Shanghai"), 1, 90),
                 ("no-icon", Self.style(showIcon: false, location: "Shanghai"), 1, 90),
                 ("no-condition", Self.style(showConditionLabel: false, location: "Shanghai"), 1, 90),
@@ -305,7 +309,7 @@ struct OverlayComponentWeatherWidgetParityTests {
                     location: "Shanghai"
                 ), 1, 90),
                 ("flat-card", Self.style(
-                    preset: .forecastTile, cardOpacity: 0, cardRadius: 0,
+                    cardOpacity: 0, cardRadius: 0,
                     divider: false, location: "Shanghai"
                 ), 1, 90),
                 ("activity-temperature", Self.style(useFIT: true, location: "Shanghai"), 1, 90),

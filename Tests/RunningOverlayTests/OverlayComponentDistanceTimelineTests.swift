@@ -104,6 +104,9 @@ struct OverlayComponentDistanceTimelineParityTests {
     ) -> OverlayStyle {
         var style = OverlayStyle.default
         var timeline = DistanceTimelineStyle.preset(preset)
+        // Attached stats bars are retired; the component and its native oracle
+        // must both render the timeline alone (2026-11-09).
+        timeline.statsBar.visible = false
         timeline.width = 320
         timeline.height = 68
         timeline.valueUnitSystem = unitSystem

@@ -1095,15 +1095,14 @@
     },
     {
       "id": "labelFontFamily",
-      "type": "string",
+      "type": "font",
       "label": {
         "en": "Labels Font"
       },
       "section": {
         "en": "Typography"
       },
-      "default": "Menlo",
-      "maxLength": 128
+      "default": "Menlo"
     },
     {
       "id": "labelFontSize",
@@ -1170,15 +1169,14 @@
     },
     {
       "id": "primaryValueFontFamily",
-      "type": "string",
+      "type": "font",
       "label": {
         "en": "Primary Values Font"
       },
       "section": {
         "en": "Typography"
       },
-      "default": "Menlo",
-      "maxLength": 128
+      "default": "Menlo"
     },
     {
       "id": "primaryValueFontSize",
@@ -1245,15 +1243,14 @@
     },
     {
       "id": "phaseFontFamily",
-      "type": "string",
+      "type": "font",
       "label": {
         "en": "Phase Font"
       },
       "section": {
         "en": "Typography"
       },
-      "default": "Menlo",
-      "maxLength": 128
+      "default": "Menlo"
     },
     {
       "id": "phaseFontSize",
@@ -1320,15 +1317,14 @@
     },
     {
       "id": "phaseDetailFontFamily",
-      "type": "string",
+      "type": "font",
       "label": {
         "en": "Phase Detail Font"
       },
       "section": {
         "en": "Typography"
       },
-      "default": "Menlo",
-      "maxLength": 128
+      "default": "Menlo"
     },
     {
       "id": "phaseDetailFontSize",
@@ -1395,15 +1391,14 @@
     },
     {
       "id": "metricValueFontFamily",
-      "type": "string",
+      "type": "font",
       "label": {
         "en": "Metric Values Font"
       },
       "section": {
         "en": "Typography"
       },
-      "default": "Menlo",
-      "maxLength": 128
+      "default": "Menlo"
     },
     {
       "id": "metricValueFontSize",
@@ -1470,15 +1465,14 @@
     },
     {
       "id": "metricUnitFontFamily",
-      "type": "string",
+      "type": "font",
       "label": {
         "en": "Metric Units Font"
       },
       "section": {
         "en": "Typography"
       },
-      "default": "Menlo",
-      "maxLength": 128
+      "default": "Menlo"
     },
     {
       "id": "metricUnitFontSize",

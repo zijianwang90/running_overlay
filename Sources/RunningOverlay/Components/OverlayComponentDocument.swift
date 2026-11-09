@@ -799,9 +799,6 @@ struct OverlayComponentDistanceTimeline: Equatable {
     var mediaSystemImage: OverlayComponentStringSource?
     var mediaSlotSize: OverlayComponentNumberSource?
     var elevationProfileVisible: OverlayComponentNumberSource?
-    /// Optional stats bar attached to the track. Omitted leaves the native
-    /// preset's stats-bar configuration untouched.
-    var statsBar: OverlayComponentStatsBar?
     /// Track width in design units (native element `width`).
     var width: OverlayComponentNumberSource?
     /// Track height in design units (native element `height`).
@@ -862,7 +859,6 @@ struct OverlayComponentElevationChart: Equatable {
     var foregroundColor: OverlayComponentColorSource?
     /// Base text size in design units (native element `fontSize`).
     var valueFontSize: OverlayComponentNumberSource?
-    var statsBar: OverlayComponentStatsBar?
     /// Chart width in design units (native element `width`).
     var width: OverlayComponentNumberSource?
     /// Chart height in design units (native element `height`).
@@ -881,9 +877,6 @@ struct OverlayComponentWeatherWidget: Equatable {
     /// `manual`, `openMeteo` or `openWeather`. API sources render the host
     /// snapshot; manual renders the node's own values.
     var dataSource: OverlayComponentStringSource?
-    /// `simpleCard`, `compactStrip`, `forecastTile`, `minimalText` or
-    /// `dashboardBar`.
-    var preset: OverlayComponentStringSource?
     /// `WeatherCondition` raw value used when the host has no snapshot.
     var condition: OverlayComponentStringSource?
     var temperatureCelsius: OverlayComponentNumberSource?
@@ -982,50 +975,6 @@ struct OverlayComponentRouteMap: Equatable {
     var width: OverlayComponentNumberSource?
     /// Map window height in design units (native element `routeMapHeight`).
     var height: OverlayComponentNumberSource?
-    var statsBar: OverlayComponentStatsBar?
-}
-
-/// A stats bar attached to a chart or map. Chart configs and the route-map
-/// config share these fields; `blurRadius` applies only to route maps.
-struct OverlayComponentStatsBar: Equatable {
-    /// `bottomAttached`, `topAttached`, `leftAttached`, `rightAttached`,
-    /// `insideBottom` or `insideTop`.
-    var placement: OverlayComponentStringSource?
-    /// `equalColumns`, `emphasis`, `grid2x2`, `stack` or `compact`.
-    var layoutMode: OverlayComponentStringSource?
-    var visible: OverlayComponentNumberSource?
-    var inside: OverlayComponentNumberSource?
-    /// Long-side span in design units. 0 = auto.
-    var width: OverlayComponentNumberSource?
-    /// Bar thickness in design units.
-    var height: OverlayComponentNumberSource?
-    var offsetX: OverlayComponentNumberSource?
-    var offsetY: OverlayComponentNumberSource?
-    var itemSpacing: OverlayComponentNumberSource?
-    var backgroundOpacity: OverlayComponentNumberSource?
-    /// Gaussian blur radius of the bar background; route maps only.
-    var blurRadius: OverlayComponentNumberSource?
-    var dividerOpacity: OverlayComponentNumberSource?
-    var cornerRadius: OverlayComponentNumberSource?
-    var valueFontFamily: OverlayComponentStringSource?
-    var valueFontSize: OverlayComponentNumberSource?
-    var valueFontWeight: OverlayComponentStringSource?
-    var valueColor: OverlayComponentColorSource?
-    var labelFontFamily: OverlayComponentStringSource?
-    var labelFontSize: OverlayComponentNumberSource?
-    var labelFontWeight: OverlayComponentStringSource?
-    var labelColor: OverlayComponentColorSource?
-    /// Fixed four slots; the host clips extra slots.
-    var slots: [OverlayComponentStatsBarSlot]?
-}
-
-struct OverlayComponentStatsBarSlot: Equatable {
-    /// `distance`, `pace`, `elapsedTime`, `heartRate`, `cadence`, `power`,
-    /// `elevation`, `grade`, `calories`, `temperature`, `movingTime` or
-    /// `progress`.
-    var metric: OverlayComponentStringSource?
-    var visible: OverlayComponentNumberSource?
-    var customLabel: OverlayComponentStringSource?
 }
 
 enum OverlayComponentSegmentedBarMarkerLayout: String, CaseIterable {

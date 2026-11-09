@@ -121,23 +121,21 @@ struct SkiaRenderAssetTests {
         }
     }
 
-    @Test func weatherIconsPreloadAllPresets() throws {
+    @Test func weatherIconPreloadsSimpleCard() throws {
         try OverlayPreferenceFixtures.withDefaults {
             let activity = SkiaRouteWeatherGoldenTests.activity()
-            let elements = WeatherWidgetPreset.allCases.map { preset in
-                var style = OverlayStyle.default
-                style.weatherWidget = .preset(preset)
-                return OverlayElement(
-                    type: .weatherWidget,
-                    position: CGPoint(x: 0.5, y: 0.5),
-                    scale: 1,
-                    style: style
-                )
-            }
+            var style = OverlayStyle.default
+            style.weatherWidget = .simpleCard
+            let element = OverlayElement(
+                type: .weatherWidget,
+                position: CGPoint(x: 0.5, y: 0.5),
+                scale: 1,
+                style: style
+            )
 
             let assets = SkiaRenderAssets()
             SkiaWeatherWidgetModule.preloadAssets(
-                elements: elements,
+                elements: [element],
                 activity: activity,
                 canvasSize: Self.canvas,
                 into: assets
@@ -149,29 +147,16 @@ struct SkiaRenderAssetTests {
                 activity: activity,
                 elapsedTime: 0
             )
-            for element in elements {
-                let layout = OverlayRenderModel.weatherWidgetLayout(
-                    for: element,
-                    in: context
-                )
-                let scale = layout.rect.width / max(layout.style.width, 1)
-                let designSize: Double
-                switch layout.style.preset {
-                case .simpleCard: designSize = 58
-                case .compactStrip: designSize = 34
-                case .forecastTile: designSize = 54
-                case .minimalText: designSize = 30
-                case .dashboardBar: designSize = 44
-                }
-                let key = SkiaRenderAssets.ImageSource.weatherIcon(
-                    layout.condition,
-                    pixelSize: Int((designSize * scale).rounded(.up))
-                )
-                #expect(
-                    assets.image(for: key) != nil,
-                    "missing icon for \(layout.style.preset.rawValue)"
-                )
-            }
+            let layout = OverlayRenderModel.weatherWidgetLayout(
+                for: element,
+                in: context
+            )
+            let scale = layout.rect.width / max(layout.style.width, 1)
+            let key = SkiaRenderAssets.ImageSource.weatherIcon(
+                layout.condition,
+                pixelSize: Int((58 * scale).rounded(.up))
+            )
+            #expect(assets.image(for: key) != nil, "missing weather icon")
         }
     }
 
@@ -338,7 +323,7 @@ struct SkiaRenderAssetTests {
             #expect(assets.image(for: firstMaskKey) != nil)
 
             var weatherStyle = OverlayStyle.default
-            weatherStyle.weatherWidget = .preset(.simpleCard)
+            weatherStyle.weatherWidget = .simpleCard
             var weatherElement = OverlayElement(
                 type: .weatherWidget,
                 position: CGPoint(x: 0.5, y: 0.5),
@@ -401,9 +386,8 @@ struct SkiaRenderAssetTests {
             #expect(assets.image(for: secondMaskKey) != nil)
             #expect(assets.image(for: firstIconKey) != nil)
 
-            // Change the weather preset and scale: only the old weather icon
-            // goes, and route assets stay valid.
-            weatherStyle.weatherWidget = .preset(.compactStrip)
+            // Scale the weather widget: only the old weather icon goes, and
+            // route assets stay valid.
             weatherElement.style = weatherStyle
             weatherElement.scale = 1.5
             let secondWeatherLayout = OverlayRenderModel.weatherWidgetLayout(
@@ -453,17 +437,9 @@ struct SkiaRenderAssetTests {
         _ layout: WeatherWidgetRenderLayout
     ) -> SkiaRenderAssets.ImageSource {
         let scale = layout.rect.width / max(layout.style.width, 1)
-        let designSize: Double
-        switch layout.style.preset {
-        case .simpleCard: designSize = 58
-        case .compactStrip: designSize = 34
-        case .forecastTile: designSize = 54
-        case .minimalText: designSize = 30
-        case .dashboardBar: designSize = 44
-        }
         return .weatherIcon(
             layout.condition,
-            pixelSize: Int((designSize * scale).rounded(.up))
+            pixelSize: Int((58 * scale).rounded(.up))
         )
     }
 

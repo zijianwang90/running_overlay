@@ -51,54 +51,6 @@
       "step": 1
     },
     {
-      "id": "usePresetSize",
-      "type": "bool",
-      "label": {
-        "en": "Preset Size",
-        "zh-Hans": "预设尺寸"
-      },
-      "section": {
-        "en": "Layout",
-        "zh-Hans": "布局"
-      },
-      "default": true
-    },
-    {
-      "id": "preset",
-      "type": "enum",
-      "label": {
-        "en": "Preset",
-        "zh-Hans": "Preset"
-      },
-      "section": {
-        "en": "Layout",
-        "zh-Hans": "Layout"
-      },
-      "default": "simpleCard",
-      "options": [
-        {
-          "value": "simpleCard",
-          "label": "Simple Card"
-        },
-        {
-          "value": "compactStrip",
-          "label": "Compact Strip"
-        },
-        {
-          "value": "forecastTile",
-          "label": "Forecast Tile"
-        },
-        {
-          "value": "minimalText",
-          "label": "Minimal Text"
-        },
-        {
-          "value": "dashboardBar",
-          "label": "Dashboard Bar"
-        }
-      ]
-    },
-    {
       "id": "dataSource",
       "type": "enum",
       "label": {
@@ -621,10 +573,6 @@
       "default": "blueGlass",
       "options": [
         {
-          "value": "presetDefault",
-          "label": "Preset Default"
-        },
-        {
           "value": "blueGlass",
           "label": "Blue Glass"
         },
@@ -1024,10 +972,9 @@
       "frame": [
         0,
         0,
-        "=usePresetSize ? (preset == \"compactStrip\" ? 220 : preset == \"forecastTile\" ? 180 : preset == \"minimalText\" ? 160 : preset == \"dashboardBar\" ? 560 : 300) : componentWidth",
-        "=usePresetSize ? (preset == \"compactStrip\" ? 56 : preset == \"forecastTile\" ? 180 : preset == \"minimalText\" ? 92 : preset == \"dashboardBar\" ? 112 : 110) : componentHeight"
+        "=componentWidth",
+        "=componentHeight"
       ],
-      "preset": "=preset",
       "dataSource": "=dataSource",
       "condition": "=condition",
       "temperatureC": "=temperatureC",

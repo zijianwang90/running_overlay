@@ -116,6 +116,13 @@ struct OverlayComponentLibraryItem: Identifiable, Equatable, Sendable {
             resourceName: "route-map"
         ),
         OverlayComponentLibraryItem(
+            id: "studio.stats-bar",
+            displayName: "Stats Bar",
+            hint: "up to four metrics",
+            systemImage: "rectangle.split.3x1",
+            resourceName: "stats-bar"
+        ),
+        OverlayComponentLibraryItem(
             id: "studio.weather-widget",
             displayName: "Weather Widget",
             hint: "weather + metrics",

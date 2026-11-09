@@ -68,7 +68,6 @@ This directory stores implementation-facing product design references for Runnin
 - [Interval Work Summary Overlay UI Structured Spec](./overlays/interval-work-summary/interval-work-summary-overlay-ui.spec.json): machine-readable trigger, metric, typography, timing, and inspector rules for the work summary overlay.
 - [Zone Edge Bar Overlay UI Spec](./overlays/zone-edge-bar/zone-edge-bar-overlay-ui.md): independent HR/pace zone strip for edge-pinned or free placement.
 - [Zone Edge Bar Overlay UI Structured Spec](./overlays/zone-edge-bar/zone-edge-bar-overlay-ui.spec.json): machine-readable placement, defaults, marker, and inspector rules.
-- [Weather Widget Overlay UI Spec](./overlays/weather-widget/weather-widget-overlay-ui.md): weather-app-style overlay presets, location/temperature content rules, and shared condition icon guidance.
-- [Weather Widget Overlay UI Structured Spec](./overlays/weather-widget/weather-widget-overlay-ui.spec.json): machine-readable weather widget presets, fields, icon set, and data strategy.
-- [Weather Widget preset board](./overlays/weather-widget/weather-widget-presets.png): five visual directions for weather app plugin-style overlays.
+- [Weather Widget Overlay UI Spec](./overlays/weather-widget/weather-widget-overlay-ui.md): weather-app-style single card, location/temperature content rules, and shared condition icon guidance.
+- [Weather Widget Overlay UI Structured Spec](./overlays/weather-widget/weather-widget-overlay-ui.spec.json): machine-readable weather widget card template, fields, icon set, and data strategy.
 - [Weather Widget icon set](./overlays/weather-widget/weather-icon-set.png): unified weather condition icon family reference.

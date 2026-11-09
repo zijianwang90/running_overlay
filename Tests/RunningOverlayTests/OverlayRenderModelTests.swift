@@ -451,7 +451,7 @@ struct OverlayRenderModelTests {
 
     @Test func weatherWidgetLayoutHonorsManualOpenMeteoAndFITTemperatureOverride() {
         var style = OverlayStyle.default
-        style.weatherWidget = .preset(.simpleCard)
+        style.weatherWidget = .simpleCard
         style.weatherWidget.dataSource = .manual
         style.weatherWidget.temperatureUnit = .celsius
         style.weatherWidget.useFITTemperature = true
@@ -516,7 +516,7 @@ struct OverlayRenderModelTests {
 
     @Test func weatherWidgetOpenMeteoWithoutCacheUsesPlaceholders() {
         var style = OverlayStyle.default
-        style.weatherWidget = .preset(.simpleCard)
+        style.weatherWidget = .simpleCard
         style.weatherWidget.dataSource = .openMeteo
         style.weatherWidget.locationText = ""
         style.weatherWidget.cachedWeather = nil
@@ -543,7 +543,7 @@ struct OverlayRenderModelTests {
 
     @Test func weatherWidgetLayoutUsesOverridesAndFahrenheitFormatting() {
         var style = OverlayStyle.default
-        style.weatherWidget = .preset(.dashboardBar)
+        style.weatherWidget = .simpleCard
         style.weatherWidget.dataSource = .manual
         style.weatherWidget.manualTemperatureCelsius = 10
         style.weatherWidget.manualFeelsLike = 5

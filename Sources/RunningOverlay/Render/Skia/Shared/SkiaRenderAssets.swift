@@ -464,17 +464,9 @@ extension SkiaRenderAssets {
                 in: context
             )
             let scale = layout.rect.width / max(layout.style.width, 1)
-            let designSize: Double
-            switch layout.style.preset {
-            case .simpleCard: designSize = 58
-            case .compactStrip: designSize = 34
-            case .forecastTile: designSize = 54
-            case .minimalText: designSize = 30
-            case .dashboardBar: designSize = 44
-            }
             current.insert(assets.registerWeatherIcon(
                 layout.condition,
-                pixelSize: Int((designSize * scale).rounded(.up))
+                pixelSize: Int((58 * scale).rounded(.up))
             ))
         }
         return current

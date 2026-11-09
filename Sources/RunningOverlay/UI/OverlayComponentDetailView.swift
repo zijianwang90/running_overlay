@@ -20,6 +20,17 @@ struct OverlayComponentDetailView: View {
                 VStack(spacing: NumericTokens.sectionGap) {
                     section("Layout") {
                         OverlayLayoutInspectorRows(elementID: elementID)
+                        // Component size fields join the host Layout section
+                        // rather than repeating its header.
+                        ForEach(
+                            definition.params.filter {
+                                isLayoutSection($0)
+                                    && isVisible($0, element: element, definition: definition)
+                            },
+                            id: \.id
+                        ) { parameter in
+                            parameterControl(parameter, element: element, definition: definition)
+                        }
                     }
                     // Element shadow, glow and opacity are host state, applied
                     // around the whole component outside its clip. Components
@@ -94,11 +105,22 @@ struct OverlayComponentDetailView: View {
 
     private func sectionNames(for definition: OverlayComponentDefinition) -> [String] {
         var names: [String] = []
-        for parameter in definition.params {
+        for parameter in definition.params where !isLayoutSection(parameter) {
             let name = sectionName(for: parameter)
             if !names.contains(name) { names.append(name) }
         }
         return names
+    }
+
+    /// `Layout` is host state: position, scale and opacity already own that
+    /// section, so component parameters that declare it render inside the
+    /// same block instead of adding a second header.
+    private func isLayoutSection(_ parameter: OverlayComponentParam) -> Bool {
+        guard let section = parameter.section else { return false }
+        return section.values.values.contains { value in
+            let name = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            return name.caseInsensitiveCompare("Layout") == .orderedSame || name == "布局"
+        }
     }
 
     // MARK: - Component metadata

@@ -1,6 +1,6 @@
 # Elevation Chart Overlay
 
-Last updated: 2026-11-08
+Last updated: 2026-11-09
 
 > **Status: bundled component.** The native `.elevationChart` element and
 > `ElevationChartOverlayDetailView` were removed without migration (ADR 0015).
@@ -9,6 +9,12 @@ Last updated: 2026-11-08
 > generated component Inspector; older elements of the native type are dropped
 > on load. This document remains the rendering and design reference for that
 > node.
+>
+> **Stats Bar is no longer attached (2026-11-09).** The chart draws only its
+> own profile, marker and labels. A metric strip is now the standalone
+> `studio.stats-bar` component, placed freely by the user; the `statsBar`
+> field was removed from the component node format and attached bars are
+> always hidden by the resolver.
 
 The Elevation Chart overlay renders an activity elevation profile. It is separate from Distance Timeline and Route Map, but intentionally reuses their shared inspector and stats bar infrastructure where it makes sense.
 
@@ -41,19 +47,19 @@ The module exposes a compact set of premium visual presets while keeping the cha
 - `Minimal White` - line-only treatment with labels and stats hidden for low-clutter footage.
 - `Big Elevation` - emphasizes a large current-elevation metric while keeping the chart visible.
 
-The presets initialize values only; all line, fill, marker, axis, stats bar, background, and effects fields remain editable. The overlay still avoids separate bar, dot, step, and segmented chart modes.
+The presets initialize values only; all line, fill, marker, axis, background, and effects fields remain editable. The overlay still avoids separate bar, dot, step, and segmented chart modes.
 
-Big Elevation uses dedicated `bigNumberFontName`, `bigNumberFontWeight`, and `bigNumberFontSize` fields so its primary metric typography can differ from the chart's general overlay font and stats bar typography.
+Big Elevation uses dedicated `bigNumberFontName`, `bigNumberFontWeight`, and `bigNumberFontSize` fields so its primary metric typography can differ from the chart's general overlay font.
 
 Elevation Chart does not define an independent card-background system. It uses the shared overlay Background, Border, and Effects modules so it stays consistent with Distance Timeline, Route Map, and the rest of the overlay editor.
 
 ## Stats Bar
 
-Elevation Chart uses the shared stats bar inspector/configuration surface already used by Route Map and Distance Timeline. Slots support shared metrics such as distance, pace, elapsed time, heart rate, elevation, grade, cadence, power, calories, and progress.
-
-The shared Inside toggle is exposed for Elevation Chart. Outside mode renders the bar below the chart card so it is not covered by the card background. Inside mode renders the bar along the chart card's inner bottom edge and reserves chart clearance above it, so the bar does not cover the elevation line or filled area.
-
-Stats bar geometry and typography are resolved once in `OverlayRenderModel.elevationChartLayout` as `OverlayElevationChartStatsBarLayout`, scaled from the shared 1280x720 reference like the rest of the chart. Preview (fitted canvas) and SwiftUI export (project resolution) consume the same scaled bar rect, font sizes, and item spacing, so the bar stays proportional to the chart card at every resolution. The inside-bar chart clearance reserve is computed in design-point space before the chart height is scaled, so it is not double-scaled.
+Stats Bar is not part of Elevation Chart. It is the standalone
+`studio.stats-bar` component: up to four host-formatted metric slots, its own
+background, dividers, corner radius and typography. Users place and scale it
+independently of any chart, so the two no longer share a container, spacing or
+geometry contract.
 
 ## First-Version Limits
 

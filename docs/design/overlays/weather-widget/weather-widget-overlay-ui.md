@@ -1,12 +1,12 @@
 # Weather Widget Overlay UI Design Spec
 
-Last updated: 2026-06-29
+Last updated: 2026-11-09
 
 ## Purpose
 
 Weather Widget Overlay is a simple weather-app-style overlay for showing the day-of-run weather context on exported running videos. It should feel like a compact weather app plugin rather than a sport-specific performance module.
 
-The visual implementation and API fetch pass are in place. The component renders with local preset styling plus a shared SwiftUI weather icon family, and it caches historical weather from the activity GPS location. Open-Meteo remains the default no-key provider; OpenWeather is available when an API key is configured in Project Settings.
+The visual implementation and API fetch pass are in place. The component renders a single weather-app-style card plus a shared SwiftUI weather icon family, and it caches historical weather from the activity GPS location. Open-Meteo remains the default no-key provider; OpenWeather is available when an API key is configured in Project Settings.
 
 When a Weather Widget is first added, it starts from activity-location
 API data rather than baked-in sample content. If the current activity
@@ -17,16 +17,13 @@ such as location, temperature, humidity, and wind render `--` placeholders.
 
 ## Design References
 
-![Weather widget preset board](./weather-widget-presets.png)
-
 ![Weather icon set](./weather-icon-set.png)
 
 ## User Goals
 
 - Show the current weather condition and temperature clearly.
-- Use larger presets that can include location and country after weather data or a manual location is available.
-- Support small corner-friendly presets for videos where weather is secondary.
-- Keep weather icons visually consistent across all presets.
+- Include location and country after weather data or a manual location is available.
+- Keep weather icons visually consistent at every card scale.
 - Allow future data to come from FIT temperature, a weather API, or manual fallback values.
 
 ## Content Model
@@ -44,11 +41,9 @@ Optional display fields:
 - `highTemperature`: daily high, e.g. `H 16°`.
 - `lowTemperature`: daily low, e.g. `L 11°`.
 - `wind`: wind speed, e.g. `9 km/h`.
-- `feelsLike`: apparent temperature, e.g. `Feels 12°C`. In presets that render metrics as a single inline text row, the value must include the `Feels` label so it is not confused with the current temperature.
+- `feelsLike`: apparent temperature, e.g. `Feels 12°C`. In the card's inline metric row, the value must include the `Feels` label so it is not confused with the current temperature.
 
-## Presets
-
-### Simple Card
+## Card
 
 Medium rounded rectangle inspired by a clear weather app widget.
 
@@ -60,64 +55,8 @@ Layout:
 
 Default size target: `300 x 110`.
 
-Use this as the default preset because it communicates weather and location with the least explanation.
-
-### Compact Strip
-
-Small horizontal strip for corner placement.
-
-Layout:
-
-- Icon on the left.
-- Large temperature.
-- Secondary condition and city text.
-
-Default size target: `220 x 56`.
-
-Use when weather is supporting context rather than a primary visual.
-
-### Forecast Tile
-
-Square-ish tile for a richer weather readout.
-
-Layout:
-
-- Top: city/country.
-- Center: large icon and temperature.
-- Bottom: high, low, humidity.
-- Thin horizontal dividers separate the header/icon and temperature/metric areas; thin vertical dividers separate bottom metric slots.
-
-Default size target: `180 x 180`.
-
-Use for social clips, title-card moments, or videos where weather is part of the story.
-
-### Minimal Text
-
-Lightweight text-first preset with no heavy container.
-
-Layout:
-
-- Location above.
-- Large temperature.
-- Condition and small icon adjacent or below.
-
-Default size target: content-driven, minimum `160 x 92`.
-
-Use when the editor wants a subtle overlay that does not obscure video content.
-
-### Dashboard Bar
-
-Wide information bar for dashboard-like weather context.
-
-Layout:
-
-- Left: location and condition.
-- Middle: large temperature.
-- Right: compact metric chips for humidity, wind, and feels-like temperature.
-
-Default size target: `560 x 112`.
-
-Use when more weather metrics matter and there is enough horizontal space.
+This is the only card template: it communicates weather and location with the
+least explanation. Alternative presentations should ship as separate components.
 
 ## Icon System
 
@@ -163,11 +102,11 @@ Implementation assets:
 ## Visual Rules
 
 - Do not make the weather widget feel like a running metric by default.
-- Larger presets must have a clear location slot.
+- The card must have a clear location slot.
 - Text must remain readable on video; use subtle shadow or translucent backing when needed.
 - Avoid decorative background blobs or purely atmospheric graphics.
 - Keep cards practical: stable dimensions, predictable alignment, no nested card structures.
-- Use 8-18 px corner radii for card presets; compact strip may use a pill radius.
+- Use 8-18 px corner radii for the card.
 - Prefer blue, white, graphite, and pale sky surfaces with weather-specific accents.
 - Avoid purple-heavy palettes.
 
@@ -193,32 +132,31 @@ API support:
 Recommended sections:
 
 - Layout
-- Preset
-- Location
+- Effects
+- Component
 - Weather
-- Appearance
-- Typography
+- Weather Data, Visibility, Labels, Card, Slots, Text, Location Text,
+  Condition Text, Temperature Text, Slot Title Text and Slot Label Text,
+  generated from the component definition
 
 Key controls:
 
-- Preset: one pop-up menu (Simple Card, Compact Strip, Forecast Tile, Minimal Text, Dashboard Bar), the same dense Preset row other overlays use.
 - Location fetch action: activity GPS start location.
 - Location text fields.
 - Data source picker (Manual, Open-Meteo API, OpenWeather API) lives in the Weather section.
 - When the loaded activity includes temperature records, Weather exposes a **From Activity** checkbox (tooltip: "Use the temperature recorded in the activity"). When enabled, activity temperature overrides the API or manual temperature at the current playhead for more accurate on-run readings.
 - Manual mode: condition picker, optional label override, manual temperature, unit, Style-specific metric slots, and manual values for selected slot metrics.
 - API modes: API-owned condition/temperature/metric text inputs are hidden; keep unit, Style-specific metric slot assignment, display toggles, and optional FIT temperature override. OpenWeather mode disables fetch buttons until an OpenWeather API key is set in Project Settings.
-- Metric slots are Style-specific: Simple Card has 1 slot, Forecast Tile has 3 slots, Dashboard Bar has 3 slots, Compact Strip and Minimal Text have 0 slots. Each slot can choose `-`, Humidity, High / Low, Wind, or Feels Like. `-` leaves that slot empty.
+- The card has one inline metric slot. It can choose `-`, Humidity, High / Low, Wind, or Feels Like. `-` leaves the slot empty.
 - Toggles for weekday, condition label, and icon visibility.
-- Accent color only when the preset uses it.
 - Collapsed Weather Widget Inspector sections use the regular single bottom header separator so adjacent rows read as one thin divider, not doubled rules.
 
-Weather Widget 1.0 intentionally does not expose the shared overlay Background, Border, or Effects modules. Those controls do not affect the custom SwiftUI weather preset renderer, so the Inspector should keep customization inside the widget's own supported surface.
+Weather Widget 1.0 intentionally does not expose the shared overlay Background or Border modules. Those controls do not affect the custom SwiftUI weather card renderer, so the Inspector should keep customization inside the widget's own supported surface. The host Effects module stays available because it applies shadow, glow and opacity around the whole component.
 
 ## Implementation Notes
 
 - Treat this as a dedicated overlay type rather than a numeric temperature variant. It combines icon, condition, location, and optional weather metrics.
-- The icon set should be implemented once and reused by every preset.
+- The icon set should be implemented once and reused by every weather component.
 - Preview and export must share the same render layout.
 - API-backed weather must be cached before export so videos are reproducible offline.
 - Fetching weather from Inspector actions must be explicit and reversible: successful fetches write `cachedWeather`, keep the selected API source, and update the visible location from reverse geocoding. The initial fetch on newly added widgets is automatic and does not create a separate undo step.
@@ -227,27 +165,22 @@ Weather Widget 1.0 intentionally does not expose the shared overlay Background, 
 
 Implemented as of 2026-05-07:
 
-- Dedicated Weather Widget overlay model and five presets.
-- SwiftUI preset rendering for Simple Card, Compact Strip, Forecast Tile, Minimal Text, and Dashboard Bar.
+- Dedicated Weather Widget overlay model with one Simple Card template.
 - Shared SwiftUI weather icon family using custom shapes instead of SF Symbols in the main preview/export path.
 - Production weather icons are now bundled transparent PNG assets resolved from `WeatherCondition.bundledImageName`, preserving the same visual family while making the icons reusable outside the Weather Widget view code.
 - Newly added widgets start with Open-Meteo selected, no sample city text, and placeholder weather fields until activity-location weather is cached.
-- Preset switching is centralized through a project mutator that preserves content fields and cached weather while applying new visual defaults.
-- Inspector switches presets through the single Preset pop-up menu.
-- Inspector orders the primary setup sections as Layout, Preset, Appearance, Typography, Location, then Weather.
+- Inspector orders the primary setup sections as Layout, Effects, Component, then Weather.
 - Inspector combines Content, Temperature, Metrics, and Icon into one Weather section.
 - Inspector hides API-owned manual input fields when an API source is selected, while keeping unit/display toggles available.
-- Inspector replaces the old Humidity / High-Low / Wind / Feels Like toggles with Style-specific metric slots. Each slot chooses one of those four values, so metrics render consistently wherever the selected Style has a slot.
-- Inspector exposes condition label override in manual/FIT mode, palette selection in Appearance, and editable divider visibility/color/width/opacity.
+- Inspector replaces the old Humidity / High-Low / Wind / Feels Like toggles with one inline metric slot that chooses one of those four values. `-` leaves the slot empty.
+- Inspector exposes condition label override in manual/FIT mode, palette selection in Card, and editable divider visibility/color/width/opacity.
 - Inspector removes Icon Size from the user-facing 1.0 controls and adds a Show Icon toggle.
 - Inspector exposes one API fetch button in Location for the first activity GPS point.
-- Inspector no longer shows the shared Background, Border, or Effects modules for Weather Widget 1.0; the supported styling surface is limited to preset, palette, card opacity, corner radius, dividers, icon visibility, and field visibility.
-- Simple Card tightens its left visual block so the vertical divider no longer floats in an empty center column.
-- Forecast Tile renders configurable horizontal and vertical dividers around its metric area.
-- Show Divider hides all preset divider lines while preserving the user's divider color, width, and opacity settings for later reuse.
-- Dashboard Bar defaults to a taller `560 x 112` layout so right-side metric chips can show readable labels and values.
-- Metric slot menus include `-`; selected empty slots do not render any metric content.
-- Feels Like slots render as `Feels 12°C` in inline metric rows; Dashboard Bar keeps `Feels` as the chip label and the temperature as the chip value.
+- The supported styling surface is limited to palette, card opacity, corner radius, dividers, icon visibility, and field visibility.
+- The card tightens its left visual block so the vertical divider no longer floats in an empty center column.
+- Show Divider hides the divider line while preserving the user's divider color, width, and opacity settings for later reuse.
+- Metric slot menus include `-`; an empty slot does not render any metric content.
+- Feels Like renders as `Feels 12°C` in the inline metric row.
 - Open-Meteo historical fetcher parses hourly temperature, humidity, apparent temperature, WMO weather code, and wind speed; the chosen hour follows the activity start time.
 - OpenWeather historical fetcher uses the One Call 4.0 one-hour timeline with metric units; timestamp responses provide condition, temperature, humidity, wind, and feels-like values.
 - OpenWeather authorization failures tell the user that a new key or subscription may still be activating, ask them to enable One Call 4.0, note that the first 1,000 calls per day are free, and suggest Open-Meteo as the no-key fallback.

@@ -98,6 +98,9 @@ struct OverlayComponentElevationChartParityTests {
     ) -> OverlayStyle {
         var style = OverlayStyle.default
         var chart = ElevationChartStyle.preset(preset)
+        // Attached stats bars are retired; the component and its native oracle
+        // must both render the chart alone (2026-11-09).
+        chart.statsBar.visible = false
         chart.width = 420
         chart.height = 178
         chart.chartStyle = chartStyle

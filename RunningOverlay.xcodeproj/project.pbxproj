@@ -142,6 +142,7 @@
 		EA6348FA1EA23CA69D0BAD9A /* numeric.json in Resources */ = {isa = PBXBuildFile; fileRef = 5D65B2FCC824C40892232935 /* numeric.json */; };
 		12CF34AE55782CB37F521B47 /* route-map.json in Resources */ = {isa = PBXBuildFile; fileRef = FFD7BD9073117C39C88C0776 /* route-map.json */; };
 		EC4B700FC5B4B09186F925A8 /* running-gauge.json in Resources */ = {isa = PBXBuildFile; fileRef = 3FAC9C0DD60B52A839EB8346 /* running-gauge.json */; };
+		2A826670A4476E79DB3CB3B2 /* stats-bar.json in Resources */ = {isa = PBXBuildFile; fileRef = B4FF70ED313251809EB3E042 /* stats-bar.json */; };
 		4A888B64B50FEC370D17AF66 /* weather-widget.json in Resources */ = {isa = PBXBuildFile; fileRef = 7A2473586448F85BF704AC0A /* weather-widget.json */; };
 		10EF61200A8DA1DE8D567CEF /* zone-edge-bar.json in Resources */ = {isa = PBXBuildFile; fileRef = 83A77ADBFA39E8852C7AE400 /* zone-edge-bar.json */; };
 		31804494AB2434FA40AAE101 /* weather-clear-night.png in Resources */ = {isa = PBXBuildFile; fileRef = BC21396CCB191FA3662F2D36 /* weather-clear-night.png */; };
@@ -310,6 +311,7 @@
 		5D65B2FCC824C40892232935 /* numeric.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Components/numeric.json"; sourceTree = SOURCE_ROOT; };
 		FFD7BD9073117C39C88C0776 /* route-map.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Components/route-map.json"; sourceTree = SOURCE_ROOT; };
 		3FAC9C0DD60B52A839EB8346 /* running-gauge.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Components/running-gauge.json"; sourceTree = SOURCE_ROOT; };
+		B4FF70ED313251809EB3E042 /* stats-bar.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Components/stats-bar.json"; sourceTree = SOURCE_ROOT; };
 		7A2473586448F85BF704AC0A /* weather-widget.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Components/weather-widget.json"; sourceTree = SOURCE_ROOT; };
 		83A77ADBFA39E8852C7AE400 /* zone-edge-bar.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Components/zone-edge-bar.json"; sourceTree = SOURCE_ROOT; };
 		BC21396CCB191FA3662F2D36 /* weather-clear-night.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Sources/RunningOverlay/Resources/Icons/weather-clear-night.png"; sourceTree = SOURCE_ROOT; };
@@ -482,6 +484,7 @@
 			5D65B2FCC824C40892232935 /* numeric.json */,
 			FFD7BD9073117C39C88C0776 /* route-map.json */,
 			3FAC9C0DD60B52A839EB8346 /* running-gauge.json */,
+			B4FF70ED313251809EB3E042 /* stats-bar.json */,
 			7A2473586448F85BF704AC0A /* weather-widget.json */,
 			83A77ADBFA39E8852C7AE400 /* zone-edge-bar.json */,
 			BC21396CCB191FA3662F2D36 /* weather-clear-night.png */,
@@ -533,6 +536,7 @@
 			EA6348FA1EA23CA69D0BAD9A /* numeric.json in Resources */,
 			12CF34AE55782CB37F521B47 /* route-map.json in Resources */,
 			EC4B700FC5B4B09186F925A8 /* running-gauge.json in Resources */,
+			2A826670A4476E79DB3CB3B2 /* stats-bar.json in Resources */,
 			4A888B64B50FEC370D17AF66 /* weather-widget.json in Resources */,
 			10EF61200A8DA1DE8D567CEF /* zone-edge-bar.json in Resources */,
 			31804494AB2434FA40AAE101 /* weather-clear-night.png in Resources */,

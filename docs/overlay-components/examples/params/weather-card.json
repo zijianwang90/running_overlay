@@ -1,1 +1,1 @@
-{ "preset": "dashboardBar", "showWind": true, "temperatureUnit": "fahrenheit" }
+{ "showWind": true, "temperatureUnit": "fahrenheit" }

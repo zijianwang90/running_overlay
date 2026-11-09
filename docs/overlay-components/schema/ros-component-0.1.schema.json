@@ -1132,77 +1132,8 @@
       ],
       "unevaluatedProperties": false
     },
-    "statsBar": {
-      "description": "Optional host-drawn metric strip shared by the distance timeline, elevation chart and route map. Values come from the activity; the component only supplies placement, typography and slot layout.",
-      "type": "object",
-      "properties": {
-        "placement": {
-          "oneOf": [
-            { "enum": ["bottomAttached", "topAttached", "leftAttached", "rightAttached", "insideBottom", "insideTop"] },
-            { "$ref": "#/$defs/expression" }
-          ]
-        },
-        "layoutMode": {
-          "oneOf": [
-            { "enum": ["equalColumns", "emphasis", "grid2x2", "stack", "compact"] },
-            { "$ref": "#/$defs/expression" }
-          ]
-        },
-        "visible": { "$ref": "#/$defs/numberOrExpression" },
-        "inside": { "$ref": "#/$defs/numberOrExpression" },
-        "width": { "$ref": "#/$defs/numberOrExpression" },
-        "height": { "$ref": "#/$defs/numberOrExpression" },
-        "offsetX": { "$ref": "#/$defs/numberOrExpression" },
-        "offsetY": { "$ref": "#/$defs/numberOrExpression" },
-        "itemSpacing": { "$ref": "#/$defs/numberOrExpression" },
-        "backgroundOpacity": { "$ref": "#/$defs/numberOrExpression" },
-        "blurRadius": { "$ref": "#/$defs/numberOrExpression" },
-        "dividerOpacity": { "$ref": "#/$defs/numberOrExpression" },
-        "cornerRadius": { "$ref": "#/$defs/numberOrExpression" },
-        "valueFontFamily": { "$ref": "#/$defs/stringOrExpression" },
-        "valueFontSize": { "$ref": "#/$defs/numberOrExpression" },
-        "valueFontWeight": {
-          "oneOf": [
-            { "enum": ["regular", "medium", "semibold", "bold"] },
-            { "$ref": "#/$defs/expression" }
-          ]
-        },
-        "valueColor": { "$ref": "#/$defs/colorValue" },
-        "labelFontFamily": { "$ref": "#/$defs/stringOrExpression" },
-        "labelFontSize": { "$ref": "#/$defs/numberOrExpression" },
-        "labelFontWeight": {
-          "oneOf": [
-            { "enum": ["regular", "medium", "semibold", "bold"] },
-            { "$ref": "#/$defs/expression" }
-          ]
-        },
-        "labelColor": { "$ref": "#/$defs/colorValue" },
-        "slots": {
-          "type": "array",
-          "maxItems": 4,
-          "items": {
-            "type": "object",
-            "properties": {
-              "metric": {
-                "oneOf": [
-                  { "enum": ["progress", "heartRate", "pace", "avgPace", "lapPace", "calories",
-                             "elapsedTime", "realTime", "distance", "elevation", "cadence",
-                             "power", "verticalOscillation", "groundContactTime", "strideLength",
-                             "verticalRatio", "groundContactBalance", "temperature", "grade"] },
-                  { "$ref": "#/$defs/expression" }
-                ]
-              },
-              "visible": { "$ref": "#/$defs/numberOrExpression" },
-              "customLabel": { "$ref": "#/$defs/stringOrExpression" }
-            },
-            "unevaluatedProperties": false
-          }
-        }
-      },
-      "unevaluatedProperties": false
-    },
     "distanceTimelineNode": {
-      "description": "Host-drawn distance progress track. Distance text, axis labels and stats bar stay host-owned.",
+      "description": "Host-drawn distance progress track. Distance text and axis labels stay host-owned.",
       "allOf": [
         { "$ref": "#/$defs/nodeCommon" },
         {
@@ -1292,8 +1223,7 @@
             "mediaSlotSize": { "$ref": "#/$defs/numberOrExpression" },
             "elevationProfileVisible": { "$ref": "#/$defs/numberOrExpression" },
             "width": { "$ref": "#/$defs/numberOrExpression" },
-            "height": { "$ref": "#/$defs/numberOrExpression" },
-            "statsBar": { "$ref": "#/$defs/statsBar" }
+            "height": { "$ref": "#/$defs/numberOrExpression" }
           }
         }
       ],
@@ -1363,15 +1293,14 @@
             "foregroundColor": { "$ref": "#/$defs/colorValue" },
             "valueFontSize": { "$ref": "#/$defs/numberOrExpression" },
             "width": { "$ref": "#/$defs/numberOrExpression" },
-            "height": { "$ref": "#/$defs/numberOrExpression" },
-            "statsBar": { "$ref": "#/$defs/statsBar" }
+            "height": { "$ref": "#/$defs/numberOrExpression" }
           }
         }
       ],
       "unevaluatedProperties": false
     },
     "routeMapNode": {
-      "description": "Host-drawn projected GPS route. Projection, map snapshots and stats bar stay host-owned.",
+      "description": "Host-drawn projected GPS route. Projection and map snapshots stay host-owned.",
       "allOf": [
         { "$ref": "#/$defs/nodeCommon" },
         {
@@ -1422,8 +1351,7 @@
             "fontSize": { "$ref": "#/$defs/numberOrExpression" },
             "fontWeight": {
               "oneOf": [{ "enum": ["regular", "medium", "semibold", "bold"] }, { "$ref": "#/$defs/expression" }]
-            },
-            "statsBar": { "$ref": "#/$defs/statsBar" }
+            }
           }
         }
       ],
@@ -1438,7 +1366,6 @@
           "required": ["type", "frame"],
           "properties": {
             "type": { "const": "weatherWidget" },
-            "usePresetSize": { "$ref": "#/$defs/numberOrExpression" },
             "temperatureC": { "$ref": "#/$defs/numberOrExpression" },
             "humidity": { "$ref": "#/$defs/numberOrExpression" },
             "highC": { "$ref": "#/$defs/numberOrExpression" },
@@ -1463,10 +1390,9 @@
             "slotBackgroundOpacity": { "$ref": "#/$defs/numberOrExpression" },
             "slotSpacing": { "$ref": "#/$defs/numberOrExpression" },
             "condition": { "oneOf": [{ "enum": ["sunny", "clearNight", "partlyCloudy", "cloudy", "rain", "heavyRain", "thunder", "snow", "fog", "wind"] }, { "$ref": "#/$defs/expression" }] },
-            "preset": { "oneOf": [{ "enum": ["simpleCard", "compactStrip", "forecastTile", "minimalText", "dashboardBar"] }, { "$ref": "#/$defs/expression" }] },
             "dataSource": { "oneOf": [{ "enum": ["manual", "openMeteo", "openWeather"] }, { "$ref": "#/$defs/expression" }] },
             "temperatureUnit": { "oneOf": [{ "enum": ["celsius", "fahrenheit"] }, { "$ref": "#/$defs/expression" }] },
-            "palette": { "oneOf": [{ "enum": ["presetDefault", "blueGlass", "lightGlass", "graphite", "minimalWhite"] }, { "$ref": "#/$defs/expression" }] },
+            "palette": { "oneOf": [{ "enum": ["blueGlass", "lightGlass", "graphite", "minimalWhite"] }, { "$ref": "#/$defs/expression" }] },
             "locationText": { "$ref": "#/$defs/stringOrExpression" },
             "conditionLabelOverride": { "$ref": "#/$defs/stringOrExpression" },
             "humiditySuffix": { "$ref": "#/$defs/stringOrExpression" },

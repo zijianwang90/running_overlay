@@ -224,12 +224,11 @@ struct SkiaRouteWeatherGoldenTests {
 
     // MARK: - Weather Widget
 
-    @Test(arguments: WeatherWidgetPreset.allCases)
-    func weatherPresets(_ preset: WeatherWidgetPreset) async throws {
+    @Test func weatherCard() async throws {
         try await OverlayPreferenceFixtures.withDefaults {
             var style = OverlayStyle.default
             style.fontName = "Menlo"
-            style.weatherWidget = pinnedWeather(.preset(preset))
+            style.weatherWidget = pinnedWeather(.simpleCard)
             let element = OverlayElement(
                 type: .weatherWidget,
                 position: CGPoint(x: 0.5, y: 0.5),
@@ -239,7 +238,7 @@ struct SkiaRouteWeatherGoldenTests {
             try await assertParity(
                 element: element,
                 elapsedTime: 0,
-                label: "weather-\(preset.rawValue)"
+                label: "weather-simple-card"
             )
         }
     }
@@ -252,7 +251,7 @@ struct SkiaRouteWeatherGoldenTests {
     ])
     func weatherPalettes(_ palette: WeatherWidgetPalette) async throws {
         try await OverlayPreferenceFixtures.withDefaults {
-            var widget = WeatherWidgetStyle.preset(.simpleCard)
+            var widget = WeatherWidgetStyle.simpleCard
             widget.palette = palette
             var style = OverlayStyle.default
             style.fontName = "Menlo"
@@ -273,7 +272,7 @@ struct SkiaRouteWeatherGoldenTests {
 
     @Test func weatherFahrenheitPayload() async throws {
         try await OverlayPreferenceFixtures.withDefaults {
-            var widget = WeatherWidgetStyle.preset(.simpleCard)
+            var widget = WeatherWidgetStyle.simpleCard
             widget.temperatureUnit = .fahrenheit
             widget.cachedWeather = WeatherPayload(
                 condition: .snow,
@@ -305,7 +304,7 @@ struct SkiaRouteWeatherGoldenTests {
 
     @Test func weatherSimpleCardWithPayload() async throws {
         try await OverlayPreferenceFixtures.withDefaults {
-            var widget = WeatherWidgetStyle.preset(.simpleCard)
+            var widget = WeatherWidgetStyle.simpleCard
             widget.dataSource = .openMeteo
             widget.cachedWeather = WeatherPayload(
                 condition: .rain,

@@ -797,7 +797,7 @@ final class OverlayComponentParser {
             "borderOpacity", "borderWidth", "foregroundColor", "fontFamily",
             "fontSize", "fontWeight", "edgeFade", "fadeAmount", "colorMode",
             "gradientStart", "gradientMiddle", "gradientEnd", "zoom",
-            "showsPointsOfInterest", "width", "height", "statsBar"
+            "showsPointsOfInterest", "width", "height"
         ]
         case "elevationChart": typeKeys = [
             "preset", "chartStyle", "smoothingEnabled", "smoothingAmount",
@@ -812,7 +812,7 @@ final class OverlayComponentParser {
             "backgroundOpacity", "cornerRadius", "borderEnabled", "borderOpacity",
             "shadowEnabled", "shadowOpacity", "shadowRadius", "glowEnabled",
             "glowOpacity", "fontFamily", "foregroundColor", "valueFontSize",
-            "statsBar", "width", "height"
+            "width", "height"
         ]
         case "distanceTimeline": typeKeys = [
             "preset", "valueFontSize", "valueUnitSystem", "showValue", "showTotalDistance",
@@ -830,7 +830,7 @@ final class OverlayComponentParser {
             "tickDensity", "currentMarkerEnabled", "currentMarkerStyle",
             "currentMarkerColor", "glowEnabled", "fadeEnabled", "fadeEdge", "fadeAmount",
             "mediaSlotEnabled", "mediaSlotMode", "mediaSystemImage", "mediaSlotSize",
-            "elevationProfileVisible", "statsBar", "width", "height"
+            "elevationProfileVisible", "width", "height"
         ]
         case "timelineStrip": typeKeys = [
             "segments", "currentIndex", "elapsed", "mode", "emphasisFraction", "window",
@@ -2019,7 +2019,6 @@ final class OverlayComponentParser {
             mediaSystemImage: stringOrNil("mediaSystemImage"),
             mediaSlotSize: numberOrNil("mediaSlotSize"),
             elevationProfileVisible: numberOrNil("elevationProfileVisible"),
-            statsBar: parseStatsBar(object["statsBar"], at: "\(path).statsBar"),
             width: numberOrNil("width"),
             height: numberOrNil("height")
         )
@@ -2111,7 +2110,6 @@ final class OverlayComponentParser {
             fontFamily: stringOrNil("fontFamily"),
             foregroundColor: colorOrNil("foregroundColor"),
             valueFontSize: numberOrNil("valueFontSize"),
-            statsBar: parseStatsBar(object["statsBar"], at: "\(path).statsBar"),
             width: numberOrNil("width"),
             height: numberOrNil("height")
         )
@@ -2185,116 +2183,7 @@ final class OverlayComponentParser {
             zoom: numberOrNil("zoom"),
             showsPointsOfInterest: numberOrNil("showsPointsOfInterest"),
             width: numberOrNil("width"),
-            height: numberOrNil("height"),
-            statsBar: parseStatsBar(object["statsBar"], at: "\(path).statsBar")
-        )
-    }
-
-    /// Parses the optional `statsBar` object shared by the distance timeline,
-    /// elevation chart and route map nodes.
-    @inline(never)
-    private func parseStatsBar(
-        _ value: OverlayJSONValue?,
-        at path: String
-    ) -> OverlayComponentStatsBar? {
-        guard let value else { return nil }
-        guard case .object(let object) = value else {
-            error(path, "statsBar must be an object")
-            return nil
-        }
-        let placements: Set<String> = [
-            "bottomAttached", "topAttached", "leftAttached", "rightAttached",
-            "insideBottom", "insideTop"
-        ]
-        let layoutModes: Set<String> = [
-            "equalColumns", "emphasis", "grid2x2", "stack", "compact"
-        ]
-        let metrics = Set(RouteMapStatsMetric.allCases.map(\.rawValue))
-        let weightValues: Set<String> = Set(OverlayComponentFontWeight.allCases.map(\.rawValue))
-        func numberOrNil(_ key: String) -> OverlayComponentNumberSource? {
-            object[key].flatMap { numberSource($0, at: "\(path).\(key)") }
-        }
-        func colorOrNil(_ key: String) -> OverlayComponentColorSource? {
-            object[key].flatMap { colorSource($0, at: "\(path).\(key)") }
-        }
-        func stringOrNil(_ key: String) -> OverlayComponentStringSource? {
-            object[key].flatMap { stringSource($0, at: "\(path).\(key)") }
-        }
-        func enumOrNil(_ key: String, allowed: Set<String>) -> OverlayComponentStringSource? {
-            object[key].flatMap {
-                timelineEnumSource($0, at: "\(path).\(key)", allowed: allowed)
-            }
-        }
-
-        var slots: [OverlayComponentStatsBarSlot]?
-        if let rawSlots = object["slots"] {
-            guard case .array(let items) = rawSlots else {
-                error("\(path).slots", "slots must be an array")
-                return nil
-            }
-            if items.count > 4 {
-                error("\(path).slots", "at most 4 slots are allowed")
-            }
-            slots = items.prefix(4).enumerated().map { index, item in
-                let slotPath = "\(path).slots[\(index)]"
-                guard case .object(let slotObject) = item else {
-                    error(slotPath, "slot must be an object")
-                    return OverlayComponentStatsBarSlot()
-                }
-                checkUnknownKeys(
-                    slotObject,
-                    allowed: ["metric", "visible", "customLabel"],
-                    at: slotPath
-                )
-                return OverlayComponentStatsBarSlot(
-                    metric: slotObject["metric"].flatMap {
-                        timelineEnumSource($0, at: "\(slotPath).metric", allowed: metrics)
-                    },
-                    visible: slotObject["visible"].flatMap {
-                        numberSource($0, at: "\(slotPath).visible")
-                    },
-                    customLabel: slotObject["customLabel"].flatMap {
-                        stringSource($0, at: "\(slotPath).customLabel")
-                    }
-                )
-            }
-        }
-
-        checkUnknownKeys(
-            object,
-            allowed: [
-                "placement", "layoutMode", "visible", "inside", "width",
-                "height", "offsetX", "offsetY", "itemSpacing",
-                "backgroundOpacity", "blurRadius", "dividerOpacity",
-                "cornerRadius", "valueFontFamily", "valueFontSize",
-                "valueFontWeight", "valueColor", "labelFontFamily",
-                "labelFontSize", "labelFontWeight", "labelColor", "slots"
-            ],
-            at: path
-        )
-        return OverlayComponentStatsBar(
-            placement: enumOrNil("placement", allowed: placements),
-            layoutMode: enumOrNil("layoutMode", allowed: layoutModes),
-            visible: numberOrNil("visible"),
-            inside: numberOrNil("inside"),
-            width: numberOrNil("width"),
-            height: numberOrNil("height"),
-            offsetX: numberOrNil("offsetX"),
-            offsetY: numberOrNil("offsetY"),
-            itemSpacing: numberOrNil("itemSpacing"),
-            backgroundOpacity: numberOrNil("backgroundOpacity"),
-            blurRadius: numberOrNil("blurRadius"),
-            dividerOpacity: numberOrNil("dividerOpacity"),
-            cornerRadius: numberOrNil("cornerRadius"),
-            valueFontFamily: stringOrNil("valueFontFamily"),
-            valueFontSize: numberOrNil("valueFontSize"),
-            valueFontWeight: enumOrNil("valueFontWeight", allowed: weightValues),
-            valueColor: colorOrNil("valueColor"),
-            labelFontFamily: stringOrNil("labelFontFamily"),
-            labelFontSize: numberOrNil("labelFontSize"),
-            labelFontWeight: enumOrNil("labelFontWeight", allowed: weightValues),
-            labelColor: colorOrNil("labelColor"),
-            slots: slots
+            height: numberOrNil("height")
         )
     }
 
@@ -2316,9 +2205,6 @@ final class OverlayComponentParser {
         _ object: [String: OverlayJSONValue],
         at path: String
     ) -> OverlayComponentWeatherWidget? {
-        let presets: Set<String> = [
-            "simpleCard", "compactStrip", "forecastTile", "minimalText", "dashboardBar"
-        ]
         let conditions: Set<String> = Set(WeatherCondition.allCases.map(\.rawValue))
         let units: Set<String> = ["celsius", "fahrenheit"]
         let dataSources: Set<String> = ["manual", "openMeteo", "openWeather"]
@@ -2342,7 +2228,6 @@ final class OverlayComponentParser {
         }
         return OverlayComponentWeatherWidget(
             dataSource: enumOrNil("dataSource", allowed: dataSources),
-            preset: enumOrNil("preset", allowed: presets),
             condition: enumOrNil("condition", allowed: conditions),
             temperatureCelsius: numberOrNil("temperatureC"),
             humidity: numberOrNil("humidity"),

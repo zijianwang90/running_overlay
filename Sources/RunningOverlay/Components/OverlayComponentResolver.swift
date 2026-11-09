@@ -1534,14 +1534,8 @@ struct OverlayComponentResolver {
         style.mediaSystemImage = timeline.mediaSystemImage?.evaluate(in: context) ?? style.mediaSystemImage
         style.mediaSlotSize = nodeNumber(timeline.mediaSlotSize, default: style.mediaSlotSize, context: context)
         style.elevationProfileVisible = nodeFlag(timeline.elevationProfileVisible, default: style.elevationProfileVisible, context: context)
-        if let statsBar = timeline.statsBar {
-            applyStatsBar(
-                statsBar,
-                to: &style.statsBar,
-                context: context,
-                fallbackFontName: style.labelFontName
-            )
-        }
+        // Attached stats bars are retired; Stats Bar is a standalone component.
+        style.statsBar.visible = false
         resolved = .distanceTimeline(
             frame: rect,
             style: style,
@@ -1601,14 +1595,8 @@ struct OverlayComponentResolver {
         style.shadowRadius = nodeNumber(chart.shadowRadius, default: style.shadowRadius, context: context)
         style.glowEnabled = nodeFlag(chart.glowEnabled, default: style.glowEnabled, context: context)
         style.glowOpacity = nodeNumber(chart.glowOpacity, default: style.glowOpacity, context: context)
-        if let statsBar = chart.statsBar {
-            applyStatsBar(
-                statsBar,
-                to: &style.statsBar,
-                context: context,
-                fallbackFontName: style.statsBar.valueFontName
-            )
-        }
+        // Attached stats bars are retired; Stats Bar is a standalone component.
+        style.statsBar.visible = false
         let defaultStyle = OverlayStyle.default
         resolved = .elevationChart(
             frame: rect,
@@ -1626,8 +1614,7 @@ struct OverlayComponentResolver {
         context: OverlayComponentEvaluationContext, diagnostics: inout [String]
     ) -> OverlayComponentResolvedNode? {
 
-        let preset = nodeStringEnum(widget.preset, default: WeatherWidgetPreset.simpleCard, context: context)
-        var style = WeatherWidgetStyle.preset(preset)
+        var style = WeatherWidgetStyle.simpleCard
         let dataSource: WeatherDataSource = nodeStringEnum(
         widget.dataSource, default: .openMeteo, context: context
         )
@@ -1747,7 +1734,7 @@ struct OverlayComponentResolver {
         if style.showHighLow { slots.append(.highLow) }
         if style.showWind { slots.append(.wind) }
         if style.showFeelsLike { slots.append(.feelsLike) }
-        style.metricSlots = slots.isEmpty ? preset.defaultMetricSlots : slots
+        style.metricSlots = slots.isEmpty ? style.metricSlots : slots
 
         if dataSource.isAPI, let snapshot = context.data?.weatherSnapshot() {
         style.dataSource = dataSource
@@ -1803,111 +1790,10 @@ struct OverlayComponentResolver {
         style.routeMapGradientEnd = nodeColor(map.gradientEnd, default: style.routeMapGradientEnd, context: context) ?? style.routeMapGradientEnd
         style.routeMapZoom = min(max(nodeNumber(map.zoom, default: style.routeMapZoom, context: context), 0.5), 3)
         style.routeMapShowsPointsOfInterest = nodeFlag(map.showsPointsOfInterest, default: style.routeMapShowsPointsOfInterest, context: context)
-        if let statsBar = map.statsBar {
-            applyStatsBar(
-                statsBar,
-                to: &style.routeMapStatsBar,
-                context: context,
-                fallbackFontName: style.fontName
-            )
-        }
+        // Attached stats bars are retired; Stats Bar is a standalone component.
+        style.routeMapStatsBar.visible = false
         resolved = .routeMap(frame: rect, style: style)
         return resolved
-    }
-
-    private func applyStatsBar(
-        _ bar: OverlayComponentStatsBar,
-        to config: inout DistanceTimelineStatsBarConfig,
-        context: OverlayComponentEvaluationContext,
-        fallbackFontName: String
-    ) {
-        let placement = nodeStringEnum(bar.placement, default: config.placement, context: context)
-        config.placement = placement.attachedDistanceTimelinePlacement
-        config.inside = placement.isInside
-            || nodeFlag(bar.inside, default: config.inside, context: context)
-        config.visible = nodeFlag(bar.visible, default: config.visible, context: context)
-        config.layoutMode = nodeStringEnum(bar.layoutMode, default: config.layoutMode, context: context)
-        config.width = nodeNumber(bar.width, default: config.width, context: context)
-        config.height = nodeNumber(bar.height, default: config.height, context: context)
-        config.offsetX = nodeNumber(bar.offsetX, default: config.offsetX, context: context)
-        config.offsetY = nodeNumber(bar.offsetY, default: config.offsetY, context: context)
-        config.itemSpacing = nodeNumber(bar.itemSpacing, default: config.itemSpacing, context: context)
-        config.backgroundOpacity = nodeNumber(bar.backgroundOpacity, default: config.backgroundOpacity, context: context)
-        config.dividerOpacity = nodeNumber(bar.dividerOpacity, default: config.dividerOpacity, context: context)
-        config.cornerRadius = nodeNumber(bar.cornerRadius, default: config.cornerRadius, context: context)
-        config.valueFontName = bar.valueFontFamily?.evaluate(in: context) ?? fallbackFontName
-        config.valueFontSize = nodeNumber(bar.valueFontSize, default: config.valueFontSize, context: context)
-        config.valueFontWeight = nodeWeight(bar.valueFontWeight, default: config.valueFontWeight, context: context)
-        config.valueColor = nodeColor(bar.valueColor, default: config.valueColor, context: context) ?? config.valueColor
-        config.labelFontName = bar.labelFontFamily?.evaluate(in: context) ?? fallbackFontName
-        config.labelFontSize = nodeNumber(bar.labelFontSize, default: config.labelFontSize, context: context)
-        config.labelFontWeight = nodeWeight(bar.labelFontWeight, default: config.labelFontWeight, context: context)
-        config.labelColor = nodeColor(bar.labelColor, default: config.labelColor, context: context) ?? config.labelColor
-        if let slots = bar.slots {
-            while config.slots.count < 4 {
-                config.slots.append(DistanceTimelineStatsBarSlot(
-                    metric: .distance, visible: false, customLabel: ""
-                ))
-            }
-            for (index, slot) in slots.enumerated() where index < config.slots.count {
-                config.slots[index].metric = nodeStringEnum(
-                    slot.metric, default: config.slots[index].metric, context: context
-                )
-                config.slots[index].visible = nodeFlag(
-                    slot.visible, default: config.slots[index].visible, context: context
-                )
-                config.slots[index].customLabel = slot.customLabel?.evaluate(in: context)
-                    ?? config.slots[index].customLabel
-            }
-        }
-    }
-
-    private func applyStatsBar(
-        _ bar: OverlayComponentStatsBar,
-        to config: inout OverlayRouteMapStatsBarConfig,
-        context: OverlayComponentEvaluationContext,
-        fallbackFontName: String
-    ) {
-        let placement = nodeStringEnum(bar.placement, default: config.placement, context: context)
-        config.placement = placement
-        config.inside = placement.isInside
-            || nodeFlag(bar.inside, default: config.inside, context: context)
-        config.visible = nodeFlag(bar.visible, default: config.visible, context: context)
-        config.layoutMode = nodeStringEnum(bar.layoutMode, default: config.layoutMode, context: context)
-        config.width = nodeNumber(bar.width, default: config.width, context: context)
-        config.height = nodeNumber(bar.height, default: config.height, context: context)
-        config.offsetX = nodeNumber(bar.offsetX, default: config.offsetX, context: context)
-        config.offsetY = nodeNumber(bar.offsetY, default: config.offsetY, context: context)
-        config.itemSpacing = nodeNumber(bar.itemSpacing, default: config.itemSpacing, context: context)
-        config.backgroundOpacity = nodeNumber(bar.backgroundOpacity, default: config.backgroundOpacity, context: context)
-        config.blurRadius = nodeNumber(bar.blurRadius, default: config.blurRadius, context: context)
-        config.dividerOpacity = nodeNumber(bar.dividerOpacity, default: config.dividerOpacity, context: context)
-        config.cornerRadius = nodeNumber(bar.cornerRadius, default: config.cornerRadius, context: context)
-        config.valueFontName = bar.valueFontFamily?.evaluate(in: context) ?? fallbackFontName
-        config.valueFontSize = nodeNumber(bar.valueFontSize, default: config.valueFontSize, context: context)
-        config.valueFontWeight = nodeWeight(bar.valueFontWeight, default: config.valueFontWeight, context: context)
-        config.valueColor = nodeColor(bar.valueColor, default: config.valueColor, context: context) ?? config.valueColor
-        config.labelFontName = bar.labelFontFamily?.evaluate(in: context) ?? fallbackFontName
-        config.labelFontSize = nodeNumber(bar.labelFontSize, default: config.labelFontSize, context: context)
-        config.labelFontWeight = nodeWeight(bar.labelFontWeight, default: config.labelFontWeight, context: context)
-        config.labelColor = nodeColor(bar.labelColor, default: config.labelColor, context: context) ?? config.labelColor
-        if let slots = bar.slots {
-            while config.slots.count < 4 {
-                config.slots.append(RouteMapStatsBarSlot(
-                    metric: .distance, visible: false, customLabel: ""
-                ))
-            }
-            for (index, slot) in slots.enumerated() where index < config.slots.count {
-                config.slots[index].metric = nodeStringEnum(
-                    slot.metric, default: config.slots[index].metric, context: context
-                )
-                config.slots[index].visible = nodeFlag(
-                    slot.visible, default: config.slots[index].visible, context: context
-                )
-                config.slots[index].customLabel = slot.customLabel?.evaluate(in: context)
-                    ?? config.slots[index].customLabel
-            }
-        }
     }
 
     private func resolvePathCommand(

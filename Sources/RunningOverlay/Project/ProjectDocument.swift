@@ -863,7 +863,7 @@ final class ProjectDocument: ObservableObject {
             style.foregroundColor = .cyan
         }
         if type == .weatherWidget {
-            style.weatherWidget = WeatherWidgetStyle.preset(.simpleCard)
+            style.weatherWidget = .simpleCard
             style.weatherWidget.dataSource = .openMeteo
             style.weatherWidget.locationText = ""
             style.weatherWidget.cachedWeather = nil
@@ -2072,45 +2072,6 @@ final class ProjectDocument: ObservableObject {
         mutate(&overlayLayout.elements[index].style.zoneEdgeBar)
     }
 
-    func applyWeatherWidgetPreset(_ elementID: OverlayElement.ID, preset: WeatherWidgetPreset) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        let existing = overlayLayout.elements[index].style.weatherWidget
-        var next = WeatherWidgetStyle.preset(preset)
-        next.dataSource = existing.dataSource
-        next.useFITTemperature = existing.useFITTemperature
-        next.manualCondition = existing.manualCondition
-        next.manualTemperatureCelsius = existing.manualTemperatureCelsius
-        next.manualHumidity = existing.manualHumidity
-        next.manualHigh = existing.manualHigh
-        next.manualLow = existing.manualLow
-        next.manualWind = existing.manualWind
-        next.manualFeelsLike = existing.manualFeelsLike
-        next.conditionLabelOverride = existing.conditionLabelOverride
-        next.humiditySuffix = existing.humiditySuffix
-        next.humidityMetricLabel = existing.humidityMetricLabel
-        next.windMetricLabel = existing.windMetricLabel
-        next.feelsLikeMetricLabel = existing.feelsLikeMetricLabel
-        next.dividerEnabled = existing.dividerEnabled
-        next.dividerColor = existing.dividerColor
-        next.dividerThickness = existing.dividerThickness
-        next.dividerOpacity = existing.dividerOpacity
-        next.temperatureUnit = existing.temperatureUnit
-        next.locationText = existing.locationText
-        next.showIcon = existing.showIcon
-        next.metricSlots = WeatherWidgetStyle.normalizedMetricSlots(existing.metricSlots, for: preset)
-        next.slotBackgroundColor = existing.slotBackgroundColor
-        next.slotBackgroundOpacity = existing.slotBackgroundOpacity
-        next.slotSpacing = existing.slotSpacing
-        next.locationTextStyle = existing.locationTextStyle
-        next.conditionTextStyle = existing.conditionTextStyle
-        next.temperatureTextStyle = existing.temperatureTextStyle
-        next.slotTitleTextStyle = existing.slotTitleTextStyle
-        next.slotLabelTextStyle = existing.slotLabelTextStyle
-        next.cachedWeather = existing.cachedWeather
-        overlayLayout.elements[index].style.weatherWidget = next
-    }
-
     func fetchWeatherForActivityLocation(_ elementID: OverlayElement.ID) {
         fetchWeather(elementID, registersUndo: true)
     }
@@ -2762,7 +2723,7 @@ final class ProjectDocument: ObservableObject {
         case .weatherWidget:
             mutateWeatherWidgetStyle(elementID) { style in
                 let unit = style.temperatureUnit
-                style = WeatherWidgetStyle.preset(style.preset)
+                style = .simpleCard
                 style.temperatureUnit = unit
             }
         default:

@@ -1,6 +1,6 @@
 # Distance Timeline Overlay
 
-Last updated: 2026-11-08
+Last updated: 2026-11-09
 
 > **Status: bundled component.** The native `.distanceTimeline` element and
 > `DistanceTimelineOverlayDetailView` were removed without migration (ADR
@@ -9,6 +9,13 @@ Last updated: 2026-11-08
 > settings through the generated component Inspector; older elements of the
 > native type are dropped on load. This document remains the rendering and
 > design reference for that node.
+>
+> **Stats Bar is no longer attached (2026-11-09).** The timeline draws only its
+> own track, axis and marker. Metric strips are the standalone
+> `studio.stats-bar` component, placed freely by the user; the `statsBar` field
+> was removed from the component node format and attached bars are always
+> hidden by the resolver. The Stats Bar sections below describe the retired
+> native controls and remain as historical design reference.
 
 ## Purpose
 

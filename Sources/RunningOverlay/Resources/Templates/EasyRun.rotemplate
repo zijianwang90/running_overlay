@@ -1209,7 +1209,6 @@
             "humidity"
           ],
           "palette" : "blueGlass",
-          "preset" : "simpleCard",
           "showConditionLabel" : true,
           "showFeelsLike" : false,
           "showHighLow" : false,
@@ -2510,7 +2509,6 @@
             "humidity"
           ],
           "palette" : "blueGlass",
-          "preset" : "simpleCard",
           "showConditionLabel" : true,
           "showFeelsLike" : false,
           "showHighLow" : false,
@@ -3811,7 +3809,6 @@
             "humidity"
           ],
           "palette" : "blueGlass",
-          "preset" : "simpleCard",
           "showConditionLabel" : true,
           "showFeelsLike" : false,
           "showHighLow" : false,
@@ -5104,7 +5101,6 @@
             "humidity"
           ],
           "palette" : "blueGlass",
-          "preset" : "simpleCard",
           "showConditionLabel" : true,
           "showFeelsLike" : false,
           "showHighLow" : false,
@@ -6425,7 +6421,6 @@
             "humidity"
           ],
           "palette" : "blueGlass",
-          "preset" : "simpleCard",
           "showConditionLabel" : true,
           "showFeelsLike" : false,
           "showHighLow" : false,
@@ -7727,7 +7722,6 @@
             "humidity"
           ],
           "palette" : "blueGlass",
-          "preset" : "simpleCard",
           "showConditionLabel" : true,
           "showFeelsLike" : false,
           "showHighLow" : false,
@@ -9029,7 +9023,6 @@
             "humidity"
           ],
           "palette" : "blueGlass",
-          "preset" : "simpleCard",
           "showConditionLabel" : true,
           "showFeelsLike" : false,
           "showHighLow" : false,
@@ -10330,7 +10323,6 @@
             "humidity"
           ],
           "palette" : "blueGlass",
-          "preset" : "simpleCard",
           "showConditionLabel" : true,
           "showFeelsLike" : false,
           "showHighLow" : false,
@@ -10463,7 +10455,6 @@
         "locationText" : "",
         "lowC" : 11.0,
         "palette" : "blueGlass",
-        "preset" : "simpleCard",
         "showConditionLabel" : true,
         "showFeelsLike" : false,
         "showHighLow" : false,
@@ -10487,7 +10478,6 @@
         "temperatureFontWeight" : "bold",
         "temperatureUnit" : "celsius",
         "useActivityTemperature" : false,
-        "usePresetSize" : false,
         "windKph" : 12.0,
         "windMetricLabel" : "Wind"
       },
@@ -11649,7 +11639,6 @@
             "humidity"
           ],
           "palette" : "blueGlass",
-          "preset" : "simpleCard",
           "showConditionLabel" : true,
           "showFeelsLike" : false,
           "showHighLow" : false,

@@ -409,7 +409,7 @@ struct OverlayStyle: Equatable, Codable {
         distanceTimeline: .default,
         elevationChart: .default,
         routeMapStatsBar: .default,
-        weatherWidget: .preset(.simpleCard),
+        weatherWidget: .simpleCard,
         intervalHUDBar: .default,
         intervalTimeline: .default,
         zoneEdgeBar: .default
@@ -493,7 +493,7 @@ struct OverlayStyle: Equatable, Codable {
         distanceTimeline: DistanceTimelineStyle = .default,
         elevationChart: ElevationChartStyle = .default,
         routeMapStatsBar: OverlayRouteMapStatsBarConfig = .default,
-        weatherWidget: WeatherWidgetStyle = .preset(.simpleCard),
+        weatherWidget: WeatherWidgetStyle = .simpleCard,
         intervalHUDBar: IntervalHUDBarStyle = .default,
         intervalTimeline: IntervalTimelineStyle = .default,
         zoneEdgeBar: ZoneEdgeBarStyle = .default
@@ -660,7 +660,7 @@ struct OverlayStyle: Equatable, Codable {
         distanceTimeline = try container.decodeIfPresent(DistanceTimelineStyle.self, forKey: .distanceTimeline) ?? .default
         elevationChart = try container.decodeIfPresent(ElevationChartStyle.self, forKey: .elevationChart) ?? .default
         routeMapStatsBar = try container.decodeIfPresent(OverlayRouteMapStatsBarConfig.self, forKey: .routeMapStatsBar) ?? .default
-        weatherWidget = try container.decodeIfPresent(WeatherWidgetStyle.self, forKey: .weatherWidget) ?? .preset(.simpleCard)
+        weatherWidget = try container.decodeIfPresent(WeatherWidgetStyle.self, forKey: .weatherWidget) ?? .simpleCard
         intervalHUDBar = try container.decodeIfPresent(IntervalHUDBarStyle.self, forKey: .intervalHUDBar) ?? .default
         intervalTimeline = try container.decodeIfPresent(IntervalTimelineStyle.self, forKey: .intervalTimeline) ?? .default
         zoneEdgeBar = try container.decodeIfPresent(ZoneEdgeBarStyle.self, forKey: .zoneEdgeBar) ?? .default
@@ -2794,59 +2794,6 @@ enum WeatherMetricSlotValue: String, CaseIterable, Identifiable, Equatable, Hash
     }
 }
 
-enum WeatherWidgetPreset: String, CaseIterable, Identifiable, Equatable, Codable {
-    case simpleCard
-    case compactStrip
-    case forecastTile
-    case minimalText
-    case dashboardBar
-
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .simpleCard: "Simple Card"
-        case .compactStrip: "Compact Strip"
-        case .forecastTile: "Forecast Tile"
-        case .minimalText: "Minimal Text"
-        case .dashboardBar: "Dashboard Bar"
-        }
-    }
-
-    var defaultSize: CGSize {
-        switch self {
-        case .simpleCard: CGSize(width: 300, height: 110)
-        case .compactStrip: CGSize(width: 220, height: 56)
-        case .forecastTile: CGSize(width: 180, height: 180)
-        case .minimalText: CGSize(width: 160, height: 92)
-        case .dashboardBar: CGSize(width: 560, height: 112)
-        }
-    }
-
-    var metricSlotCount: Int {
-        switch self {
-        case .simpleCard: 1
-        case .compactStrip: 0
-        case .forecastTile: 3
-        case .minimalText: 0
-        case .dashboardBar: 3
-        }
-    }
-
-    var defaultMetricSlots: [WeatherMetricSlotValue] {
-        switch self {
-        case .simpleCard:
-            [.humidity]
-        case .compactStrip, .minimalText:
-            []
-        case .forecastTile:
-            [.highLow, .humidity, .wind]
-        case .dashboardBar:
-            [.humidity, .wind, .feelsLike]
-        }
-    }
-}
-
 enum WeatherWidgetPalette: String, CaseIterable, Identifiable, Equatable, Codable {
     case presetDefault
     case blueGlass
@@ -2938,7 +2885,6 @@ struct WeatherTextStyle: Equatable, Codable {
 }
 
 struct WeatherWidgetStyle: Equatable, Codable {
-    var preset: WeatherWidgetPreset
     var dataSource: WeatherDataSource
     var useFITTemperature: Bool
     var manualCondition: WeatherCondition
@@ -2986,7 +2932,6 @@ struct WeatherWidgetStyle: Equatable, Codable {
     var cachedWeather: WeatherPayload?
 
     init(
-        preset: WeatherWidgetPreset,
         dataSource: WeatherDataSource,
         useFITTemperature: Bool = false,
         manualCondition: WeatherCondition,
@@ -3033,7 +2978,6 @@ struct WeatherWidgetStyle: Equatable, Codable {
         slotLabelTextStyle: WeatherTextStyle,
         cachedWeather: WeatherPayload?
     ) {
-        self.preset = preset
         self.dataSource = dataSource
         self.useFITTemperature = useFITTemperature
         self.manualCondition = manualCondition
@@ -3056,7 +3000,7 @@ struct WeatherWidgetStyle: Equatable, Codable {
         self.showHighLow = showHighLow
         self.showWind = showWind
         self.showFeelsLike = showFeelsLike
-        self.metricSlots = Self.normalizedMetricSlots(metricSlots, for: preset)
+        self.metricSlots = Self.normalizedMetricSlots(metricSlots)
         self.cardBackgroundColor = cardBackgroundColor
         self.cardBackgroundOpacity = cardBackgroundOpacity
         self.cardCornerRadius = cardCornerRadius
@@ -3081,142 +3025,36 @@ struct WeatherWidgetStyle: Equatable, Codable {
         self.cachedWeather = cachedWeather
     }
 
-    static let `default` = WeatherWidgetStyle.preset(.simpleCard)
+    static let `default` = WeatherWidgetStyle.simpleCard
 
-    static func preset(_ presetValue: WeatherWidgetPreset) -> WeatherWidgetStyle {
-        switch presetValue {
-        case .simpleCard:
-            WeatherWidgetStyle(
-                preset: .simpleCard, dataSource: .openMeteo,
-                manualCondition: .sunny, manualTemperatureCelsius: 13,
-                manualHumidity: 87, manualHigh: 16, manualLow: 11,
-                manualWind: 12, manualFeelsLike: 21,
-                conditionLabelOverride: "", humiditySuffix: "RH",
-                humidityMetricLabel: "RH", windMetricLabel: "Wind", feelsLikeMetricLabel: "Feels",
-                temperatureUnit: .systemDefault(), locationText: "",
-                showLocation: true, showWeekday: true, showHumidity: true,
-                showHighLow: false, showWind: false, showFeelsLike: false,
-                metricSlots: WeatherWidgetPreset.simpleCard.defaultMetricSlots,
-                cardBackgroundColor: OverlayColor(red: 0.30, green: 0.62, blue: 1.0, alpha: 1),
-                cardBackgroundOpacity: 0.92, cardCornerRadius: 10,
-                dividerEnabled: true, dividerColor: .white, dividerThickness: 1, dividerOpacity: 0.34,
-                palette: .blueGlass, iconSize: 54, showIcon: true,
-                showConditionLabel: true, width: 300, height: 110,
-                slotBackgroundColor: .white, slotBackgroundOpacity: 0.16, slotSpacing: 10,
-                locationTextStyle: WeatherTextStyle(fontSize: 19, fontWeight: .bold, color: .white),
-                conditionTextStyle: WeatherTextStyle(fontSize: 26, fontWeight: .semibold, color: .white),
-                temperatureTextStyle: WeatherTextStyle(fontSize: 33, fontWeight: .bold, color: .white),
-                slotTitleTextStyle: WeatherTextStyle(fontSize: 15, fontWeight: .semibold, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.72)),
-                slotLabelTextStyle: WeatherTextStyle(fontSize: 15, fontWeight: .semibold, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.72)),
-                cachedWeather: nil
-            )
-        case .compactStrip:
-            WeatherWidgetStyle(
-                preset: .compactStrip, dataSource: .openMeteo,
-                manualCondition: .sunny, manualTemperatureCelsius: 13,
-                manualHumidity: 87, manualHigh: 16, manualLow: 11,
-                manualWind: 0, manualFeelsLike: 0,
-                conditionLabelOverride: "", humiditySuffix: "RH",
-                humidityMetricLabel: "RH", windMetricLabel: "Wind", feelsLikeMetricLabel: "Feels",
-                temperatureUnit: .systemDefault(), locationText: "",
-                showLocation: true, showWeekday: false, showHumidity: false,
-                showHighLow: false, showWind: false, showFeelsLike: false,
-                metricSlots: WeatherWidgetPreset.compactStrip.defaultMetricSlots,
-                cardBackgroundColor: OverlayColor(red: 0.90, green: 0.96, blue: 1.0, alpha: 1),
-                cardBackgroundOpacity: 0.96, cardCornerRadius: 28,
-                dividerEnabled: true, dividerColor: OverlayColor(red: 0.20, green: 0.34, blue: 0.52, alpha: 1), dividerThickness: 1, dividerOpacity: 0.15,
-                palette: .lightGlass, iconSize: 32, showIcon: true,
-                showConditionLabel: true, width: 220, height: 56,
-                slotBackgroundColor: OverlayColor(red: 0.20, green: 0.34, blue: 0.52, alpha: 1), slotBackgroundOpacity: 0.10, slotSpacing: 10,
-                locationTextStyle: WeatherTextStyle(fontSize: 11, fontWeight: .medium, color: OverlayColor(red: 0.25, green: 0.37, blue: 0.52, alpha: 0.78)),
-                conditionTextStyle: WeatherTextStyle(fontSize: 12, fontWeight: .semibold, color: OverlayColor(red: 0.08, green: 0.17, blue: 0.29, alpha: 0.86)),
-                temperatureTextStyle: WeatherTextStyle(fontSize: 28, fontWeight: .bold, color: OverlayColor(red: 0.08, green: 0.17, blue: 0.29, alpha: 1)),
-                slotTitleTextStyle: WeatherTextStyle(fontSize: 11, fontWeight: .semibold, color: OverlayColor(red: 0.25, green: 0.37, blue: 0.52, alpha: 0.78)),
-                slotLabelTextStyle: WeatherTextStyle(fontSize: 11, fontWeight: .semibold, color: OverlayColor(red: 0.08, green: 0.17, blue: 0.29, alpha: 1)),
-                cachedWeather: nil
-            )
-        case .forecastTile:
-            WeatherWidgetStyle(
-                preset: .forecastTile, dataSource: .openMeteo,
-                manualCondition: .sunny, manualTemperatureCelsius: 13,
-                manualHumidity: 87, manualHigh: 16, manualLow: 11,
-                manualWind: 0, manualFeelsLike: 0,
-                conditionLabelOverride: "", humiditySuffix: "RH",
-                humidityMetricLabel: "RH", windMetricLabel: "Wind", feelsLikeMetricLabel: "Feels",
-                temperatureUnit: .systemDefault(), locationText: "",
-                showLocation: true, showWeekday: true, showHumidity: true,
-                showHighLow: true, showWind: false, showFeelsLike: false,
-                metricSlots: WeatherWidgetPreset.forecastTile.defaultMetricSlots,
-                cardBackgroundColor: OverlayColor(red: 0.12, green: 0.18, blue: 0.25, alpha: 1),
-                cardBackgroundOpacity: 0.88, cardCornerRadius: 16,
-                dividerEnabled: true, dividerColor: .white, dividerThickness: 1, dividerOpacity: 0.18,
-                palette: .graphite, iconSize: 54, showIcon: true,
-                showConditionLabel: false, width: 180, height: 180,
-                slotBackgroundColor: .white, slotBackgroundOpacity: 0.12, slotSpacing: 7,
-                locationTextStyle: WeatherTextStyle(fontSize: 15, fontWeight: .semibold, color: .white),
-                conditionTextStyle: WeatherTextStyle(fontSize: 11, fontWeight: .medium, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.66)),
-                temperatureTextStyle: WeatherTextStyle(fontSize: 43, fontWeight: .bold, color: .white),
-                slotTitleTextStyle: WeatherTextStyle(fontSize: 11, fontWeight: .semibold, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.66)),
-                slotLabelTextStyle: WeatherTextStyle(fontSize: 11, fontWeight: .semibold, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.66)),
-                cachedWeather: nil
-            )
-        case .minimalText:
-            WeatherWidgetStyle(
-                preset: .minimalText, dataSource: .openMeteo,
-                manualCondition: .sunny, manualTemperatureCelsius: 13,
-                manualHumidity: 50, manualHigh: 16, manualLow: 11,
-                manualWind: 0, manualFeelsLike: 0,
-                conditionLabelOverride: "", humiditySuffix: "RH",
-                humidityMetricLabel: "RH", windMetricLabel: "Wind", feelsLikeMetricLabel: "Feels",
-                temperatureUnit: .systemDefault(), locationText: "",
-                showLocation: true, showWeekday: false, showHumidity: false,
-                showHighLow: false, showWind: false, showFeelsLike: false,
-                metricSlots: WeatherWidgetPreset.minimalText.defaultMetricSlots,
-                cardBackgroundColor: OverlayColor(red: 0, green: 0, blue: 0, alpha: 1),
-                cardBackgroundOpacity: 0, cardCornerRadius: 0,
-                dividerEnabled: true, dividerColor: .white, dividerThickness: 1, dividerOpacity: 0.2,
-                palette: .minimalWhite, iconSize: 30, showIcon: true,
-                showConditionLabel: true, width: 180, height: 110,
-                slotBackgroundColor: .black, slotBackgroundOpacity: 0.18, slotSpacing: 8,
-                locationTextStyle: WeatherTextStyle(fontSize: 15, fontWeight: .semibold, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.76)),
-                conditionTextStyle: WeatherTextStyle(fontSize: 14, fontWeight: .medium, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.76)),
-                temperatureTextStyle: WeatherTextStyle(fontSize: 48, fontWeight: .bold, color: .white),
-                slotTitleTextStyle: WeatherTextStyle(fontSize: 11, fontWeight: .semibold, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.76)),
-                slotLabelTextStyle: WeatherTextStyle(fontSize: 13, fontWeight: .bold, color: .white),
-                cachedWeather: nil
-            )
-        case .dashboardBar:
-            WeatherWidgetStyle(
-                preset: .dashboardBar, dataSource: .openMeteo,
-                manualCondition: .sunny, manualTemperatureCelsius: 13,
-                manualHumidity: 87, manualHigh: 16, manualLow: 11,
-                manualWind: 9, manualFeelsLike: 12,
-                conditionLabelOverride: "", humiditySuffix: "RH",
-                humidityMetricLabel: "RH", windMetricLabel: "Wind", feelsLikeMetricLabel: "Feels",
-                temperatureUnit: .systemDefault(), locationText: "",
-                showLocation: true, showWeekday: false, showHumidity: true,
-                showHighLow: false, showWind: true, showFeelsLike: true,
-                metricSlots: WeatherWidgetPreset.dashboardBar.defaultMetricSlots,
-                cardBackgroundColor: OverlayColor(red: 0.12, green: 0.14, blue: 0.17, alpha: 1),
-                cardBackgroundOpacity: 0.90, cardCornerRadius: 12,
-                dividerEnabled: true, dividerColor: .white, dividerThickness: 1, dividerOpacity: 0.18,
-                palette: .graphite, iconSize: 38, showIcon: true,
-                showConditionLabel: true, width: 560, height: 112,
-                slotBackgroundColor: .white, slotBackgroundOpacity: 0.12, slotSpacing: 10,
-                locationTextStyle: WeatherTextStyle(fontSize: 17, fontWeight: .bold, color: .white),
-                conditionTextStyle: WeatherTextStyle(fontSize: 13, fontWeight: .medium, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.66)),
-                temperatureTextStyle: WeatherTextStyle(fontSize: 46, fontWeight: .bold, color: .white),
-                slotTitleTextStyle: WeatherTextStyle(fontSize: 11, fontWeight: .semibold, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.66)),
-                slotLabelTextStyle: WeatherTextStyle(fontSize: 13, fontWeight: .bold, color: .white),
-                cachedWeather: nil
-            )
-        }
-    }
+    static let simpleCard = WeatherWidgetStyle(
+        dataSource: .openMeteo,
+        manualCondition: .sunny, manualTemperatureCelsius: 13,
+        manualHumidity: 87, manualHigh: 16, manualLow: 11,
+        manualWind: 12, manualFeelsLike: 21,
+        conditionLabelOverride: "", humiditySuffix: "RH",
+        humidityMetricLabel: "RH", windMetricLabel: "Wind", feelsLikeMetricLabel: "Feels",
+        temperatureUnit: .systemDefault(), locationText: "",
+        showLocation: true, showWeekday: true, showHumidity: true,
+        showHighLow: false, showWind: false, showFeelsLike: false,
+        metricSlots: [.humidity],
+        cardBackgroundColor: OverlayColor(red: 0.30, green: 0.62, blue: 1.0, alpha: 1),
+        cardBackgroundOpacity: 0.92, cardCornerRadius: 10,
+        dividerEnabled: true, dividerColor: .white, dividerThickness: 1, dividerOpacity: 0.34,
+        palette: .blueGlass, iconSize: 54, showIcon: true,
+        showConditionLabel: true, width: 300, height: 110,
+        slotBackgroundColor: .white, slotBackgroundOpacity: 0.16, slotSpacing: 10,
+        locationTextStyle: WeatherTextStyle(fontSize: 19, fontWeight: .bold, color: .white),
+        conditionTextStyle: WeatherTextStyle(fontSize: 26, fontWeight: .semibold, color: .white),
+        temperatureTextStyle: WeatherTextStyle(fontSize: 33, fontWeight: .bold, color: .white),
+        slotTitleTextStyle: WeatherTextStyle(fontSize: 15, fontWeight: .semibold, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.72)),
+        slotLabelTextStyle: WeatherTextStyle(fontSize: 15, fontWeight: .semibold, color: OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.72)),
+        cachedWeather: nil
+    )
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        let defaults = WeatherWidgetStyle.preset(try c.decodeIfPresent(WeatherWidgetPreset.self, forKey: .preset) ?? .simpleCard)
-        preset = try c.decodeIfPresent(WeatherWidgetPreset.self, forKey: .preset) ?? defaults.preset
+        let defaults = WeatherWidgetStyle.simpleCard
         let decodedDataSource = try c.decodeIfPresent(WeatherDataSource.self, forKey: .dataSource) ?? defaults.dataSource
         switch decodedDataSource {
         case .fitTemperature:
@@ -3248,8 +3086,7 @@ struct WeatherWidgetStyle: Equatable, Codable {
         showFeelsLike = try c.decodeIfPresent(Bool.self, forKey: .showFeelsLike) ?? defaults.showFeelsLike
         metricSlots = Self.normalizedMetricSlots(
             try c.decodeIfPresent([WeatherMetricSlotValue].self, forKey: .metricSlots)
-                ?? Self.legacyMetricSlots(showHumidity: showHumidity, showHighLow: showHighLow, showWind: showWind, showFeelsLike: showFeelsLike, fallback: defaults.metricSlots),
-            for: preset
+                ?? Self.legacyMetricSlots(showHumidity: showHumidity, showHighLow: showHighLow, showWind: showWind, showFeelsLike: showFeelsLike, fallback: defaults.metricSlots)
         )
         cardBackgroundColor = try c.decodeIfPresent(OverlayColor.self, forKey: .cardBackgroundColor) ?? defaults.cardBackgroundColor
         cardBackgroundOpacity = try c.decodeIfPresent(Double.self, forKey: .cardBackgroundOpacity) ?? defaults.cardBackgroundOpacity
@@ -3276,18 +3113,12 @@ struct WeatherWidgetStyle: Equatable, Codable {
     }
 
     func normalizedMetricSlots() -> [WeatherMetricSlotValue] {
-        Self.normalizedMetricSlots(metricSlots, for: preset)
+        Self.normalizedMetricSlots(metricSlots)
     }
 
-    static func normalizedMetricSlots(_ slots: [WeatherMetricSlotValue], for preset: WeatherWidgetPreset) -> [WeatherMetricSlotValue] {
-        let count = preset.metricSlotCount
-        guard count > 0 else { return [] }
-        let seed = slots.isEmpty ? preset.defaultMetricSlots : slots
-        var normalized = Array(seed.prefix(count))
-        while normalized.count < count {
-            normalized.append(preset.defaultMetricSlots[safe: normalized.count] ?? .humidity)
-        }
-        return normalized
+    /// The single card renders one inline metric.
+    static func normalizedMetricSlots(_ slots: [WeatherMetricSlotValue]) -> [WeatherMetricSlotValue] {
+        [slots.first ?? .humidity]
     }
 
     private static func legacyMetricSlots(
