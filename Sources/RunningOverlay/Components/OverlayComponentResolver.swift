@@ -1478,6 +1478,8 @@ struct OverlayComponentResolver {
         let presetName = timeline.preset?.evaluate(in: context) ?? "minimal"
         let preset = DistanceTimelinePreset(rawValue: presetName) ?? .minimal
         var style = DistanceTimelineStyle.preset(preset)
+        style.width = nodeNumber(timeline.width, default: style.width, context: context)
+        style.height = nodeNumber(timeline.height, default: style.height, context: context)
         style.valueUnitSystem = nodeStringEnum(timeline.valueUnitSystem, default: style.valueUnitSystem, context: context)
         style.showValue = nodeFlag(timeline.showValue, default: style.showValue, context: context)
         style.showTotalDistance = nodeFlag(timeline.showTotalDistance, default: style.showTotalDistance, context: context)
@@ -1532,6 +1534,14 @@ struct OverlayComponentResolver {
         style.mediaSystemImage = timeline.mediaSystemImage?.evaluate(in: context) ?? style.mediaSystemImage
         style.mediaSlotSize = nodeNumber(timeline.mediaSlotSize, default: style.mediaSlotSize, context: context)
         style.elevationProfileVisible = nodeFlag(timeline.elevationProfileVisible, default: style.elevationProfileVisible, context: context)
+        if let statsBar = timeline.statsBar {
+            applyStatsBar(
+                statsBar,
+                to: &style.statsBar,
+                context: context,
+                fallbackFontName: style.labelFontName
+            )
+        }
         resolved = .distanceTimeline(
             frame: rect,
             style: style,
@@ -1549,6 +1559,8 @@ struct OverlayComponentResolver {
         let presetName = chart.preset?.evaluate(in: context) ?? "gradientArea"
         let preset = ElevationChartPreset(rawValue: presetName) ?? .gradientArea
         var style = ElevationChartStyle.preset(preset)
+        style.width = nodeNumber(chart.width, default: style.width, context: context)
+        style.height = nodeNumber(chart.height, default: style.height, context: context)
         style.chartStyle = nodeStringEnum(chart.chartStyle, default: style.chartStyle, context: context)
         style.smoothingEnabled = nodeFlag(chart.smoothingEnabled, default: style.smoothingEnabled, context: context)
         style.smoothingAmount = nodeNumber(chart.smoothingAmount, default: style.smoothingAmount, context: context)
@@ -1589,6 +1601,14 @@ struct OverlayComponentResolver {
         style.shadowRadius = nodeNumber(chart.shadowRadius, default: style.shadowRadius, context: context)
         style.glowEnabled = nodeFlag(chart.glowEnabled, default: style.glowEnabled, context: context)
         style.glowOpacity = nodeNumber(chart.glowOpacity, default: style.glowOpacity, context: context)
+        if let statsBar = chart.statsBar {
+            applyStatsBar(
+                statsBar,
+                to: &style.statsBar,
+                context: context,
+                fallbackFontName: style.statsBar.valueFontName
+            )
+        }
         let defaultStyle = OverlayStyle.default
         resolved = .elevationChart(
             frame: rect,
@@ -1763,11 +1783,131 @@ struct OverlayComponentResolver {
         style.glowEnabled = nodeFlag(map.glowEnabled, default: style.glowEnabled, context: context)
         style.routeMapMapOpacity = nodeNumber(map.mapOpacity, default: style.routeMapMapOpacity, context: context)
         style.borderEnabled = nodeFlag(map.borderEnabled, default: style.borderEnabled, context: context)
+        style.borderColor = nodeColor(map.borderColor, default: style.borderColor, context: context) ?? style.borderColor
         style.borderOpacity = nodeNumber(map.borderOpacity, default: style.borderOpacity, context: context)
+        style.borderWidth = nodeNumber(map.borderWidth, default: style.borderWidth, context: context)
         style.foregroundColor = nodeColor(map.foregroundColor, default: style.foregroundColor, context: context) ?? style.foregroundColor
         style.fontName = map.fontFamily?.evaluate(in: context) ?? style.fontName
+        style.fontSize = nodeNumber(map.fontSize, default: style.fontSize, context: context)
+        style.fontWeight = nodeWeight(map.fontWeight, default: style.fontWeight, context: context)
+        style.routeMapWidth = max(nodeNumber(map.width, default: style.routeMapWidth, context: context), 1)
+        style.routeMapHeight = max(nodeNumber(map.height, default: style.routeMapHeight, context: context), 1)
+        let edgeFade = nodeStringEnum(map.edgeFade, default: style.routeMapEdgeFade, context: context)
+        style.routeMapEdgeFade = edgeFade
+        style.backgroundFadeOutEnabled = edgeFade == .fadeOut
+        style.routeMapFadeAmount = nodeNumber(map.fadeAmount, default: style.routeMapFadeAmount, context: context)
+        style.backgroundFadeOutAmount = style.routeMapFadeAmount
+        style.routeMapColorMode = nodeStringEnum(map.colorMode, default: style.routeMapColorMode, context: context)
+        style.routeMapGradientStart = nodeColor(map.gradientStart, default: style.routeMapGradientStart, context: context) ?? style.routeMapGradientStart
+        style.routeMapGradientMiddle = nodeColor(map.gradientMiddle, default: style.routeMapGradientMiddle, context: context) ?? style.routeMapGradientMiddle
+        style.routeMapGradientEnd = nodeColor(map.gradientEnd, default: style.routeMapGradientEnd, context: context) ?? style.routeMapGradientEnd
+        style.routeMapZoom = min(max(nodeNumber(map.zoom, default: style.routeMapZoom, context: context), 0.5), 3)
+        style.routeMapShowsPointsOfInterest = nodeFlag(map.showsPointsOfInterest, default: style.routeMapShowsPointsOfInterest, context: context)
+        if let statsBar = map.statsBar {
+            applyStatsBar(
+                statsBar,
+                to: &style.routeMapStatsBar,
+                context: context,
+                fallbackFontName: style.fontName
+            )
+        }
         resolved = .routeMap(frame: rect, style: style)
         return resolved
+    }
+
+    private func applyStatsBar(
+        _ bar: OverlayComponentStatsBar,
+        to config: inout DistanceTimelineStatsBarConfig,
+        context: OverlayComponentEvaluationContext,
+        fallbackFontName: String
+    ) {
+        let placement = nodeStringEnum(bar.placement, default: config.placement, context: context)
+        config.placement = placement.attachedDistanceTimelinePlacement
+        config.inside = placement.isInside
+            || nodeFlag(bar.inside, default: config.inside, context: context)
+        config.visible = nodeFlag(bar.visible, default: config.visible, context: context)
+        config.layoutMode = nodeStringEnum(bar.layoutMode, default: config.layoutMode, context: context)
+        config.width = nodeNumber(bar.width, default: config.width, context: context)
+        config.height = nodeNumber(bar.height, default: config.height, context: context)
+        config.offsetX = nodeNumber(bar.offsetX, default: config.offsetX, context: context)
+        config.offsetY = nodeNumber(bar.offsetY, default: config.offsetY, context: context)
+        config.itemSpacing = nodeNumber(bar.itemSpacing, default: config.itemSpacing, context: context)
+        config.backgroundOpacity = nodeNumber(bar.backgroundOpacity, default: config.backgroundOpacity, context: context)
+        config.dividerOpacity = nodeNumber(bar.dividerOpacity, default: config.dividerOpacity, context: context)
+        config.cornerRadius = nodeNumber(bar.cornerRadius, default: config.cornerRadius, context: context)
+        config.valueFontName = bar.valueFontFamily?.evaluate(in: context) ?? fallbackFontName
+        config.valueFontSize = nodeNumber(bar.valueFontSize, default: config.valueFontSize, context: context)
+        config.valueFontWeight = nodeWeight(bar.valueFontWeight, default: config.valueFontWeight, context: context)
+        config.valueColor = nodeColor(bar.valueColor, default: config.valueColor, context: context) ?? config.valueColor
+        config.labelFontName = bar.labelFontFamily?.evaluate(in: context) ?? fallbackFontName
+        config.labelFontSize = nodeNumber(bar.labelFontSize, default: config.labelFontSize, context: context)
+        config.labelFontWeight = nodeWeight(bar.labelFontWeight, default: config.labelFontWeight, context: context)
+        config.labelColor = nodeColor(bar.labelColor, default: config.labelColor, context: context) ?? config.labelColor
+        if let slots = bar.slots {
+            while config.slots.count < 4 {
+                config.slots.append(DistanceTimelineStatsBarSlot(
+                    metric: .distance, visible: false, customLabel: ""
+                ))
+            }
+            for (index, slot) in slots.enumerated() where index < config.slots.count {
+                config.slots[index].metric = nodeStringEnum(
+                    slot.metric, default: config.slots[index].metric, context: context
+                )
+                config.slots[index].visible = nodeFlag(
+                    slot.visible, default: config.slots[index].visible, context: context
+                )
+                config.slots[index].customLabel = slot.customLabel?.evaluate(in: context)
+                    ?? config.slots[index].customLabel
+            }
+        }
+    }
+
+    private func applyStatsBar(
+        _ bar: OverlayComponentStatsBar,
+        to config: inout OverlayRouteMapStatsBarConfig,
+        context: OverlayComponentEvaluationContext,
+        fallbackFontName: String
+    ) {
+        let placement = nodeStringEnum(bar.placement, default: config.placement, context: context)
+        config.placement = placement
+        config.inside = placement.isInside
+            || nodeFlag(bar.inside, default: config.inside, context: context)
+        config.visible = nodeFlag(bar.visible, default: config.visible, context: context)
+        config.layoutMode = nodeStringEnum(bar.layoutMode, default: config.layoutMode, context: context)
+        config.width = nodeNumber(bar.width, default: config.width, context: context)
+        config.height = nodeNumber(bar.height, default: config.height, context: context)
+        config.offsetX = nodeNumber(bar.offsetX, default: config.offsetX, context: context)
+        config.offsetY = nodeNumber(bar.offsetY, default: config.offsetY, context: context)
+        config.itemSpacing = nodeNumber(bar.itemSpacing, default: config.itemSpacing, context: context)
+        config.backgroundOpacity = nodeNumber(bar.backgroundOpacity, default: config.backgroundOpacity, context: context)
+        config.blurRadius = nodeNumber(bar.blurRadius, default: config.blurRadius, context: context)
+        config.dividerOpacity = nodeNumber(bar.dividerOpacity, default: config.dividerOpacity, context: context)
+        config.cornerRadius = nodeNumber(bar.cornerRadius, default: config.cornerRadius, context: context)
+        config.valueFontName = bar.valueFontFamily?.evaluate(in: context) ?? fallbackFontName
+        config.valueFontSize = nodeNumber(bar.valueFontSize, default: config.valueFontSize, context: context)
+        config.valueFontWeight = nodeWeight(bar.valueFontWeight, default: config.valueFontWeight, context: context)
+        config.valueColor = nodeColor(bar.valueColor, default: config.valueColor, context: context) ?? config.valueColor
+        config.labelFontName = bar.labelFontFamily?.evaluate(in: context) ?? fallbackFontName
+        config.labelFontSize = nodeNumber(bar.labelFontSize, default: config.labelFontSize, context: context)
+        config.labelFontWeight = nodeWeight(bar.labelFontWeight, default: config.labelFontWeight, context: context)
+        config.labelColor = nodeColor(bar.labelColor, default: config.labelColor, context: context) ?? config.labelColor
+        if let slots = bar.slots {
+            while config.slots.count < 4 {
+                config.slots.append(RouteMapStatsBarSlot(
+                    metric: .distance, visible: false, customLabel: ""
+                ))
+            }
+            for (index, slot) in slots.enumerated() where index < config.slots.count {
+                config.slots[index].metric = nodeStringEnum(
+                    slot.metric, default: config.slots[index].metric, context: context
+                )
+                config.slots[index].visible = nodeFlag(
+                    slot.visible, default: config.slots[index].visible, context: context
+                )
+                config.slots[index].customLabel = slot.customLabel?.evaluate(in: context)
+                    ?? config.slots[index].customLabel
+            }
+        }
     }
 
     private func resolvePathCommand(

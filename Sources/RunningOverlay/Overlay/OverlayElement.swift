@@ -45,7 +45,9 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     case component
 
     /// `component` is a container kind rather than a catalog metric, so it is
-    /// excluded from the add-overlay catalog and the per-type test sweeps.
+    /// excluded from this list and the per-type test sweeps. The native cases
+    /// remain as rendering seeds for component host modules; projects and
+    /// templates no longer create them (ADR 0015).
     static var allCases: [OverlayElementType] {
         [
             .distanceTimeline, .elevationChart,
@@ -64,7 +66,9 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
         "power", "verticalOscillation", "groundContactTime", "strideLength",
         "verticalRatio", "groundContactBalance", "temperature", "grade",
         "customNumeric", "runningGauge", "intervalCountdown", "intervalWorkSummary",
-        "decorSolidColor", "decorIcon", "decorText"
+        "decorSolidColor", "decorIcon", "decorText",
+        "distanceTimeline", "elevationChart", "intervalHUDBar", "intervalTimeline",
+        "zoneEdgeBar", "routeMap", "weatherWidget"
     ]
 
     var id: String { rawValue }

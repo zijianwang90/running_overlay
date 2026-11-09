@@ -12,7 +12,7 @@ struct ProjectFileTests {
         #expect(!project.hasUnsavedChanges)
         #expect(project.projectDisplayName == "Untitled")
 
-        project.addOverlayElement(.elevationChart)
+        try addNumericOverlay(project)
         project.setPreviewTrackName("Camera A")
         #expect(project.hasUnsavedChanges)
 
@@ -25,7 +25,7 @@ struct ProjectFileTests {
         let reopened = fixture.makeProject()
         let offline = try reopened.loadProject(from: url)
         #expect(offline.isEmpty)
-        #expect(reopened.overlayLayout.elements.map(\.type) == [.elevationChart])
+        #expect(reopened.overlayLayout.elements.map(\.type) == [.component])
         #expect(reopened.settings.previewTrackName == "Camera A")
         #expect(reopened.projectFileURL == url)
         #expect(!reopened.hasUnsavedChanges)
@@ -180,16 +180,16 @@ struct ProjectFileTests {
         #expect(decoded.mediaItems[0].displayName == "a.mov")
     }
 
-    /// Native numeric overlays were removed without migration (ADR 0014).
-    /// Opening a project that still has them drops just those elements and
-    /// says so; the rest of the project opens unchanged.
-    @Test func openingProjectDropsLegacyNumericOverlaysAndReportsThem() throws {
+    /// Native numeric and visual overlays were removed without migration
+    /// (ADR 0014, ADR 0015). Opening a project that still has them drops just
+    /// those elements and says so; the rest of the project opens unchanged.
+    @Test func openingProjectDropsLegacyNativeOverlaysAndReportsThem() throws {
         let fixture = try Fixture()
         defer { fixture.cleanUp() }
 
         let project = fixture.makeProject()
-        project.addOverlayElement(.elevationChart)
-        project.addOverlayElement(.distanceTimeline)
+        try addNumericOverlay(project)
+        try addNumericOverlay(project)
         let url = fixture.directory.appendingPathComponent("Legacy.roproj")
         try project.writeProject(to: url)
 
@@ -203,21 +203,31 @@ struct ProjectFileTests {
         gauge["type"] = "runningGauge"
         var custom = elements[0]
         custom["type"] = "customNumeric"
+        let portedTypes = [
+            "distanceTimeline", "elevationChart", "intervalHUDBar", "intervalTimeline",
+            "zoneEdgeBar", "routeMap", "weatherWidget"
+        ]
         elements.insert(legacy, at: 1)
         elements.insert(gauge, at: 2)
         elements.append(custom)
+        for rawValue in portedTypes {
+            var ported = elements[0]
+            ported["type"] = rawValue
+            elements.append(ported)
+        }
+        let droppedCount = 3 + portedTypes.count
         object["overlayElements"] = elements
         try JSONSerialization.data(withJSONObject: object).write(to: url)
 
         let snapshot = try ProjectFileFormat.decode(Data(contentsOf: url))
-        #expect(snapshot.overlayElements.droppedLegacyCount == 3)
-        #expect(snapshot.overlayElements.elements.map(\.type) == [.elevationChart, .distanceTimeline])
+        #expect(snapshot.overlayElements.droppedLegacyCount == droppedCount)
+        #expect(snapshot.overlayElements.elements.map(\.type) == [.component, .component])
 
         let reopened = fixture.makeProject()
         try reopened.loadProject(from: url)
-        #expect(reopened.overlayLayout.elements.map(\.type) == [.elevationChart, .distanceTimeline])
-        #expect(reopened.statusMessage == ProjectDocument.droppedLegacyElementsMessage(3))
-        #expect(reopened.statusMessage.contains("Removed 3 legacy overlays with no migration"))
+        #expect(reopened.overlayLayout.elements.map(\.type) == [.component, .component])
+        #expect(reopened.statusMessage == ProjectDocument.droppedLegacyElementsMessage(droppedCount))
+        #expect(reopened.statusMessage.contains("Removed \(droppedCount) legacy overlays with no migration"))
         #expect(ProjectDocument.droppedLegacyElementsMessage(0) == nil)
         #expect(ProjectDocument.droppedLegacyElementsMessage(1)?.contains("1 legacy overlay with no migration;") == true)
 
@@ -313,9 +323,9 @@ struct ProjectAutosaveTests {
         let url = fixture.directory.appendingPathComponent("run.roproj")
 
         let crashed = fixture.makeProject()
-        crashed.addOverlayElement(.distanceTimeline)
+        try addNumericOverlay(crashed)
         try crashed.writeProject(to: url)
-        crashed.addOverlayElement(.elevationChart)
+        try addNumericOverlay(crashed)
         try await crashed.autosaveIfNeeded()
 
         let relaunched = fixture.makeProject()
@@ -325,7 +335,7 @@ struct ProjectAutosaveTests {
         let offline = try relaunched.recoverAutosavedProject()
 
         #expect(offline.isEmpty)
-        #expect(relaunched.overlayLayout.elements.map(\.type) == [.distanceTimeline, .elevationChart])
+        #expect(relaunched.overlayLayout.elements.map(\.type) == [.component, .component])
         #expect(relaunched.projectFileURL?.standardizedFileURL.resolvingSymlinksInPath()
             == url.standardizedFileURL.resolvingSymlinksInPath())
         #expect(relaunched.hasUnsavedChanges)
@@ -342,7 +352,7 @@ struct ProjectAutosaveTests {
         defer { fixture.cleanUp() }
 
         let crashed = fixture.makeProject()
-        crashed.addOverlayElement(.zoneEdgeBar)
+        try addNumericOverlay(crashed)
         try await crashed.autosaveIfNeeded()
 
         let relaunched = fixture.makeProject()
@@ -350,9 +360,18 @@ struct ProjectAutosaveTests {
 
         #expect(relaunched.projectFileURL == nil)
         #expect(relaunched.projectDisplayName == "Untitled")
-        #expect(relaunched.overlayLayout.elements.map(\.type) == [.zoneEdgeBar])
+        #expect(relaunched.overlayLayout.elements.map(\.type) == [.component])
         #expect(relaunched.hasUnsavedChanges)
     }
+}
+
+@MainActor
+@discardableResult
+private func addNumericOverlay(_ project: ProjectDocument) throws -> OverlayElement.ID {
+    let item = try #require(
+        OverlayComponentLibraryItem.all.first { $0.id == "studio.numeric#pace" }
+    )
+    return try #require(project.addComponentFromLibrary(item))
 }
 
 @MainActor

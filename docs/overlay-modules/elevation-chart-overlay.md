@@ -1,14 +1,22 @@
 # Elevation Chart Overlay
 
-Last updated: 2026-06-25
+Last updated: 2026-11-08
 
-The Elevation Chart overlay is a dedicated `.elevationChart` module for rendering an activity elevation profile. It is separate from Distance Timeline and Route Map, but intentionally reuses their shared inspector and stats bar infrastructure where it makes sense.
+> **Status: bundled component.** The native `.elevationChart` element and
+> `ElevationChartOverlayDetailView` were removed without migration (ADR 0015).
+> The module is now the bundled `studio.elevation-chart` component, whose
+> `elevationChart` host node exposes the same renderer settings through the
+> generated component Inspector; older elements of the native type are dropped
+> on load. This document remains the rendering and design reference for that
+> node.
+
+The Elevation Chart overlay renders an activity elevation profile. It is separate from Distance Timeline and Route Map, but intentionally reuses their shared inspector and stats bar infrastructure where it makes sense.
 
 ## Current Implementation
 
-- Overlay type: `OverlayElementType.elevationChart`
+- Overlay type: `OverlayElementType.elevationChart` (render seed; not creatable)
 - Style model: `ElevationChartStyle` on `OverlayStyle.elevationChart`
-- Inspector: `Sources/RunningOverlay/UI/ElevationChartOverlayDetailView.swift`
+- Inspector: generated `OverlayComponentDetailView` over the component's `elevationChart` node parameters
 - Layout controls: shared `CollapsibleLayoutInspectorSection` and `OverlayLayoutInspectorRows`
 - Stats bar controls: shared `CollapsibleStatsBarInspectorSection` and `OverlayStatsBarInspectorRows`
 - Preview path: `PreviewCanvasView.ElevationChartOverlayView`

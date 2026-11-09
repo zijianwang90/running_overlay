@@ -3049,6 +3049,57 @@ enum OverlayComponentSkiaRenderer {
         SkiaElevationChartRenderer.draw(canvas: canvas, element: element, layout: layout)
     }
 
+    /// Native route-map render elements for every visible route map node in a
+    /// component. The host uses these to preload map snapshots and edge masks;
+    /// they are never persisted and carry no component instance.
+    static func routeMapHostElements(
+        for element: OverlayElement,
+        renderContext: OverlayRenderContext
+    ) -> [OverlayElement] {
+        guard element.type == .component,
+              element.isVisible,
+              let placement = placement(for: element, renderContext: renderContext) else {
+            return []
+        }
+        return placement.resolved.nodes.compactMap { node in
+            guard case let .routeMap(frame, style) = node else { return nil }
+            return routeMapHostElement(
+                frame: placement.space.rect(frame),
+                style: style,
+                elementScale: placement.space.elementScale,
+                renderContext: renderContext
+            )
+        }
+    }
+
+    private static func routeMapHostElement(
+        frame: CGRect,
+        style: OverlayStyle,
+        elementScale: Double,
+        renderContext: OverlayRenderContext
+    ) -> OverlayElement {
+        var hostStyle = style
+        let scale = max(renderContext.canvasScale * elementScale, 0.0001)
+        if hostStyle.routeMapWidth <= 0 {
+            hostStyle.routeMapWidth = frame.width / scale
+        }
+        if hostStyle.routeMapHeight <= 0 {
+            hostStyle.routeMapHeight = frame.height / scale
+        }
+        hostStyle.backgroundEnabled = hostStyle.routeMapBackgroundStyle != .none
+        hostStyle.backgroundPaddingX = 0
+        hostStyle.backgroundPaddingY = 0
+        return OverlayElement(
+            type: .routeMap,
+            position: CGPoint(
+                x: frame.midX / max(renderContext.canvasSize.width, 1),
+                y: frame.midY / max(renderContext.canvasSize.height, 1)
+            ),
+            scale: elementScale,
+            style: hostStyle
+        )
+    }
+
     // MARK: - Route map
 
     private static func drawRouteMap(
@@ -3059,23 +3110,12 @@ enum OverlayComponentSkiaRenderer {
         context: OpaquePointer
     ) {
         guard frame.width > 0, frame.height > 0 else { return }
-        var hostStyle = style
-        let scale = max(renderContext.canvasScale * space.elementScale, 0.0001)
-        hostStyle.routeMapWidth = frame.width / scale
-        hostStyle.routeMapHeight = frame.height / scale
-        hostStyle.backgroundEnabled = hostStyle.routeMapBackgroundStyle != .none
-        hostStyle.backgroundPaddingX = 0
-        hostStyle.backgroundPaddingY = 0
-        let element = OverlayElement(
-            type: .routeMap,
-            position: CGPoint(
-                x: frame.midX / max(renderContext.canvasSize.width, 1),
-                y: frame.midY / max(renderContext.canvasSize.height, 1)
-            ),
-            scale: space.elementScale,
-            style: hostStyle
+        let element = routeMapHostElement(
+            frame: frame,
+            style: style,
+            elementScale: space.elementScale,
+            renderContext: renderContext
         )
-        let layout = OverlayRenderModel.routeMapLayout(for: element, in: renderContext)
         // The host module owns the map snapshot, mask and stats-bar drawing.
         // Components carry no render assets of their own, so an empty store
         // falls back to the module's generated background.

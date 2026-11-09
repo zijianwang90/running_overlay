@@ -377,7 +377,7 @@ Current implementation status:
 - Inspector width is preserved across outer/detail/editing hierarchy states so internal selection changes do not resize the right panel or truncate tile labels.
 - The Inspector outer state shows added overlays as live-value rows and does not duplicate Overlay Pool add tiles.
 - Inspector segmented controls use native macOS segmented pickers for keyboard/focus and accessibility behavior.
-- This includes segmented controls in Overlay Pool, generated component Inspectors, and legacy Route Map detail inspectors.
+- This includes segmented controls in Overlay Pool and generated component Inspectors.
 - Clicking an add tile creates the overlay and opens its detail editor.
 - Selected overlay elements expose current value, normalized position, scale, preset, font family, font weight, font size, foreground color, background opacity, shadow opacity, and shadow radius controls in the Inspector detail state.
 - Numeric overlays (heart rate, HR zone, pace, average and lap pace, calories, elapsed and real time, date, distance, elevation and elevation gain, cadence, power, running dynamics, temperature, grade) are presets of the bundled `studio.numeric` component (ADR 0014). Its generated Inspector offers the metric and its display unit or format; value font, size and color; unit visibility, position (left/right/below), alignment, font, size, weight, color and spacing; label visibility, custom text, position (top/bottom/left/right), font, size, weight, color and spacing; SF Symbol icon visibility, symbol, position, alignment, size, color and spacing; heart-rate-zone coloring per role for HR metrics; background visibility, color, corner radius and padding; and minimum width and height.
@@ -385,6 +385,7 @@ Current implementation status:
 - The Temperature metric reads imported activity temperature; there is no manual fallback.
 - Numeric text stays on one line and the component grows with its content; minimum width and height reserve extra space without shrinking content below its measured size.
 - Native numeric overlays were removed without migration: opening an older project drops its numeric overlays and reports how many were removed. Custom Numeric, background fade-out/blur, border and separate value/label/unit opacity are not available for numeric overlays.
+- The remaining native visual overlays (distance timeline, elevation chart, interval HUD bar, interval timeline, zone edge bar, route map, weather widget) were removed without migration in the same way (ADR 0015). Each is now a bundled `studio.*` component edited through its generated Inspector; opening an older project or importing an older template drops those elements and reports how many were removed. The native Skia modules remain as the drawing capability those components call.
 - Added-overlay rows now support per-element visibility and lock toggles with persistent model fields.
 - Visibility off hides the element in both Preview and exported overlay frames.
 - Lock on keeps the element visible but prevents Preview-canvas selection and dragging.
@@ -532,11 +533,11 @@ Current implementation status:
   `trkpt` latitude/longitude into the same activity records.
 - FIT timer pause spans should be represented as non-destructive activity annotations on the Activity layer. Paused spans use a muted gray color and a hover tooltip labeled `Timer Paused`, while keeping the underlying timeline based on real elapsed time so video alignment is not shifted. Interval lap phase spans also expose English hover tooltips with lap kind, lap number, elapsed range, and duration.
 - `ActivityTimeline` exposes route points and interpolated current route point lookup.
-- Route Map can be added from the overlay library.
-- Inspector exposes Route Line color mode and Glow controls.
+- Route Map is the bundled `studio.route-map` component (ADR 0015); the native element type and its Inspector were removed without migration. The generated component Inspector exposes route line color mode, glow, border, edge fade, zoom, points of interest, typography and Stats Bar controls, drawn by the native Skia route module.
 - Preview and export render route path, start marker, finish marker, and current-position marker.
 - MapKit is the first provider abstraction and the preview attempts `MKMapSnapshotter` when the map background is enabled.
 - When MapKit snapshot loading is unavailable, Route Map falls back to a local dark grid background.
+- The component renderer expands route-map nodes into the same snapshot requests and preloaded assets as the native route element, so component maps participate in map caching, preview and export.
 - Route Map and Distance Timeline share one Stats Bar inspector component and one full control set; Enabled is in the section header, and all row controls are aligned between modules.
 - Route Map Stats Bar inside mode reserves map content padding for the bar lane (route geometry does not render underneath the bar).
 - Route Map Stats Bar on left/right edges renders as top-to-bottom stack, and `Item Gap` is applied as vertical spacing.

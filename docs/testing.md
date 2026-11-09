@@ -196,12 +196,14 @@ configuration using the existing GPU limits (2% changed pixels, mean channel
 delta 0.5). Metal/context unavailability fails
 when the GPU configuration was requested.
 
-Three 1080p SwiftUI-oracle comparisons use the existing mixed-composition
-limits (15% changed pixels, mean channel delta 2). Only their map background is
-disabled to avoid live MapKit. Host comparisons preserve authored styles and
-inject a simple synthetic map snapshot; no weather or map network is used.
-The fixture comes from `SkiaFullCompositionGoldenTests` and creates no new
-committed media or athlete data.
+The templates are fully component-authored, so the SwiftUI-oracle comparisons
+were retired with their native element types (ADR 0015): the SwiftUI comparison
+renderer cannot draw components. Template coverage instead comes from the
+preview/export host comparison above, plus the component test suites and the
+route-map snapshot coverage in `SkiaRenderAssetTests`. Host comparisons preserve
+authored styles and inject a simple synthetic map snapshot; no weather or map
+network is used. The fixture comes from `SkiaFullCompositionGoldenTests` and
+creates no new committed media or athlete data.
 
 To write transparent review PNGs for each unique template/size/workout phase:
 
@@ -213,8 +215,7 @@ SKIA_DIR=/path/to/pinned-sdk SKIA_GPU=1 SKIA_GRAPHITE=1 \
 
 These are temporary review artifacts, not committed visual snapshot updates.
 Automated pixel/rewind checks do not establish interactive window, drag,
-snapping, video-compositing or real-map acceptance. Keep the SwiftUI oracle until
-those remaining interaction checks and template visual review are accepted.
-Maintainer policy additionally retains the oracle for several more releases;
-passing acceptance does not authorize deletion. See
+snapping, video-compositing or real-map acceptance. The SwiftUI oracle remains
+for the non-component paths ADR 0012 retains; it cannot serve as an acceptance
+reference for component-authored templates. See
 [ADR 0012](adr/0012-staged-legacy-renderer-retirement.md).

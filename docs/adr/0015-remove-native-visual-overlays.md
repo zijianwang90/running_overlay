@@ -42,27 +42,46 @@ and pool entry. The drawing engine itself stays as the component's capability.
    native types. The paragraph text rasterizer they shared with component
    richText moves to `SkiaParagraphText` in the shared Skia layer; the native
    decor drawing code is deleted.
-5. The SwiftUI comparison renderer (ADR 0012) cannot draw components, so a
+5. The remaining visual types (`distanceTimeline`, `elevationChart`,
+   `intervalHUDBar`, `intervalTimeline`, `zoneEdgeBar`, `routeMap`,
+   `weatherWidget`) are removed last, after every bundled template is converted
+   to component instances. Each keeps its `OverlayElementType` case and its
+   `OverlayStyle` fields as the render seed and data model for the host-drawn
+   capability node that the bundled component uses; they lose their creation
+   entry, Inspector detail view, `ProjectDocument` setters, SwiftUI comparison
+   rendering and legacy parity tests. The route map reached parity by extending
+   the component format rather than by keeping a native element surface:
+   `routeMap` nodes gained the border, edge-fade, gradient, zoom, POI, text and
+   `statsBar` fields the native Inspector exposed, and the host expands
+   component route maps into snapshot requests and preloaded assets.
+6. The SwiftUI comparison renderer (ADR 0012) cannot draw components, so a
    removed type disappears from its frames. Native/component parity tests for
    that type are retired with the native side; component behavior is covered by
    component tests.
-6. Re-adding a dropped capability means extending the component format or its
+7. Re-adding a dropped capability means extending the component format or its
    host-data contract, not restoring a native element type.
 
 ## Consequences
 
 - The Overlay Pool keeps one creation path: every add tile creates a component.
 - Removed types stay listed in `OverlayElementType.removedRawValues` so
-  decoding can drop them by raw value without keeping the enum case alive.
-- `OverlayStyle` no longer stores parameters for removed types. Older files
-  keep their unknown keys, which decoding ignores; saving rewrites the style
-  without them.
+  decoding can drop them by raw value. The seven ported visual types keep their
+  `OverlayElementType` cases (they remain in `allCases`, which excludes
+  `component`) because the host-drawn renderers still use them as render seeds
+  and the type surface is shared with paste categories and tests; they are
+  excluded from the creation catalog. Numeric and decor types have no enum case
+  at all.
+- `OverlayStyle` keeps the fields used by host-drawn capability nodes, since
+  those fields are the data model the component renderer resizes and paints
+  from. Fields for types that no longer have a host module are deleted. Older
+  files keep their unknown keys, which decoding ignores; saving rewrites the
+  style without them.
 - Early projects lose visual overlays of removed types and must re-add the
   component. Older app versions cannot open projects saved after components
   were added, which project schema version 2 already required.
-- Where a template still contains a forward type (for example the route map),
-  that type remains readable until its component capability gap is closed and
-  the template is converted.
+- No bundled template contains a native visual element any more; templates are
+  fully component-authored. A hand-written template that still contains a
+  removed type loads with that element dropped.
 
 ## References
 

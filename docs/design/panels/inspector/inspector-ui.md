@@ -414,7 +414,7 @@ The current entry points are:
 - `OverlayElementListView`
 - `OverlayElementInspectorView`
 
-Implementation status: the list below is the original refactor plan. The legacy `OverlayDetailView` and the single-column row primitives it used (`InspectorSliderRow`, `ColorSwatchButton`, and similar) have since been removed from `ParameterPanelView.swift`; every overlay type now has a dedicated detail view built from the `InspectorDense*` primitives in `Sources/RunningOverlay/UI/InspectorRows/`.
+Implementation status: the list below is the original refactor plan. The legacy `OverlayDetailView` and the single-column row primitives it used (`InspectorSliderRow`, `ColorSwatchButton`, and similar) have since been removed from `ParameterPanelView.swift`. Every creatable overlay is a component and edits through the generated `OverlayComponentDetailView`, which is built from the `InspectorDense*` primitives in `Sources/RunningOverlay/UI/InspectorRows/`; the type-specific native detail views were removed with their element types (ADR 0015).
 
 Recommended refactor:
 

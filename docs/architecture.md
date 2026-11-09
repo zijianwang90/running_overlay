@@ -118,8 +118,7 @@ Current overlay element types:
 | Category | Types |
 |---|---|
 | Created from Overlay Pool | `component` only. Metrics presets seed `studio.numeric`; Visuals tiles create the matching bundled `studio.*` component. |
-| Legacy native (decode and render for existing projects and bundled templates) | distanceTimeline, elevationChart, intervalHUDBar, intervalTimeline, zoneEdgeBar, routeMap, weatherWidget |
-| Removed without migration (dropped on load) | 21 numeric metric types (ADR 0014), runningGauge, intervalCountdown, intervalWorkSummary, decorSolidColor, decorIcon, decorText (ADR 0015) |
+| Removed without migration (dropped on load) | 21 numeric metric types (ADR 0014); runningGauge, intervalCountdown, intervalWorkSummary, decorSolidColor, decorIcon, decorText, distanceTimeline, elevationChart, intervalHUDBar, intervalTimeline, zoneEdgeBar, routeMap, weatherWidget (ADR 0015). The seven ported visual cases remain on `OverlayElementType` as render seeds for their host-drawn components. |
 
 Component definitions own visual composition and generated Inspector params.
 Shared host services own activity analysis and display-only preparation, such

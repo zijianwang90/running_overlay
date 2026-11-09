@@ -92,7 +92,9 @@ Rules that make the port pixel-faithful:
   outside callouts are not clipped; the authored position is that margin
   outside the bar rect.
 
-The native renderer remains the parity oracle and is not removed.
+The native renderer stays as the parity oracle and as a render seed for the
+component; the native element type and its Inspector were removed without
+migration (ADR 0015).
 
 ## Out Of Scope For V1
 

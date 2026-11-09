@@ -69,8 +69,18 @@ struct ExportPerformanceTests {
             playhead: 3,
             fitStartTime: 1
         )
+        let numeric = try #require(
+            OverlayComponentLibraryItem.all.first { $0.id == "studio.numeric#pace" }
+        )
+        let numericReference = try OverlayComponentLibrary.reference(for: numeric)
         source.overlayLayout = OverlayLayout(elements: [
-            OverlayElement(type: .zoneEdgeBar, position: CGPoint(x: 0.4, y: 0.6), scale: 1.2, style: .default)
+            OverlayElement(
+                type: .component,
+                position: CGPoint(x: 0.4, y: 0.6),
+                scale: 1.2,
+                style: .default,
+                component: OverlayComponentInstance(reference: numericReference)
+            )
         ])
         source.userAssets = [
             UserAsset(id: UUID(), kind: .svg, originalName: "icon.svg", sha256: "abc123", fileExtension: "svg")
@@ -104,7 +114,7 @@ struct ExportPerformanceTests {
         #expect(restored.mediaFolders.first?.name == "Race")
         #expect(restored.timeline.tracks.first?.clips.first?.title == "camera.mov")
         #expect(restored.timeline.playhead == 3)
-        #expect(restored.overlayLayout.elements.first?.type == .zoneEdgeBar)
+        #expect(restored.overlayLayout.elements.first?.type == .component)
         #expect(restored.userAssets.first?.originalName == "icon.svg")
         #expect(restored.fitSourceName == "activity.fit")
         #expect(restored.selection == .none)

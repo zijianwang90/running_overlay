@@ -12,10 +12,7 @@
   },
   "author": "Running Overlay Studio",
   "license": "MIT",
-  "size": [
-    400,
-    400
-  ],
+  "size": "content",
   "params": [
     {
       "id": "shape",
@@ -319,6 +316,258 @@
       },
       "default": "Helvetica Neue",
       "maxLength": 128
+    },
+    {
+      "id": "mapWidth",
+      "type": "number",
+      "label": {
+        "en": "mapWidth",
+        "zh-Hans": "mapWidth"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": 320,
+      "min": 8,
+      "max": 8192
+    },
+    {
+      "id": "mapHeight",
+      "type": "number",
+      "label": {
+        "en": "mapHeight",
+        "zh-Hans": "mapHeight"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": 320,
+      "min": 8,
+      "max": 8192
+    },
+    {
+      "id": "fontSize",
+      "type": "number",
+      "label": {
+        "en": "fontSize",
+        "zh-Hans": "fontSize"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": 28,
+      "min": 1,
+      "max": 400
+    },
+    {
+      "id": "fontWeight",
+      "type": "enum",
+      "label": {
+        "en": "fontWeight",
+        "zh-Hans": "fontWeight"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": "semibold",
+      "options": [
+        {
+          "value": "ultraLight",
+          "label": "ultraLight"
+        },
+        {
+          "value": "thin",
+          "label": "thin"
+        },
+        {
+          "value": "light",
+          "label": "light"
+        },
+        {
+          "value": "regular",
+          "label": "regular"
+        },
+        {
+          "value": "medium",
+          "label": "medium"
+        },
+        {
+          "value": "semibold",
+          "label": "semibold"
+        },
+        {
+          "value": "bold",
+          "label": "bold"
+        },
+        {
+          "value": "heavy",
+          "label": "heavy"
+        },
+        {
+          "value": "black",
+          "label": "black"
+        }
+      ]
+    },
+    {
+      "id": "edgeFade",
+      "type": "enum",
+      "label": {
+        "en": "edgeFade",
+        "zh-Hans": "edgeFade"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": "solid",
+      "options": [
+        {
+          "value": "solid",
+          "label": "solid"
+        },
+        {
+          "value": "fadeOut",
+          "label": "fadeOut"
+        }
+      ]
+    },
+    {
+      "id": "fadeAmount",
+      "type": "number",
+      "label": {
+        "en": "fadeAmount",
+        "zh-Hans": "fadeAmount"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": 0.22,
+      "min": 0,
+      "max": 1
+    },
+    {
+      "id": "colorMode",
+      "type": "enum",
+      "label": {
+        "en": "colorMode",
+        "zh-Hans": "colorMode"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": "solid",
+      "options": [
+        {
+          "value": "solid",
+          "label": "solid"
+        },
+        {
+          "value": "gradient",
+          "label": "gradient"
+        }
+      ]
+    },
+    {
+      "id": "gradientStart",
+      "type": "color",
+      "label": {
+        "en": "gradientStart",
+        "zh-Hans": "gradientStart"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": "#34C759"
+    },
+    {
+      "id": "gradientMiddle",
+      "type": "color",
+      "label": {
+        "en": "gradientMiddle",
+        "zh-Hans": "gradientMiddle"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": "#FFCC00"
+    },
+    {
+      "id": "gradientEnd",
+      "type": "color",
+      "label": {
+        "en": "gradientEnd",
+        "zh-Hans": "gradientEnd"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": "#FF3B30"
+    },
+    {
+      "id": "zoom",
+      "type": "number",
+      "label": {
+        "en": "zoom",
+        "zh-Hans": "zoom"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": 1,
+      "min": 0.5,
+      "max": 3
+    },
+    {
+      "id": "showsPointsOfInterest",
+      "type": "bool",
+      "label": {
+        "en": "showsPointsOfInterest",
+        "zh-Hans": "showsPointsOfInterest"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": true
+    },
+    {
+      "id": "borderColor",
+      "type": "color",
+      "label": {
+        "en": "borderColor",
+        "zh-Hans": "borderColor"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "borderWidth",
+      "type": "number",
+      "label": {
+        "en": "borderWidth",
+        "zh-Hans": "borderWidth"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": 1,
+      "min": 0,
+      "max": 20
     }
   ],
   "nodes": [
@@ -327,8 +576,8 @@
       "frame": [
         "=0",
         "=0",
-        "=320",
-        "=320"
+        "=mapWidth",
+        "=mapHeight"
       ],
       "shape": "=shape",
       "backgroundStyle": "=backgroundStyle",
@@ -345,8 +594,26 @@
       "borderEnabled": "=borderEnabled ? 1 : 0",
       "borderOpacity": "=borderOpacity",
       "foregroundColor": "=foregroundColor",
-      "fontFamily": "=fontFamily"
+      "fontFamily": "=fontFamily",
+      "width": "=mapWidth",
+      "height": "=mapHeight",
+      "fontSize": "=fontSize",
+      "fontWeight": "=fontWeight",
+      "edgeFade": "=edgeFade",
+      "fadeAmount": "=fadeAmount",
+      "colorMode": "=colorMode",
+      "gradientStart": "=gradientStart",
+      "gradientMiddle": "=gradientMiddle",
+      "gradientEnd": "=gradientEnd",
+      "zoom": "=zoom",
+      "showsPointsOfInterest": "=showsPointsOfInterest",
+      "borderColor": "=borderColor",
+      "borderWidth": "=borderWidth"
     }
   ],
-  "bindings": {}
+  "bindings": {},
+  "padding": [
+    0,
+    0
+  ]
 }

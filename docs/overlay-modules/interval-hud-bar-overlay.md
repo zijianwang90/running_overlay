@@ -103,7 +103,9 @@ Rules that make the port pixel-faithful:
 - Group children are positioned in content space; a group's frame only drives
   clipping and shadow bounds.
 
-The native renderer remains the parity oracle and is not removed.
+The native renderer stays as the parity oracle and as a render seed for the
+component; the native element type and its Inspector were removed without
+migration (ADR 0015).
 
 ## Inspector Surface
 

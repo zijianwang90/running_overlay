@@ -819,7 +819,7 @@
     ]
   },
   "recommendedComponents": [
-    "RouteMapOverlayDetailView",
+    "OverlayComponentDetailView",
     "RouteMapOverlayHeader",
     "InspectorDenseRow",
     "InspectorDenseSliderRow",

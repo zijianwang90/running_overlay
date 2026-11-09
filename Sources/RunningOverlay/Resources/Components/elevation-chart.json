@@ -12,10 +12,7 @@
   },
   "author": "Running Overlay Studio",
   "license": "MIT",
-  "size": [
-    420,
-    250
-  ],
+  "size": "content",
   "params": [
     {
       "id": "preset",
@@ -698,6 +695,36 @@
       "default": 28,
       "min": 8,
       "max": 120
+    },
+    {
+      "id": "chartWidth",
+      "type": "number",
+      "label": {
+        "en": "chartWidth",
+        "zh-Hans": "chartWidth"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": 420,
+      "min": 8,
+      "max": 8192
+    },
+    {
+      "id": "chartHeight",
+      "type": "number",
+      "label": {
+        "en": "chartHeight",
+        "zh-Hans": "chartHeight"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": 178,
+      "min": 8,
+      "max": 8192
     }
   ],
   "nodes": [
@@ -706,8 +733,8 @@
       "frame": [
         "=0",
         "=0",
-        "=420",
-        "=178"
+        "=chartWidth",
+        "=chartHeight"
       ],
       "preset": "=preset",
       "chartStyle": "=chartStyle",
@@ -752,8 +779,18 @@
       "glowOpacity": "=glowOpacity",
       "fontFamily": "=fontFamily",
       "foregroundColor": "=foregroundColor",
-      "valueFontSize": "=valueFontSize"
+      "valueFontSize": "=valueFontSize",
+      "width": "=chartWidth",
+      "height": "=chartHeight"
     }
   ],
-  "bindings": {}
+  "bindings": {},
+  "padding": [
+    0,
+    0
+  ],
+  "minSize": [
+    420,
+    250
+  ]
 }

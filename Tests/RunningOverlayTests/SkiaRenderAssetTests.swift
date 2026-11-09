@@ -71,6 +71,56 @@ struct SkiaRenderAssetTests {
         }
     }
 
+    @Test func componentRouteMapSnapshotRequestsAndPreload() throws {
+        try OverlayPreferenceFixtures.withDefaults {
+            let activity = SkiaRouteWeatherGoldenTests.activity()
+            let item = try #require(
+                OverlayComponentLibraryItem.all.first { $0.id == "studio.route-map" }
+            )
+            let reference = try OverlayComponentLibrary.reference(for: item)
+            let element = OverlayElement(
+                type: .component,
+                position: CGPoint(x: 0.5, y: 0.5),
+                scale: 1,
+                style: .default,
+                component: OverlayComponentInstance(reference: reference)
+            )
+
+            let requests = SkiaRouteMapModule.snapshotRequests(
+                elements: [element],
+                activity: activity,
+                canvasSize: Self.canvas
+            )
+            let request = try #require(requests.first)
+            #expect(request.backgroundStyle == .dark)
+            #expect(request.size.width > 1)
+            #expect(request.size.height > 1)
+
+            let snapshot = NSImage(size: request.size, flipped: false) { rect in
+                NSColor.systemTeal.setFill()
+                rect.fill()
+                return true
+            }
+
+            let assets = SkiaRenderAssets()
+            SkiaRouteMapModule.preloadAssets(
+                elements: [element],
+                activity: activity,
+                canvasSize: Self.canvas,
+                mapSnapshots: [request: snapshot],
+                into: assets
+            )
+            defer { assets.releaseImages() }
+
+            let key = SkiaRenderAssets.ImageSource.mapSnapshot(
+                request,
+                pixelWidth: Int(request.size.width.rounded()),
+                pixelHeight: Int(request.size.height.rounded())
+            )
+            #expect(assets.image(for: key) != nil)
+        }
+    }
+
     @Test func weatherIconsPreloadAllPresets() throws {
         try OverlayPreferenceFixtures.withDefaults {
             let activity = SkiaRouteWeatherGoldenTests.activity()

@@ -1125,12 +1125,20 @@ struct SwiftUIOverlayVideoExporter {
         activity: ActivityTimeline,
         size: CGSize
     ) async -> RouteMapSnapshotCache {
+        #if canImport(CSkiaBridge)
+        let requests = SkiaRouteMapModule.snapshotRequests(
+            elements: overlays,
+            activity: activity,
+            canvasSize: size
+        )
+        #else
         let context = OverlayRenderContext(canvasSize: size, activity: activity, elapsedTime: 0)
         let requests = Set(overlays.compactMap { element -> MapSnapshotRequest? in
             guard element.type == .routeMap else { return nil }
             let layout = OverlayRenderModel.routeMapLayout(for: element, in: context)
             return RouteMapSnapshotRequestBuilder.request(for: element, layout: layout)
         })
+        #endif
         guard !requests.isEmpty else {
             return RouteMapSnapshotCache()
         }

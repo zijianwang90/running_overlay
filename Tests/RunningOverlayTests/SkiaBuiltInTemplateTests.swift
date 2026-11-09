@@ -60,27 +60,6 @@ struct SkiaBuiltInTemplateTests {
         }
     }
 
-    @Test(arguments: ["EasyRun", "IntervalWorkout", "Race"])
-    nonisolated func authoredTemplateMatchesSwiftUIOracle(_ name: String) async throws {
-        try await OverlayPreferenceFixtures.withDefaults {
-            // No map network: the oracle renders the authored route geometry
-            // against an empty background. Snapshot upload is covered above.
-            var layout = try load(name)
-            for index in layout.elements.indices where layout.elements[index].type == .routeMap {
-                layout.elements[index].style.routeMapBackgroundStyle = .none
-            }
-            let metrics = try await SkiaGoldenFrameHarness.compare(
-                layout: layout, activity: SkiaFullCompositionGoldenTests.workout(),
-                elapsedTime: 150, size: CGSize(width: 1920, height: 1080),
-                label: "builtin-\(name)"
-            )
-            print(metrics.description)
-            // Same limits as the existing mixed full-composition golden.
-            #expect(metrics.changedRatio < 0.15, "\(metrics)")
-            #expect(metrics.meanDelta < 2, "\(metrics)")
-        }
-    }
-
     nonisolated private func load(_ name: String) throws -> OverlayLayout {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -92,12 +71,14 @@ struct SkiaBuiltInTemplateTests {
     private func makeSnapshots(
         layout: OverlayLayout, activity: ActivityTimeline, size: CGSize
     ) -> [MapSnapshotRequest: NSImage] {
+        let requests = SkiaRouteMapModule.snapshotRequests(
+            elements: layout.elements,
+            activity: activity,
+            canvasSize: size
+        )
         var snapshots: [MapSnapshotRequest: NSImage] = [:]
-        let context = OverlayRenderContext(canvasSize: size, activity: activity, elapsedTime: 150)
-        for element in layout.elements where element.type == .routeMap {
-            let model = OverlayRenderModel.routeMapLayout(for: element, in: context)
-            guard let request = RouteMapSnapshotRequestBuilder.request(for: element, layout: model) else { continue }
-            snapshots[request] = NSImage(size: model.rect.size, flipped: false) { rect in
+        for request in requests {
+            snapshots[request] = NSImage(size: request.size, flipped: false) { rect in
                 NSColor(calibratedRed: 0.08, green: 0.12, blue: 0.20, alpha: 1).setFill()
                 rect.fill()
                 NSColor(calibratedRed: 0.25, green: 0.35, blue: 0.50, alpha: 1).setFill()

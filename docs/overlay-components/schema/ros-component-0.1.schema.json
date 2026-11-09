@@ -1132,6 +1132,75 @@
       ],
       "unevaluatedProperties": false
     },
+    "statsBar": {
+      "description": "Optional host-drawn metric strip shared by the distance timeline, elevation chart and route map. Values come from the activity; the component only supplies placement, typography and slot layout.",
+      "type": "object",
+      "properties": {
+        "placement": {
+          "oneOf": [
+            { "enum": ["bottomAttached", "topAttached", "leftAttached", "rightAttached", "insideBottom", "insideTop"] },
+            { "$ref": "#/$defs/expression" }
+          ]
+        },
+        "layoutMode": {
+          "oneOf": [
+            { "enum": ["equalColumns", "emphasis", "grid2x2", "stack", "compact"] },
+            { "$ref": "#/$defs/expression" }
+          ]
+        },
+        "visible": { "$ref": "#/$defs/numberOrExpression" },
+        "inside": { "$ref": "#/$defs/numberOrExpression" },
+        "width": { "$ref": "#/$defs/numberOrExpression" },
+        "height": { "$ref": "#/$defs/numberOrExpression" },
+        "offsetX": { "$ref": "#/$defs/numberOrExpression" },
+        "offsetY": { "$ref": "#/$defs/numberOrExpression" },
+        "itemSpacing": { "$ref": "#/$defs/numberOrExpression" },
+        "backgroundOpacity": { "$ref": "#/$defs/numberOrExpression" },
+        "blurRadius": { "$ref": "#/$defs/numberOrExpression" },
+        "dividerOpacity": { "$ref": "#/$defs/numberOrExpression" },
+        "cornerRadius": { "$ref": "#/$defs/numberOrExpression" },
+        "valueFontFamily": { "$ref": "#/$defs/stringOrExpression" },
+        "valueFontSize": { "$ref": "#/$defs/numberOrExpression" },
+        "valueFontWeight": {
+          "oneOf": [
+            { "enum": ["regular", "medium", "semibold", "bold"] },
+            { "$ref": "#/$defs/expression" }
+          ]
+        },
+        "valueColor": { "$ref": "#/$defs/colorValue" },
+        "labelFontFamily": { "$ref": "#/$defs/stringOrExpression" },
+        "labelFontSize": { "$ref": "#/$defs/numberOrExpression" },
+        "labelFontWeight": {
+          "oneOf": [
+            { "enum": ["regular", "medium", "semibold", "bold"] },
+            { "$ref": "#/$defs/expression" }
+          ]
+        },
+        "labelColor": { "$ref": "#/$defs/colorValue" },
+        "slots": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "properties": {
+              "metric": {
+                "oneOf": [
+                  { "enum": ["progress", "heartRate", "pace", "avgPace", "lapPace", "calories",
+                             "elapsedTime", "realTime", "distance", "elevation", "cadence",
+                             "power", "verticalOscillation", "groundContactTime", "strideLength",
+                             "verticalRatio", "groundContactBalance", "temperature", "grade"] },
+                  { "$ref": "#/$defs/expression" }
+                ]
+              },
+              "visible": { "$ref": "#/$defs/numberOrExpression" },
+              "customLabel": { "$ref": "#/$defs/stringOrExpression" }
+            },
+            "unevaluatedProperties": false
+          }
+        }
+      },
+      "unevaluatedProperties": false
+    },
     "distanceTimelineNode": {
       "description": "Host-drawn distance progress track. Distance text, axis labels and stats bar stay host-owned.",
       "allOf": [
@@ -1221,7 +1290,10 @@
             },
             "mediaSystemImage": { "$ref": "#/$defs/stringOrExpression" },
             "mediaSlotSize": { "$ref": "#/$defs/numberOrExpression" },
-            "elevationProfileVisible": { "$ref": "#/$defs/numberOrExpression" }
+            "elevationProfileVisible": { "$ref": "#/$defs/numberOrExpression" },
+            "width": { "$ref": "#/$defs/numberOrExpression" },
+            "height": { "$ref": "#/$defs/numberOrExpression" },
+            "statsBar": { "$ref": "#/$defs/statsBar" }
           }
         }
       ],
@@ -1289,7 +1361,10 @@
             "glowOpacity": { "$ref": "#/$defs/numberOrExpression" },
             "fontFamily": { "$ref": "#/$defs/stringOrExpression" },
             "foregroundColor": { "$ref": "#/$defs/colorValue" },
-            "valueFontSize": { "$ref": "#/$defs/numberOrExpression" }
+            "valueFontSize": { "$ref": "#/$defs/numberOrExpression" },
+            "width": { "$ref": "#/$defs/numberOrExpression" },
+            "height": { "$ref": "#/$defs/numberOrExpression" },
+            "statsBar": { "$ref": "#/$defs/statsBar" }
           }
         }
       ],
@@ -1325,9 +1400,30 @@
             "glowEnabled": { "$ref": "#/$defs/numberOrExpression" },
             "mapOpacity": { "$ref": "#/$defs/numberOrExpression" },
             "borderEnabled": { "$ref": "#/$defs/numberOrExpression" },
+            "borderColor": { "$ref": "#/$defs/colorValue" },
             "borderOpacity": { "$ref": "#/$defs/numberOrExpression" },
+            "borderWidth": { "$ref": "#/$defs/numberOrExpression" },
+            "edgeFade": {
+              "oneOf": [{ "enum": ["solid", "fadeOut"] }, { "$ref": "#/$defs/expression" }]
+            },
+            "fadeAmount": { "$ref": "#/$defs/numberOrExpression" },
+            "colorMode": {
+              "oneOf": [{ "enum": ["solid", "gradient"] }, { "$ref": "#/$defs/expression" }]
+            },
+            "gradientStart": { "$ref": "#/$defs/colorValue" },
+            "gradientMiddle": { "$ref": "#/$defs/colorValue" },
+            "gradientEnd": { "$ref": "#/$defs/colorValue" },
+            "zoom": { "$ref": "#/$defs/numberOrExpression" },
+            "showsPointsOfInterest": { "$ref": "#/$defs/numberOrExpression" },
+            "width": { "$ref": "#/$defs/numberOrExpression" },
+            "height": { "$ref": "#/$defs/numberOrExpression" },
             "foregroundColor": { "$ref": "#/$defs/colorValue" },
-            "fontFamily": { "$ref": "#/$defs/stringOrExpression" }
+            "fontFamily": { "$ref": "#/$defs/stringOrExpression" },
+            "fontSize": { "$ref": "#/$defs/numberOrExpression" },
+            "fontWeight": {
+              "oneOf": [{ "enum": ["regular", "medium", "semibold", "bold"] }, { "$ref": "#/$defs/expression" }]
+            },
+            "statsBar": { "$ref": "#/$defs/statsBar" }
           }
         }
       ],

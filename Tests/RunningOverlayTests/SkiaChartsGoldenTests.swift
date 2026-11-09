@@ -215,18 +215,26 @@ import Testing
     // MARK: - Helpers
 
     private func easyRunLayout() throws -> OverlayLayout {
-        let url = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appendingPathComponent(
-                "Sources/RunningOverlay/Resources/Templates/EasyRun.rotemplate"
+        var style = OverlayStyle.default
+        var timeline = DistanceTimelineStyle.preset(.minimal)
+        timeline.width = 522.0824571833073
+        timeline.height = 68
+        timeline.showAxisLabels = true
+        timeline.showDistancePoints = true
+        timeline.tickMarksEnabled = true
+        timeline.tickDensity = 12
+        timeline.glowEnabled = true
+        style.distanceTimeline = timeline
+        style.fontName = "PT Mono"
+        style.fontSize = 19
+        return OverlayLayout(elements: [
+            OverlayElement(
+                type: .distanceTimeline,
+                position: CGPoint(x: 0.5, y: 0.06896883363068688),
+                scale: 1,
+                style: style
             )
-        let template = try JSONDecoder().decode(
-            OverlayTemplate.self,
-            from: Data(contentsOf: url)
-        )
-        return template.layout
+        ])
     }
 
     private func compare(

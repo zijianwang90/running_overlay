@@ -467,7 +467,7 @@ CoreText advances are not linear in point size.
 ### 7.2 Capability nodes
 
 Capability nodes are implemented natively because their layout or data
-reduction is not expressible as base nodes. v0.1 defines six:
+reduction is not expressible as base nodes. v0.1 defines the following:
 
 | Type | Fields |
 |---|---|
@@ -475,9 +475,9 @@ reduction is not expressible as base nodes. v0.1 defines six:
 | `progressBar` | `value` (0..1 expression), `trackColor`, `fillColor`, `radius` (default 0) |
 | `arc` | `value` (0..1), `startDegrees`, `sweepDegrees`, `radius`, `width`, `trackColor?`, `fillColor`, `cap` |
 | `segmentedBar` | `segments` (list expression of records with `index` and `color`), `orientation?` (`horizontal`, default, or `vertical`), `activeIndex?`, `activeWidthShare?` (0..0.5, default 0), `activeThicknessScale?` (default 1), `gap?`, `radius?`, `inactiveOpacity?` (default 1), `glow?` (`{ "opacity", "sigma" }`), `border?` (`{ "color", "opacity", "width" }`), `markers?` (max 8; `role`, optional `layout` `inline`/`outside`, `position` `above`/`below`/`leading`/`trailing`, `scale`) |
-| `distanceTimeline` | `preset` (`minimal`, `dense`, `sport`, `splits`, `glass`, `neon`, `lowerThird`, `route`), `valueFontSize`, `valueUnitSystem`, `showValue`, `showTotalDistance`, label fields (`showLabel`, `label`, font family/size/weight/color, spacing), axis fields (`showAxisLabels`, `axisLabelMode`, `axisLabelOffset`, font family/size/weight/color, `showDistancePoints`, `distancePointCount`, `distancePointOffset`, `midpointAxisLabelOffset`, endpoint/midpoint placement), marker fields (`markerDistanceLabel*`, `currentMarkerSizeMultiplier`, `currentMarkerEnabled`, `currentMarkerStyle`, `currentMarkerColor`), container (`backgroundEnabled`, `backgroundColor`, `backgroundOpacity`, `borderEnabled`, `borderColor`, `borderOpacity`, `borderWidth`, `cornerRadius`, `paddingX`, `paddingY`), track (`trackHeight`, `trackOpacity`, `fillColor`, `tickMarksEnabled`, `tickDensity`), effects (`glowEnabled`, `fadeEnabled`, `fadeEdge`, `fadeAmount`), media slot fields, `elevationProfileVisible` |
-| `elevationChart` | `preset` (`gradientArea`, `dualArea`, `techGlow`, `minimalWhite`, `bigNumbers`), `chartStyle` (`area`, `lineOnly`), smoothing, `progressMode`, padding, line/fill colors and opacities, dual-area colors, marker and playhead fields, grid/axis toggles, big-number fields, container background/border/corner/effect fields, text `fontFamily`/`foregroundColor`/`valueFontSize` |
-| `routeMap` | `shape` (`square`, `circle`), `backgroundStyle` (`none`, `dark`, `light`, `terrain`, `satellite`), `cornerRadius`, `backgroundOpacity`, start/end/runner marker style and color, `glowEnabled`, `mapOpacity`, `borderEnabled`, `borderOpacity`, `foregroundColor`, `fontFamily` |
+| `distanceTimeline` | `preset` (`minimal`, `dense`, `sport`, `splits`, `glass`, `neon`, `lowerThird`, `route`), `valueFontSize`, `valueUnitSystem`, `showValue`, `showTotalDistance`, label fields (`showLabel`, `label`, font family/size/weight/color, spacing), axis fields (`showAxisLabels`, `axisLabelMode`, `axisLabelOffset`, font family/size/weight/color, `showDistancePoints`, `distancePointCount`, `distancePointOffset`, `midpointAxisLabelOffset`, endpoint/midpoint placement), marker fields (`markerDistanceLabel*`, `currentMarkerSizeMultiplier`, `currentMarkerEnabled`, `currentMarkerStyle`, `currentMarkerColor`), container (`backgroundEnabled`, `backgroundColor`, `backgroundOpacity`, `borderEnabled`, `borderColor`, `borderOpacity`, `borderWidth`, `cornerRadius`, `paddingX`, `paddingY`), track (`trackHeight`, `trackOpacity`, `fillColor`, `tickMarksEnabled`, `tickDensity`), effects (`glowEnabled`, `fadeEnabled`, `fadeEdge`, `fadeAmount`), media slot fields, `elevationProfileVisible`, `statsBar?`, `width`, `height` |
+| `elevationChart` | `preset` (`gradientArea`, `dualArea`, `techGlow`, `minimalWhite`, `bigNumbers`), `chartStyle` (`area`, `lineOnly`), smoothing, `progressMode`, padding, line/fill colors and opacities, dual-area colors, marker and playhead fields, grid/axis toggles, big-number fields, container background/border/corner/effect fields, text `fontFamily`/`foregroundColor`/`valueFontSize`, `statsBar?`, `width`, `height` |
+| `routeMap` | `shape` (`square`, `circle`), `backgroundStyle` (`none`, `dark`, `light`, `terrain`, `satellite`), `cornerRadius`, `backgroundOpacity`, start/end/runner marker style and color, `glowEnabled`, `mapOpacity`, border (`borderEnabled`, `borderColor`, `borderOpacity`, `borderWidth`), edge fade (`edgeFade` `solid`/`fadeOut`, `fadeAmount`), route stroke (`colorMode` `solid`/`gradient`, `gradientStart`, `gradientMiddle`, `gradientEnd`), `zoom`, `showsPointsOfInterest`, text `foregroundColor`/`fontFamily`/`fontSize`/`fontWeight`, `width`, `height`, `statsBar?` |
 | `weatherWidget` | `dataSource` (`manual`, `openMeteo`, `openWeather`; default `openMeteo`), `preset` (`simpleCard`, `compactStrip`, `forecastTile`, `minimalText`, `dashboardBar`), manual data (`condition`, `temperatureC`, `humidity`, `highC`, `lowC`, `windKph`, `feelsLikeC`, `temperatureUnit`, `useActivityTemperature`, `locationText`), visibility toggles (`showLocation`, `showWeekday`, `showHumidity`, `showHighLow`, `showWind`, `showFeelsLike`, `showIcon`, `showConditionLabel`), labels (`conditionLabelOverride`, `humiditySuffix`, `humidityMetricLabel`, `windMetricLabel`, `feelsLikeMetricLabel`), card (`cardBackgroundColor`, `cardBackgroundOpacity`, `cardCornerRadius`, `dividerEnabled`, `dividerColor`, `dividerThickness`, `dividerOpacity`, `palette`, `iconSize`), slots (`slotBackgroundColor`, `slotBackgroundOpacity`, `slotSpacing`), and five text roles with `fontFamily` plus per-role `location`/`condition`/`temperature`/`slotTitle`/`slotLabel` size, weight and color |
 | `runningGauge` | `layoutPreset` (`topBottom`, `topMiddleBottom`, `threeZones`, `topTwoMiddleBottom`, `topThreeMiddleBottom`, `fourZones`, `fiveZones`), `progress` (0..1), dial (`dialBackgroundColor`, `dialBackgroundOpacity`, `glassEffectEnabled`), outer ring (`outerRingEnabled`, `outerRingColor`, `outerRingOpacity`, `outerRingWidthScale`), ticks (`tickMarksEnabled`, `tickColor`, `tickOpacity`, `majorTickOpacity`, `tickCount`, `majorTickEvery`), progress ring (`progressRingEnabled`, `progressColor`, `progressTrackColor`, `progressTrackOpacity`, `progressRingWidthScale`, `progressRoundedCaps`), dividers (`dividerEnabled`, `dividerColor`, `dividerOpacity`, `dividerWidth`), typography (`font`, `monospacedDigits`, `primaryFontWeight`, `secondaryFontWeight`, `primaryTextColor`, `secondaryTextColor`, `accentColor`), `regions?` (max 12; `region?`, `metric`, `customLabel?`, `showLabel?`, `showUnit?`, `valueFontScale?`, `labelFontScale?`, `unitFontScale?`, `valueWeight?`, `labelWeight?`, `valueColor?`, `labelColor?`) |
 | `timelineStrip` | `segments` (list expression of lap records), `currentIndex?`, `elapsed?`, `mode` (`emphasized`, `equal`, `weighted`), `emphasisFraction?` (0..0.65), `window?`, `showsWarmup?`/`showsRest?`/`showsCooldown?`, `segmentAreaHeight?`, `segmentHeight?`, `currentHeightScale?`, `minSegmentWidth?`, `gap?`, `radius?`, `currentBorderWidth?`, `completedOpacity?`, `futureOpacity?`, `colors` (`warmup`/`active`/`rest`/`cooldown`/`unknown`), `labels?` (`font`, current work/rest metrics, `neighbor`), `progress?` (`value`, `color`, `opacity`), `marker?` (`enabled`, `position`, `color`, `label`, `showsLabel`, `font`), `overflow?` (`enabled`, `text`, `color`, `inset`), `repText?`, `distanceProgress?` |
@@ -493,6 +493,28 @@ appearance and layout fields, and reuses the same layout engine and Skia
 renderer as the native element, so preview and export stay identical. Give each
 node an explicit `[width, height]` size that leaves room for content drawn
 outside the track or card (axis labels, attached stats bars, marker labels).
+
+`distanceTimeline`, `elevationChart` and `routeMap` accept an optional
+`statsBar` object: a host-drawn metric strip attached to the node. The host
+renders it from the activity, so the component only supplies placement
+(`placement` `bottomAttached`/`topAttached`/`leftAttached`/`rightAttached`/
+`insideBottom`/`insideTop`), layout (`layoutMode` `equalColumns`/`emphasis`/
+`grid2x2`/`stack`/`compact`, `width`, `height`, `offsetX`, `offsetY`,
+`itemSpacing`), surface (`backgroundOpacity`, `blurRadius`, `dividerOpacity`,
+`cornerRadius`) and typography (`value*` and `label*` family, size, weight and
+color). Up to four `slots` select a host metric (`metric`), visibility
+(`visible`) and an optional `customLabel`; the host formats each value. The
+bar is drawn outside the node's own content, so reserve room in the node's
+`width`/`height` or in the surrounding component layout.
+
+`routeMap` nodes take part in the same map-snapshot pipeline as the native
+route element. The host expands component frames into route layouts when it
+builds snapshot requests and when it preloads map images, so the component's
+snapshot is requested from the host and registered in the render asset cache
+exactly like a native map's. Hosts MUST expand components with the same render
+models used for drawing so a snapshot request and its draw agree on size,
+shape, background style and edge fade; a component map without a resolved
+snapshot renders its fallback background rather than an empty frame.
 
 `weatherWidget` renders the native weather card through the host module and
 never fetches weather. `dataSource` selects how data arrives: `manual` keeps the

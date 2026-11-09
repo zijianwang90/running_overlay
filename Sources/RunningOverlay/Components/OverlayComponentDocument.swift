@@ -799,6 +799,13 @@ struct OverlayComponentDistanceTimeline: Equatable {
     var mediaSystemImage: OverlayComponentStringSource?
     var mediaSlotSize: OverlayComponentNumberSource?
     var elevationProfileVisible: OverlayComponentNumberSource?
+    /// Optional stats bar attached to the track. Omitted leaves the native
+    /// preset's stats-bar configuration untouched.
+    var statsBar: OverlayComponentStatsBar?
+    /// Track width in design units (native element `width`).
+    var width: OverlayComponentNumberSource?
+    /// Track height in design units (native element `height`).
+    var height: OverlayComponentNumberSource?
 }
 
 /// An elevation profile chart for one activity snapshot. The host builds the
@@ -855,6 +862,11 @@ struct OverlayComponentElevationChart: Equatable {
     var foregroundColor: OverlayComponentColorSource?
     /// Base text size in design units (native element `fontSize`).
     var valueFontSize: OverlayComponentNumberSource?
+    var statsBar: OverlayComponentStatsBar?
+    /// Chart width in design units (native element `width`).
+    var width: OverlayComponentNumberSource?
+    /// Chart height in design units (native element `height`).
+    var height: OverlayComponentNumberSource?
 }
 
 /// A projected GPS route window. The host supplies the activity route and the
@@ -948,9 +960,72 @@ struct OverlayComponentRouteMap: Equatable {
     var glowEnabled: OverlayComponentNumberSource?
     var mapOpacity: OverlayComponentNumberSource?
     var borderEnabled: OverlayComponentNumberSource?
+    var borderColor: OverlayComponentColorSource?
     var borderOpacity: OverlayComponentNumberSource?
+    var borderWidth: OverlayComponentNumberSource?
     var foregroundColor: OverlayComponentColorSource?
     var fontFamily: OverlayComponentStringSource?
+    var fontSize: OverlayComponentNumberSource?
+    var fontWeight: OverlayComponentStringSource?
+    /// `solid` or `fadeOut`.
+    var edgeFade: OverlayComponentStringSource?
+    var fadeAmount: OverlayComponentNumberSource?
+    /// `solid` or `gradient`.
+    var colorMode: OverlayComponentStringSource?
+    var gradientStart: OverlayComponentColorSource?
+    var gradientMiddle: OverlayComponentColorSource?
+    var gradientEnd: OverlayComponentColorSource?
+    /// MapKit zoom multiplier (0.5...3).
+    var zoom: OverlayComponentNumberSource?
+    var showsPointsOfInterest: OverlayComponentNumberSource?
+    /// Map window width in design units (native element `routeMapWidth`).
+    var width: OverlayComponentNumberSource?
+    /// Map window height in design units (native element `routeMapHeight`).
+    var height: OverlayComponentNumberSource?
+    var statsBar: OverlayComponentStatsBar?
+}
+
+/// A stats bar attached to a chart or map. Chart configs and the route-map
+/// config share these fields; `blurRadius` applies only to route maps.
+struct OverlayComponentStatsBar: Equatable {
+    /// `bottomAttached`, `topAttached`, `leftAttached`, `rightAttached`,
+    /// `insideBottom` or `insideTop`.
+    var placement: OverlayComponentStringSource?
+    /// `equalColumns`, `emphasis`, `grid2x2`, `stack` or `compact`.
+    var layoutMode: OverlayComponentStringSource?
+    var visible: OverlayComponentNumberSource?
+    var inside: OverlayComponentNumberSource?
+    /// Long-side span in design units. 0 = auto.
+    var width: OverlayComponentNumberSource?
+    /// Bar thickness in design units.
+    var height: OverlayComponentNumberSource?
+    var offsetX: OverlayComponentNumberSource?
+    var offsetY: OverlayComponentNumberSource?
+    var itemSpacing: OverlayComponentNumberSource?
+    var backgroundOpacity: OverlayComponentNumberSource?
+    /// Gaussian blur radius of the bar background; route maps only.
+    var blurRadius: OverlayComponentNumberSource?
+    var dividerOpacity: OverlayComponentNumberSource?
+    var cornerRadius: OverlayComponentNumberSource?
+    var valueFontFamily: OverlayComponentStringSource?
+    var valueFontSize: OverlayComponentNumberSource?
+    var valueFontWeight: OverlayComponentStringSource?
+    var valueColor: OverlayComponentColorSource?
+    var labelFontFamily: OverlayComponentStringSource?
+    var labelFontSize: OverlayComponentNumberSource?
+    var labelFontWeight: OverlayComponentStringSource?
+    var labelColor: OverlayComponentColorSource?
+    /// Fixed four slots; the host clips extra slots.
+    var slots: [OverlayComponentStatsBarSlot]?
+}
+
+struct OverlayComponentStatsBarSlot: Equatable {
+    /// `distance`, `pace`, `elapsedTime`, `heartRate`, `cadence`, `power`,
+    /// `elevation`, `grade`, `calories`, `temperature`, `movingTime` or
+    /// `progress`.
+    var metric: OverlayComponentStringSource?
+    var visible: OverlayComponentNumberSource?
+    var customLabel: OverlayComponentStringSource?
 }
 
 enum OverlayComponentSegmentedBarMarkerLayout: String, CaseIterable {

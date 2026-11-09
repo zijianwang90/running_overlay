@@ -305,17 +305,12 @@ final class SkiaPreviewMetalView: NSView {
     /// until the route geometry or style changes the request key.
     private func requestMissingMapSnapshotsIfNeeded() {
         guard let activity else { return }
-        let renderContext = OverlayRenderContext(
-            canvasSize: canvasSize,
+        let requests = SkiaRouteMapModule.snapshotRequests(
+            elements: overlayLayout.elements,
             activity: activity,
-            elapsedTime: 0
+            canvasSize: canvasSize
         )
-        for element in overlayLayout.elements where element.isVisible && element.type == .routeMap {
-            let layout = OverlayRenderModel.routeMapLayout(for: element, in: renderContext)
-            guard let request = RouteMapSnapshotRequestBuilder.request(
-                for: element,
-                layout: layout
-            ) else { continue }
+        for request in requests {
             guard mapSnapshots[request] == nil,
                   !pendingSnapshotRequests.contains(request),
                   !failedSnapshotRequests.contains(request) else { continue }

@@ -12,10 +12,7 @@
   },
   "author": "Running Overlay Studio",
   "license": "MIT",
-  "size": [
-    460,
-    150
-  ],
+  "size": "content",
   "params": [
     {
       "type": "enum",
@@ -964,6 +961,36 @@
         "en": "Distance Timeline",
         "zh-Hans": "Distance Timeline"
       }
+    },
+    {
+      "id": "timelineWidth",
+      "type": "number",
+      "label": {
+        "en": "timelineWidth",
+        "zh-Hans": "timelineWidth"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "default": 320,
+      "min": 8,
+      "max": 8192
+    },
+    {
+      "id": "timelineHeight",
+      "type": "number",
+      "label": {
+        "en": "timelineHeight",
+        "zh-Hans": "timelineHeight"
+      },
+      "section": {
+        "en": "Distance Timeline",
+        "zh-Hans": "Distance Timeline"
+      },
+      "default": 68,
+      "min": 8,
+      "max": 8192
     }
   ],
   "nodes": [
@@ -972,8 +999,8 @@
       "frame": [
         "=16",
         "=24",
-        "=320",
-        "=68"
+        "=timelineWidth",
+        "=timelineHeight"
       ],
       "preset": "=preset",
       "valueFontSize": "=valueFontSize",
@@ -1030,8 +1057,18 @@
       "mediaSlotMode": "=mediaSlotMode",
       "mediaSystemImage": "=mediaSystemImage",
       "mediaSlotSize": "=mediaSlotSize",
-      "elevationProfileVisible": "=elevationProfileVisible ? 1 : 0"
+      "elevationProfileVisible": "=elevationProfileVisible ? 1 : 0",
+      "width": "=timelineWidth",
+      "height": "=timelineHeight"
     }
   ],
-  "bindings": {}
+  "bindings": {},
+  "padding": [
+    0,
+    0
+  ],
+  "minSize": [
+    460,
+    150
+  ]
 }

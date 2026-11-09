@@ -1,6 +1,16 @@
 # Route Map Overlay Design
 
-Last updated: 2026-06-16 (Route Map container controls cleanup)
+Last updated: 2026-11-08
+
+> **Status: bundled component.** The native `.routeMap` element and
+> `RouteMapOverlayDetailView` were removed without migration (ADR 0015). Route
+> Map is now the bundled `studio.route-map` component. Its `routeMap` host node
+> covers the native border, edge-fade, gradient route, zoom, points of
+> interest, typography and stats-bar controls, and the component renderer
+> expands it into the same map-snapshot requests and preloaded assets as the
+> native element. Older elements of the native type are dropped on load. The
+> data, projection, caching and privacy sections below still describe the
+> rendering architecture.
 
 > **Inspector / UI design has its own spec.** See
 > [`docs/design/overlays/route-map/route-map-overlay-ui.md`](../design/overlays/route-map/route-map-overlay-ui.md) and

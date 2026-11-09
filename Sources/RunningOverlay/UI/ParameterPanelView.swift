@@ -30,21 +30,7 @@ struct ParameterPanelView: View {
     @ViewBuilder
     private func overlayDetail(_ elementID: OverlayElement.ID) -> some View {
         if let element = project.selectedOverlay(elementID) {
-            if element.type == .distanceTimeline {
-                DistanceTimelineOverlayDetailView(elementID: elementID)
-            } else if element.type == .elevationChart {
-                ElevationChartOverlayDetailView(elementID: elementID)
-            } else if element.type == .intervalHUDBar {
-                IntervalHUDBarOverlayDetailView(elementID: elementID)
-            } else if element.type == .intervalTimeline {
-                IntervalTimelineOverlayDetailView(elementID: elementID)
-            } else if element.type == .zoneEdgeBar {
-                ZoneEdgeBarOverlayDetailView(elementID: elementID)
-            } else if element.type == .routeMap {
-                RouteMapOverlayDetailView(elementID: elementID)
-            } else if element.type == .weatherWidget {
-                WeatherWidgetOverlayDetailView(elementID: elementID)
-            } else if element.type == .component {
+            if element.type == .component {
                 OverlayComponentDetailView(elementID: elementID)
             } else {
                 MissingOverlayInspectorView()

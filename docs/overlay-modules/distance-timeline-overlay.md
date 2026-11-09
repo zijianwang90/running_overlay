@@ -1,6 +1,14 @@
 # Distance Timeline Overlay
 
-Last updated: 2026-04-28
+Last updated: 2026-11-08
+
+> **Status: bundled component.** The native `.distanceTimeline` element and
+> `DistanceTimelineOverlayDetailView` were removed without migration (ADR
+> 0015). Distance Timeline is now the bundled `studio.distance-timeline`
+> component, whose `distanceTimeline` host node exposes the same renderer
+> settings through the generated component Inspector; older elements of the
+> native type are dropped on load. This document remains the rendering and
+> design reference for that node.
 
 ## Purpose
 

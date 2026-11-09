@@ -1,6 +1,15 @@
 # Weather Widget Overlay
 
-Last updated: 2026-06-29
+Last updated: 2026-11-08
+
+> **Status: bundled component.** The native `.weatherWidget` element and
+> `WeatherWidgetOverlayDetailView` were removed without migration (ADR 0015).
+> Weather Widget is now the bundled `studio.weather-widget` component, whose
+> `weatherWidget` host node exposes the same renderer and data-source settings
+> through the generated component Inspector; older elements of the native type
+> are dropped on load. The project-level weather cache and API fetch described
+> below still apply to the component. This document remains the rendering and
+> design reference for that node.
 
 ## Purpose
 
