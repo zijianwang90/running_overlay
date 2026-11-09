@@ -23,6 +23,20 @@ struct OverlayComponentElevationChartTests {
         #expect(package.definition.id == "studio.elevation-chart")
         #expect(!result.nodes.isEmpty)
     }
+
+    @Test func smoothingCacheReusesAndInvalidatesByContent() {
+        let samples = (0..<200).map { sin(Double($0) / 9) }
+        let first = OverlayComponentPlotData.smoothed(samples, amount: 0.85)
+        let second = OverlayComponentPlotData.smoothed(samples, amount: 0.85)
+        #expect(first == second)
+
+        var changed = samples
+        changed[100] += 10
+        #expect(OverlayComponentPlotData.smoothed(changed, amount: 0.85) != first)
+
+        let differentAmount = OverlayComponentPlotData.smoothed(samples, amount: 0.4)
+        #expect(differentAmount != first)
+    }
 }
 
 #if canImport(CSkiaBridge)

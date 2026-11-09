@@ -4,6 +4,20 @@ import Foundation
 /// The samples retain activity-record order; no resampling onto a different
 /// time axis is introduced by moving this calculation into the host service.
 enum OverlayComponentPlotData {
+    /// Smoothing is a multi-pass Gaussian convolution over the whole series.
+    /// Charts ask for the same full series on every preview frame (geometry
+    /// and draw), so a 4,800-record activity otherwise costs ~100 ms per
+    /// lookup. Keep the last input/output pair; comparing the input is far
+    /// cheaper than recomputing it.
+    private struct SmoothingCacheEntry {
+        var source: [Double]
+        var amount: Double
+        var result: [Double]
+    }
+
+    private static let cacheLock = NSLock()
+    nonisolated(unsafe) private static var smoothingCache: SmoothingCacheEntry?
+
     static func elevationSamples(from activity: ActivityTimeline) -> [Double] {
         let records = activity.records.compactMap(\.elevationMeters)
         if !records.isEmpty { return records }
@@ -15,6 +29,28 @@ enum OverlayComponentPlotData {
     static func smoothed(_ samples: [Double], amount: Double = 0.85) -> [Double] {
         let clampedAmount = min(max(amount, 0), 1)
         guard samples.count > 2, clampedAmount > 0 else { return samples }
+
+        cacheLock.lock()
+        let cached = smoothingCache
+        cacheLock.unlock()
+        if let cached, cached.amount == clampedAmount, cached.source == samples {
+            return cached.result
+        }
+
+        let filtered = smoothUncached(samples, amount: clampedAmount)
+
+        cacheLock.lock()
+        smoothingCache = SmoothingCacheEntry(
+            source: samples,
+            amount: clampedAmount,
+            result: filtered
+        )
+        cacheLock.unlock()
+        return filtered
+    }
+
+    private static func smoothUncached(_ samples: [Double], amount: Double) -> [Double] {
+        let clampedAmount = amount
         let maxRadius = min(28, max(2, (samples.count - 1) / 2))
         let radius = min(maxRadius, max(2, Int((2 + clampedAmount * 18).rounded())))
         let sigma = max(1, Double(radius) * 0.45)
