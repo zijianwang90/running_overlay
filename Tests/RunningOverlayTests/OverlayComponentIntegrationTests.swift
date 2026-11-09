@@ -676,6 +676,16 @@ struct OverlayComponentIntegrationTests {
         }
     }
 
+    /// Each bundled component has exactly one creation entry: interval and
+    /// chart modules under Visuals, decor and examples under Components.
+    @Test func poolOffersEachBundledComponentOnce() {
+        let visualIDs = OverlayTileInfo.tiles(for: .visuals).map(\.componentID)
+        let componentsTabIDs = OverlayComponentLibraryItem.componentsTabItems.map(\.id)
+        #expect(Set(visualIDs).isDisjoint(with: componentsTabIDs))
+        let modules = OverlayComponentLibraryItem.intervalComponents + OverlayComponentLibraryItem.chartComponents
+        #expect(Set(modules.map(\.id)) == Set(visualIDs))
+    }
+
     /// The preview resolves every component each frame. A bundled lookup that
     /// re-reads and re-parses the resource makes timeline and element drags
     /// unusable, so pin the cache.

@@ -17,8 +17,9 @@ struct OverlayComponentLibraryItem: Identifiable, Equatable, Sendable {
     /// Initial parameter values for a new instance.
     var parameters: [String: OverlayJSONValue] = [:]
 
-    /// Every bundled entry: numeric presets (Overlay Pool → Metrics) and
-    /// decor and example components (Overlay Pool → Components → Bundled).
+    /// Every bundled entry: numeric presets (Overlay Pool → Metrics),
+    /// interval and chart modules (Overlay Pool → Visuals), and decor and
+    /// example components (Overlay Pool → Components → Bundled).
     static let all: [OverlayComponentLibraryItem] = numericPresets + decor + intervalComponents + chartComponents + examples
 
     static let decor: [OverlayComponentLibraryItem] = [
@@ -131,7 +132,10 @@ struct OverlayComponentLibraryItem: Identifiable, Equatable, Sendable {
         )
     ]
 
-    static let bundledVisuals: [OverlayComponentLibraryItem] = decor + intervalComponents + chartComponents + examples
+    /// Bundled entries listed under Overlay Pool → Components → Bundled.
+    /// Interval and chart modules are created only from the Visuals tiles, so
+    /// the same component is not offered twice.
+    static let componentsTabItems: [OverlayComponentLibraryItem] = decor + examples
 
     static let examples: [OverlayComponentLibraryItem] = [
         OverlayComponentLibraryItem(

@@ -75,7 +75,7 @@ struct OverlayPoolView: View {
                             draftsSection
                             componentSectionHeader("Bundled")
                             LazyVGrid(columns: columns, spacing: EditorTheme.space2) {
-                                ForEach(OverlayComponentLibraryItem.bundledVisuals) { item in
+                                ForEach(OverlayComponentLibraryItem.componentsTabItems) { item in
                                     OverlayComponentAddTile(
                                         displayName: item.displayName,
                                         hint: item.hint,
