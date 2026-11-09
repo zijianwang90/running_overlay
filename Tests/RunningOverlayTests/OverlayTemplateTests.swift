@@ -9,7 +9,7 @@ struct OverlayTemplateTests {
         defer { try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent()) }
 
         let project = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL))
-        project.addOverlayElement(.decorSolidColor)
+        project.addOverlayElement(.distanceTimeline)
         let elementID = try #require(project.overlayLayout.elements.first?.id)
         project.moveOverlay(elementID, to: CGPoint(x: 0.2, y: 0.8))
         project.setOverlayScale(elementID, scale: 1.5)
@@ -23,7 +23,7 @@ struct OverlayTemplateTests {
         #expect(template.name == "Race Layout")
         #expect(template.referenceResolution == OverlayTemplateResolution(width: 1920, height: 1080))
         #expect(template.elements.count == 1)
-        #expect(template.elements[0].type == .decorSolidColor)
+        #expect(template.elements[0].type == .distanceTimeline)
         #expect(template.elements[0].positionX == 0.2)
         #expect(template.elements[0].positionY == 0.8)
         #expect(template.elements[0].scale == 1.5)
@@ -56,7 +56,7 @@ struct OverlayTemplateTests {
         let template = OverlayTemplate(
             name: "Legacy",
             elements: [
-                OverlayTemplateElement(type: .decorText, positionX: 0.1, positionY: 0.2, scale: 1, style: .default),
+                OverlayTemplateElement(type: .distanceTimeline, positionX: 0.1, positionY: 0.2, scale: 1, style: .default),
                 OverlayTemplateElement(type: .routeMap, positionX: 0.8, positionY: 0.2, scale: 1, style: .default)
             ]
         )
@@ -78,7 +78,7 @@ struct OverlayTemplateTests {
         )
 
         #expect(decoded.droppedLegacyElementCount == 2)
-        #expect(decoded.elements.map(\.type) == [.decorText, .routeMap])
+        #expect(decoded.elements.map(\.type) == [.distanceTimeline, .routeMap])
 
         var unknown = elements[1]
         unknown["type"] = "notAnOverlay"
@@ -407,14 +407,14 @@ struct OverlayTemplateTests {
         defer { try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent()) }
 
         let project = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL))
-        project.addOverlayElement(.decorText)
+        project.addOverlayElement(.elevationChart)
         let originalID = try #require(project.overlayLayout.elements.first?.id)
 
         let template = OverlayTemplate(
             name: "Minimal",
             elements: [
                 OverlayTemplateElement(
-                    type: .decorIcon,
+                    type: .distanceTimeline,
                     positionX: 0.1,
                     positionY: 0.2,
                     scale: 2,
@@ -426,12 +426,12 @@ struct OverlayTemplateTests {
 
         project.applyOverlayTemplate(template.id)
         #expect(project.overlayLayout.elements.count == 1)
-        #expect(project.overlayLayout.elements[0].type == .decorIcon)
+        #expect(project.overlayLayout.elements[0].type == .distanceTimeline)
         #expect(project.overlayLayout.elements[0].id != originalID)
 
         project.undo()
         #expect(project.overlayLayout.elements.count == 1)
-        #expect(project.overlayLayout.elements[0].type == .decorText)
+        #expect(project.overlayLayout.elements[0].type == .elevationChart)
         #expect(project.overlayLayout.elements[0].id == originalID)
     }
 
@@ -440,7 +440,7 @@ struct OverlayTemplateTests {
         defer { try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent()) }
 
         let project = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL))
-        project.addOverlayElement(.decorIcon)
+        project.addOverlayElement(.elevationChart)
 
         project.saveCurrentOverlayTemplateWithGeneratedName()
         let saved = try #require(project.overlayTemplates.first)
@@ -451,13 +451,13 @@ struct OverlayTemplateTests {
 
         let renamed = try #require(project.overlayTemplates.first)
         let createdAt = renamed.createdAt
-        project.addOverlayElement(.decorText)
+        project.addOverlayElement(.distanceTimeline)
         project.updateOverlayTemplateFromCurrentSetup(saved.id)
         let updated = try #require(project.overlayTemplates.first)
         #expect(updated.id == saved.id)
         #expect(updated.name == "Long Run")
         #expect(updated.createdAt == createdAt)
-        #expect(updated.elements.map(\.type) == [.decorIcon, .decorText])
+        #expect(updated.elements.map(\.type) == [.elevationChart, .distanceTimeline])
 
         project.duplicateOverlayTemplate(saved.id)
         #expect(project.overlayTemplates.count == 2)
@@ -465,7 +465,7 @@ struct OverlayTemplateTests {
 
         let loadedProject = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL))
         #expect(loadedProject.overlayTemplates.map(\.name) == ["Long Run Copy", "Long Run"])
-        #expect(loadedProject.overlayTemplates[1].elements.map(\.type) == [.decorIcon, .decorText])
+        #expect(loadedProject.overlayTemplates[1].elements.map(\.type) == [.elevationChart, .distanceTimeline])
     }
 
     @Test func importingExistingTemplateAssignsUniqueLibraryIdentity() throws {
@@ -473,7 +473,7 @@ struct OverlayTemplateTests {
         defer { try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent()) }
 
         let project = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL))
-        project.addOverlayElement(.decorIcon)
+        project.addOverlayElement(.elevationChart)
         project.saveOverlayTemplate(named: "Long Run")
         let original = try #require(project.overlayTemplates.first)
 
@@ -488,7 +488,7 @@ struct OverlayTemplateTests {
 
         let imported = try #require(project.overlayTemplates.first)
         project.applyOverlayTemplate(imported.id)
-        #expect(project.overlayLayout.elements.map(\.type) == [.decorIcon])
+        #expect(project.overlayLayout.elements.map(\.type) == [.elevationChart])
 
         let loadedProject = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL))
         #expect(loadedProject.overlayTemplates.count == 2)
@@ -500,7 +500,7 @@ struct OverlayTemplateTests {
         defer { try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent()) }
 
         let project = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL))
-        project.addOverlayElement(.decorText)
+        project.addOverlayElement(.elevationChart)
         let originalID = try #require(project.overlayLayout.elements.first?.id)
         let race = try #require(BuiltInOverlayTemplate.all.first { $0.id == "race" })
 
@@ -514,7 +514,7 @@ struct OverlayTemplateTests {
 
         project.undo()
         #expect(project.overlayLayout.elements.count == 1)
-        #expect(project.overlayLayout.elements[0].type == .decorText)
+        #expect(project.overlayLayout.elements[0].type == .elevationChart)
         #expect(project.overlayLayout.elements[0].id == originalID)
     }
 
@@ -523,7 +523,7 @@ struct OverlayTemplateTests {
         defer { try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent()) }
 
         let project = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL))
-        project.addOverlayElement(.decorText)
+        project.addOverlayElement(.elevationChart)
         let easyRun = try #require(BuiltInOverlayTemplate.all.first { $0.id == "easyRun" })
 
         project.applyBuiltInOverlayTemplate(easyRun)
@@ -655,7 +655,7 @@ struct OverlayTemplateTests {
             name: "My Daily Run",
             elements: [
                 OverlayTemplateElement(
-                    type: .decorIcon,
+                    type: .elevationChart,
                     positionX: 0.2,
                     positionY: 0.3,
                     scale: 1.4,
@@ -670,7 +670,7 @@ struct OverlayTemplateTests {
         project.finishFitImport(activity: sampleActivity(), sourceName: "daily.fit")
 
         #expect(project.overlayLayout.elements.count == 1)
-        #expect(project.overlayLayout.elements[0].type == .decorIcon)
+        #expect(project.overlayLayout.elements[0].type == .elevationChart)
         #expect(project.overlayLayout.elements[0].position.x == 0.2)
         #expect(project.overlayLayout.elements[0].scale == 1.4)
         #expect(project.statusMessage.contains("Applied template: My Daily Run"))

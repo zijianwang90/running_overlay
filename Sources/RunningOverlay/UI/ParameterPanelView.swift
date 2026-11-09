@@ -44,8 +44,6 @@ struct ParameterPanelView: View {
                 RouteMapOverlayDetailView(elementID: elementID)
             } else if element.type == .weatherWidget {
                 WeatherWidgetOverlayDetailView(elementID: elementID)
-            } else if element.type.isDecorOverlay {
-                DecorOverlayDetailView(elementID: elementID)
             } else if element.type == .component {
                 OverlayComponentDetailView(elementID: elementID)
             } else {

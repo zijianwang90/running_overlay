@@ -73,8 +73,10 @@ struct ExportRenderPlan: Equatable {
     init(overlays: [OverlayElement], canvasSize: CGSize, activity: ActivityTimeline) {
         self.canvasSize = canvasSize
         allOverlays = overlays
-        staticOverlays = overlays.filter(Self.isStaticOverlay)
-        dynamicOverlays = overlays.filter { !Self.isStaticOverlay($0) }
+        // Every remaining element type samples activity, so all overlays are
+        // dynamic; the static split is kept for the per-overlay render planner.
+        staticOverlays = []
+        dynamicOverlays = overlays
 
         let canvasRect = CGRect(origin: .zero, size: canvasSize)
         let context = OverlayRenderContext(canvasSize: canvasSize, activity: activity, elapsedTime: 0)
@@ -143,15 +145,6 @@ struct ExportRenderPlan: Equatable {
             && (overlayRenderAreaRatio < Self.perOverlayAreaThreshold || qualifiesForDispersedPerOverlay)
     }
 
-    static func isStaticOverlay(_ element: OverlayElement) -> Bool {
-        switch element.type {
-        case .decorSolidColor, .decorIcon, .decorText:
-            true
-        default:
-            false
-        }
-    }
-
     static func canUseRouteMapStaticCache(for element: OverlayElement, context: OverlayRenderContext) -> Bool {
         guard element.type == .routeMap else {
             return false
@@ -213,12 +206,6 @@ struct ExportRenderPlan: Equatable {
             return OverlayRenderModel.zoneEdgeBarLayout(for: element, in: context).rect
         case .weatherWidget:
             return OverlayRenderModel.weatherWidgetLayout(for: element, in: context).rect
-        case .decorSolidColor:
-            return centeredRect(for: element, size: OverlayRenderModel.decorSolidColorLayout(for: element, in: context).size, canvasSize: context.canvasSize)
-        case .decorIcon:
-            return centeredRect(for: element, size: OverlayRenderModel.decorIconLayout(for: element, in: context).size, canvasSize: context.canvasSize)
-        case .decorText:
-            return centeredRect(for: element, size: OverlayRenderModel.decorTextLayout(for: element, in: context).size, canvasSize: context.canvasSize)
         case .component:
             // The SwiftUI comparison renderer cannot draw components.
             return nil
@@ -359,12 +346,6 @@ enum ExportRenderModelProbe {
                 // view and once for its position.
                 withExtendedLifetime(OverlayRenderModel.zoneEdgeBarLayout(for: element, in: context)) {}
                 withExtendedLifetime(OverlayRenderModel.zoneEdgeBarLayout(for: element, in: context)) {}
-            case .decorSolidColor:
-                withExtendedLifetime(OverlayRenderModel.decorSolidColorLayout(for: element, in: context)) {}
-            case .decorIcon:
-                withExtendedLifetime(OverlayRenderModel.decorIconLayout(for: element, in: context)) {}
-            case .decorText:
-                withExtendedLifetime(OverlayRenderModel.decorTextLayout(for: element, in: context)) {}
             case .weatherWidget:
                 withExtendedLifetime(OverlayRenderModel.weatherWidgetLayout(for: element, in: context)) {}
             case .component:
@@ -1908,21 +1889,6 @@ private struct SwiftUIOverlayFrameView: View {
                         OverlaySharedZoneEdgeBarView(
                             element: element,
                             layout: OverlayRenderModel.zoneEdgeBarLayout(for: element, in: context)
-                        )
-                    case .decorSolidColor:
-                        OverlaySharedDecorSolidColorView(
-                            element: element,
-                            layout: OverlayRenderModel.decorSolidColorLayout(for: element, in: context)
-                        )
-                    case .decorIcon:
-                        OverlaySharedDecorIconView(
-                            element: element,
-                            layout: OverlayRenderModel.decorIconLayout(for: element, in: context)
-                        )
-                    case .decorText:
-                        OverlaySharedDecorTextView(
-                            element: element,
-                            layout: OverlayRenderModel.decorTextLayout(for: element, in: context)
                         )
                     case .weatherWidget:
                         OverlaySharedWeatherWidgetView(

@@ -36,11 +36,17 @@ and pool entry. The drawing engine itself stays as the component's capability.
    bundled template used the native types. The running gauge keeps its Skia
    drawing module as the component renderer; the interval types are fully
    declarative compositions.
-4. The SwiftUI comparison renderer (ADR 0012) cannot draw components, so a
+4. `decorSolidColor`, `decorIcon` and `decorText` are removed next. Their
+   bundled `studio.decor-shape`, `studio.decor-icon` and `studio.decor-text`
+   components carry the same capabilities and no bundled template used the
+   native types. The paragraph text rasterizer they shared with component
+   richText moves to `SkiaParagraphText` in the shared Skia layer; the native
+   decor drawing code is deleted.
+5. The SwiftUI comparison renderer (ADR 0012) cannot draw components, so a
    removed type disappears from its frames. Native/component parity tests for
    that type are retired with the native side; component behavior is covered by
    component tests.
-5. Re-adding a dropped capability means extending the component format or its
+6. Re-adding a dropped capability means extending the component format or its
    host-data contract, not restoring a native element type.
 
 ## Consequences

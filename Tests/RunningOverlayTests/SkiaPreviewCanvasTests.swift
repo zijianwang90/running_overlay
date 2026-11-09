@@ -85,7 +85,6 @@ import Testing
     /// modules, not merely report support for them.
     @Test func sharedRendererDrawsPortedModules() throws {
         let types: [OverlayElementType] = [
-            .decorSolidColor,
             .distanceTimeline,
             .elevationChart,
             .routeMap,
@@ -177,22 +176,30 @@ import Testing
     }
 
     /// The removed SwiftUI fallback pass must not leave a second draw behind.
-    /// A 50% white decor fill drawn once reads alpha ~128; a double draw would
+    /// A 50% white fill drawn once reads alpha ~128; a double draw would
     /// read ~191.
-    @Test func translucentDecorIsDrawnOnce() throws {
+    @Test func translucentComponentFillIsDrawnOnce() throws {
+        let item = try #require(
+            OverlayComponentLibraryItem.decor.first { $0.id == "studio.decor-shape" }
+        )
+        let reference = try OverlayComponentLibrary.reference(for: item)
         var style = OverlayStyle.default
-        style.decor.shape = .rectangle
-        style.decor.fillColor = OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.5)
-        style.decor.width = 400
-        style.decor.height = 300
-        // Isolate the fill: a shadow underneath would also raise center alpha.
+        // Isolate the fill: element effects would also raise center alpha.
         style.shadowEnabled = false
         style.borderEnabled = false
+        style.glowEnabled = false
         let element = OverlayElement(
-            type: .decorSolidColor,
+            type: .component,
             position: CGPoint(x: 0.5, y: 0.5),
             scale: 1,
-            style: style
+            style: style,
+            component: OverlayComponentInstance(reference: reference, parameters: [
+                "shape": .string("rectangle"),
+                "shapeWidth": .number(400),
+                "shapeHeight": .number(300),
+                "fill": .string("#FFFFFF80"),
+                "borderEnabled": .boolean(false)
+            ])
         )
 
         let view = SkiaPreviewMetalView(
@@ -218,7 +225,7 @@ import Testing
         let index = (y * Int(Self.hd1080.width) + x) * 4
         let alpha = Int(pixels[index + 3])
 
-        #expect(abs(alpha - 128) <= 8, "decor alpha \(alpha) suggests a double draw")
+        #expect(abs(alpha - 128) <= 8, "component alpha \(alpha) suggests a double draw")
     }
 
     /// The default Easy Run template must preview entirely through Skia.
@@ -548,10 +555,6 @@ import Testing
             )
         }
 
-        var decorTextStyle = OverlayStyle.default
-        decorTextStyle.decor.textContent = "MIXED"
-        var decorIconStyle = OverlayStyle.default
-        decorIconStyle.decor.iconAsset = .sfSymbol(name: "star.fill")
         var routeStyle = OverlayStyle.default
         routeStyle.routeMapBackgroundStyle = .none
         routeStyle.routeMapWidth = 320
@@ -560,10 +563,21 @@ import Testing
         let numeric = [(OverlayMetric.pace, 0.10), (.heartRate, 0.28)].compactMap { metric, x in
             OverlayComponentLibrary.numericElement(metric, position: CGPoint(x: x, y: 0.10), scale: 1)
         }
-        return OverlayLayout(elements: numeric + [
-            make(.decorSolidColor, 0.82, 0.14),
-            make(.decorIcon, 0.82, 0.34, decorIconStyle),
-            make(.decorText, 0.82, 0.46, decorTextStyle),
+        let decor = ["studio.decor-shape", "studio.decor-icon", "studio.decor-text"].enumerated()
+            .compactMap { index, id -> OverlayElement? in
+                guard let item = OverlayComponentLibraryItem.decor.first(where: { $0.id == id }),
+                      let reference = try? OverlayComponentLibrary.reference(for: item) else {
+                    return nil
+                }
+                return OverlayElement(
+                    type: .component,
+                    position: CGPoint(x: 0.82, y: 0.14 + Double(index) * 0.16),
+                    scale: 1,
+                    style: .default,
+                    component: OverlayComponentInstance(reference: reference, parameters: item.parameters)
+                )
+            }
+        return OverlayLayout(elements: numeric + decor + [
             make(.routeMap, 0.18, 0.72, routeStyle),
             make(.distanceTimeline, 0.50, 0.10),
             make(.elevationChart, 0.50, 0.70),

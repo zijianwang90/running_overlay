@@ -51,16 +51,6 @@ struct PreviewElementGeometryTests {
         #expect(frame == expected)
     }
 
-    @Test func decorElementIsCenteredOnPosition() {
-        let element = element(.decorSolidColor, at: CGPoint(x: 0.5, y: 0.25))
-        let frame = PreviewElementGeometry.frame(for: element, in: context)
-
-        #expect(abs(frame.midX - 640) < 0.5)
-        #expect(abs(frame.midY - 180) < 0.5)
-        #expect(frame.width > 0)
-        #expect(frame.height > 0)
-    }
-
     @Test func everyElementTypeProducesAFiniteNonEmptyFrame() {
         for type in OverlayElementType.allCases {
             let frame = PreviewElementGeometry.frame(

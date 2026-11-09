@@ -45,7 +45,30 @@ struct SkiaBackendSelectionTests {
             .appendingPathComponent("Fixtures/Activities/synthetic-run.fit")
         let activity = try FitFileParser.parse(url: activityURL)
         var layout = try SkiaGPUSpikeTests.easyRunLayout()
-        layout.elements += [SkiaTextFixtureFactory.solidColorElement(), SkiaTextFixtureFactory.iconElement()]
+        let shape = try #require(OverlayComponentLibraryItem.decor.first)
+        let icon = try #require(
+            OverlayComponentLibraryItem.decor.first { $0.id == "studio.decor-icon" }
+        )
+        layout.elements += [
+            OverlayElement(
+                type: .component,
+                position: CGPoint(x: 0.2, y: 0.2),
+                scale: 1,
+                style: .default,
+                component: OverlayComponentInstance(
+                    reference: try OverlayComponentLibrary.reference(for: shape)
+                )
+            ),
+            OverlayElement(
+                type: .component,
+                position: CGPoint(x: 0.5, y: 0.2),
+                scale: 1,
+                style: .default,
+                component: OverlayComponentInstance(
+                    reference: try OverlayComponentLibrary.reference(for: icon)
+                )
+            )
+        ]
         ganesh.preloadAssets(layout: layout, activity: activity)
         graphite.preloadAssets(layout: layout, activity: activity)
         for time: TimeInterval in [0, 3, 7] {

@@ -40,20 +40,9 @@ import Testing
         let style = pinnedStyle()
         var elements: [OverlayElement] = []
 
-        // Numeric readings are components, which the SwiftUI oracle cannot
-        // draw (ADR 0014), so this scene covers native modules only.
-        var solid = SkiaTextFixtureFactory.solidColorElement()
-        solid.position = CGPoint(x: 0.10, y: 0.11)
-        elements.append(solid)
-
-        var icon = SkiaTextFixtureFactory.iconElement()
-        icon.position = CGPoint(x: 0.44, y: 0.10)
-        elements.append(icon)
-
-        var decorText = SkiaTextFixtureFactory.textElement()
-        decorText.position = CGPoint(x: 0.15, y: 0.22)
-        elements.append(decorText)
-
+        // Numeric readings and decor are components, which the SwiftUI oracle
+        // cannot draw (ADR 0014, ADR 0015), so this scene covers native
+        // modules only.
         elements.append(
             element(.distanceTimeline, at: CGPoint(x: 0.15, y: 0.78), style: style)
         )

@@ -162,13 +162,25 @@ struct SkiaProductionExportTests {
         settings.frameRate = .fps30
         settings.layerDataFrameRate = .fps5
         settings.exportCodec = codec
-        var red = SkiaTextFixtureFactory.solidColorElement()
-        red.position = CGPoint(x: 0.2, y: 0.2)
-        red.style.decor.fillColor = OverlayColor(red: 1, green: 0, blue: 0, alpha: 1)
-        var blue = OverlayElement(type: red.type, position: red.position, scale: red.scale, style: red.style)
-        blue.style.decor.fillColor = OverlayColor(red: 0, green: 0, blue: 1, alpha: 1)
-        var translucent = OverlayElement(type: red.type, position: CGPoint(x: 0.6, y: 0.2), scale: red.scale, style: red.style)
-        translucent.style.decor.fillColor = OverlayColor(red: 0, green: 1, blue: 0, alpha: 0.5)
+        let shapeItem = try #require(OverlayComponentLibraryItem.decor.first)
+        let shapeReference = try OverlayComponentLibrary.reference(for: shapeItem)
+        func shape(_ fill: String, at position: CGPoint) -> OverlayElement {
+            var parameters = shapeItem.parameters
+            parameters["shape"] = .string("rectangle")
+            parameters["shapeWidth"] = .number(240)
+            parameters["shapeHeight"] = .number(80)
+            parameters["fill"] = .string(fill)
+            return OverlayElement(
+                type: .component,
+                position: position,
+                scale: 1,
+                style: SkiaTextFixtureFactory.style(),
+                component: OverlayComponentInstance(reference: shapeReference, parameters: parameters)
+            )
+        }
+        let red = shape("#FF0000FF", at: CGPoint(x: 0.2, y: 0.2))
+        let blue = shape("#0000FFFF", at: CGPoint(x: 0.2, y: 0.2))
+        let translucent = shape("#00FF0080", at: CGPoint(x: 0.6, y: 0.2))
         var time = try #require(OverlayComponentLibrary.numericElement(
             .elapsedTime,
             position: CGPoint(x: 0.4, y: 0.65),

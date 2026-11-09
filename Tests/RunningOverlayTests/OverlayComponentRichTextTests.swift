@@ -85,68 +85,7 @@ import AppKit
 import CSkiaBridge
 
 @Suite(.serialized, .skiaSerialized)
-struct OverlayComponentRichTextParityTests {
-    @Test func defaultAndStyledTextMatchNative() throws {
-        let reference = try OverlayComponentReference(
-            definitionData: OverlayComponentRichTextTests.definitionData(), source: .project
-        )
-        let activity = SkiaChartsGoldenTests.activity(duration: 60)
-        for styled in [false, true] {
-            for alignment in [DecorTextAlignment.leading, .center, .trailing] {
-                for scale in [1.0, 1.5, 2.0] {
-                    var style = OverlayStyle.default
-                    style.glowEnabled = false
-                    style.shadowEnabled = false
-                    style.borderEnabled = false
-                    style.decor.width = styled ? 360 : 240
-                    style.decor.height = styled ? 180 : 80
-                    style.decor.textContent = styled ? "FIRST LINE WITH WRAPPING\nSecond line" : "Hello"
-                    style.decor.textFont = .system(family: "Menlo")
-                    style.decor.textSize = 36
-                    style.decor.textAlignment = alignment
-                    style.decor.textLineHeight = styled ? 1.7 : 1.2
-                    style.decor.textLetterSpacing = styled ? -4 : 0
-                    style.decor.textFillMode = .solid(color: styled
-                        ? OverlayColor(red: 51.0 / 255, green: 204.0 / 255, blue: 1, alpha: 1) : .white)
-                    style.decor.textStrokeWidth = styled ? 3 : 0
-                    style.decor.textStrokeColor = OverlayColor(red: 1, green: 0, blue: 0, alpha: 1)
-                    let native = OverlayElement(type: .decorText, position: CGPoint(x: 0.5, y: 0.5),
-                                                scale: scale, opacity: styled ? 0.65 : 1, style: style)
-                    let canvas = CGSize(width: 1280, height: 720)
-                    let context = OverlayRenderContext(canvasSize: canvas, activity: activity, elapsedTime: 30)
-                    let layout = OverlayRenderModel.decorTextLayout(for: native, in: context)
-                    let align: String = switch alignment {
-                    case .leading: "left"
-                    case .center: "center"
-                    case .trailing: "right"
-                    }
-                    let component = OverlayElement(
-                        type: .component,
-                        position: CGPoint(x: 0.5 - layout.size.width / canvas.width / 2,
-                                          y: 0.5 - layout.size.height / canvas.height / 2),
-                        scale: scale, opacity: native.opacity, style: style,
-                        component: OverlayComponentInstance(reference: reference, parameters: [
-                            "text": .string(layout.content), "fontFamily": .string("Menlo"),
-                            "textWidth": .number(style.decor.width), "textHeight": .number(style.decor.height),
-                            "fontSize": .number(36), "alignment": .string(align),
-                            "lineHeight": .number(layout.lineHeight),
-                            "fillColor": .string(styled ? "#33CCFF" : "#FFFFFF"),
-                            // Native converts its scaled letterSpacing to a
-                            // dimensionless AppKit kern. richText uses points.
-                            "tracking": .number(layout.letterSpacing / max(layout.fontSize, 1) / scale),
-                            "strokeWidth": .number(styled ? 3 : 0), "strokeColor": .string("#FF0000")
-                        ])
-                    )
-                    try NativeComponentParityHarness.assertParity(
-                        label: "text-\(styled)-\(alignment)-\(scale)",
-                        native: OverlayLayout(elements: [native]), component: OverlayLayout(elements: [component]),
-                        activity: activity, elapsedTime: 30, size: canvas, thresholds: .exact
-                    )
-                }
-            }
-        }
-    }
-
+struct OverlayComponentRichTextRenderTests {
     @Test func gradientPaintsGlyphsAndPreservesStroke() throws {
         let request = SkiaParagraphTextLayout(
             size: CGSize(width: 240, height: 100), content: "MMMM",

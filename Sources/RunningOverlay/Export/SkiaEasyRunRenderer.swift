@@ -127,7 +127,6 @@ final class SkiaEasyRunRenderer {
         element.type == .distanceTimeline
             || element.type == .routeMap
             || element.type == .weatherWidget
-            || SkiaTextModule.supports(element)
             || portedChartTypes.contains(element.type)
             || portedIntervalTypes.contains(element.type)
             || element.type == .component
@@ -170,16 +169,6 @@ final class SkiaEasyRunRenderer {
                     in: renderContext,
                     skiaContext: context,
                     maskCache: intervalMaskCache
-                )
-                continue
-            }
-            if SkiaTextModule.supports(element) {
-                SkiaTextModule.draw(
-                    element: element,
-                    context: context,
-                    canvasSize: size,
-                    activity: activity,
-                    elapsedTime: elapsedTime
                 )
                 continue
             }

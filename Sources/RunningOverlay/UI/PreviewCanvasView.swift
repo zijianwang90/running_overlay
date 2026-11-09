@@ -473,27 +473,6 @@ enum PreviewElementGeometry {
             return OverlayRenderModel.routeMapLayout(for: element, in: context).rect
         case .weatherWidget:
             return OverlayRenderModel.weatherWidgetLayout(for: element, in: context).rect
-        case .decorSolidColor:
-            let layout = OverlayRenderModel.decorSolidColorLayout(for: element, in: context)
-            return centeredRect(
-                position: element.position,
-                size: layout.size,
-                canvasSize: context.canvasSize
-            )
-        case .decorIcon:
-            let layout = OverlayRenderModel.decorIconLayout(for: element, in: context)
-            return centeredRect(
-                position: element.position,
-                size: layout.size,
-                canvasSize: context.canvasSize
-            )
-        case .decorText:
-            let layout = OverlayRenderModel.decorTextLayout(for: element, in: context)
-            return centeredRect(
-                position: element.position,
-                size: layout.size,
-                canvasSize: context.canvasSize
-            )
         case .component:
             return componentFrame(for: element, in: context)
         }
@@ -1033,21 +1012,6 @@ private struct OverlayElementContent: View, @preconcurrency Equatable {
                     element: element,
                     layout: OverlayRenderModel.routeMapLayout(for: element, in: renderContext),
                     isInteractive: isSelected
-                )
-            case .decorSolidColor:
-                OverlaySharedDecorSolidColorView(
-                    element: element,
-                    layout: OverlayRenderModel.decorSolidColorLayout(for: element, in: renderContext)
-                )
-            case .decorIcon:
-                OverlaySharedDecorIconView(
-                    element: element,
-                    layout: OverlayRenderModel.decorIconLayout(for: element, in: renderContext)
-                )
-            case .decorText:
-                OverlaySharedDecorTextView(
-                    element: element,
-                    layout: OverlayRenderModel.decorTextLayout(for: element, in: renderContext)
                 )
             case .weatherWidget:
                 OverlaySharedWeatherWidgetView(

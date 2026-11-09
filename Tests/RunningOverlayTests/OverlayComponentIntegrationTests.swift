@@ -139,7 +139,7 @@ struct OverlayComponentIntegrationTests {
 
     @Test func nativeElementsStillEncodeWithoutComponentKeys() throws {
         let element = OverlayElement(
-            type: .decorSolidColor,
+            type: .distanceTimeline,
             position: CGPoint(x: 0.5, y: 0.5),
             scale: 1,
             style: .default

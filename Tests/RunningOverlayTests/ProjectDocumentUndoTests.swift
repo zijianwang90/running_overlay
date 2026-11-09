@@ -29,7 +29,7 @@ struct ProjectDocumentUndoTests {
     @Test func undoRedoRestoresAddedOverlay() {
         let project = ProjectDocument()
 
-        project.addOverlayElement(.decorSolidColor)
+        project.addOverlayElement(.distanceTimeline)
         #expect(project.overlayLayout.elements.count == 1)
         #expect(project.canUndo)
 
@@ -62,7 +62,7 @@ struct ProjectDocumentUndoTests {
     @Test func undoRestoresDeletedOverlay() {
         let project = ProjectDocument()
 
-        project.addOverlayElement(.decorText)
+        project.addOverlayElement(.elevationChart)
         let elementID = project.overlayLayout.elements[0].id
         project.deleteOverlay(elementID)
         #expect(project.overlayLayout.elements.isEmpty)

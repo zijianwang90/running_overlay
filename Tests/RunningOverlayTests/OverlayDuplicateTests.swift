@@ -6,8 +6,8 @@ import Testing
 struct OverlayDuplicateTests {
     @Test func duplicateStacksAnOffsetUnlockedCopyAboveTheOriginalAndSelectsIt() throws {
         let project = ProjectDocument()
-        project.addOverlayElement(.decorSolidColor)
-        project.addOverlayElement(.decorText)
+        project.addOverlayElement(.distanceTimeline)
+        project.addOverlayElement(.elevationChart)
         let original = project.overlayLayout.elements[0]
         project.setOverlayOpacity(original.id, opacity: 0.5)
         project.finishContinuousEdit()
@@ -18,7 +18,7 @@ struct OverlayDuplicateTests {
         project.duplicateOverlay(source.id)
 
         let elements = project.overlayLayout.elements
-        #expect(elements.map(\.type) == [.decorSolidColor, .decorSolidColor, .decorText])
+        #expect(elements.map(\.type) == [.distanceTimeline, .distanceTimeline, .elevationChart])
         let copy = elements[1]
         #expect(copy.id != source.id)
         #expect(project.selection == .overlayElement(copy.id))
@@ -36,7 +36,7 @@ struct OverlayDuplicateTests {
 
     @Test func duplicateSelectedOverlayNeedsAnOverlaySelection() {
         let project = ProjectDocument()
-        project.addOverlayElement(.decorText)
+        project.addOverlayElement(.elevationChart)
         project.selection = .none
 
         #expect(project.selectedOverlayID == nil)

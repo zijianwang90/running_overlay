@@ -390,7 +390,7 @@ Current implementation status:
 - Lock on keeps the element visible but prevents Preview-canvas selection and dragging.
 - Added-overlay rows and Preview overlays share one context menu: `Duplicate`, `Copy Properties`, `Paste Properties`, `Hide`/`Show`, `Lock`/`Unlock`, and `Delete`.
 - `Duplicate` (also Edit > Duplicate Overlay, Command-D, for the selected overlay) inserts a visible, unlocked copy with the same type, scale, opacity, and style, offset 24 output pixels down and right, stacked directly above the original, and selects it. It registers one undo point.
-- Property paste is limited to the same overlay category (for example, decor -> decor only).
+- Property paste is limited to the same overlay category (for example, distance timeline -> distance timeline only, or component -> component only).
 - Running Gauge is the bundled `studio.running-gauge` component (ADR 0015); the native `runningGauge` element type and its Inspector were removed without migration. The generated component Inspector exposes the same renderer parameters as editable component parameters: layout preset, per-region metric bindings, dial, ring, ticks, dividers, typography, and colors. Preview and export share the component renderer, which draws through the native `RunningGaugeLayoutEngine` region-frame and divider-segment helpers.
 - Selecting a running gauge component can still change its data layout through the `layoutPreset` parameter; region parameters are generated per layout. There is no longer a named style preset stored on the overlay element.
 - Space starts/stops playhead playback, and the overlay values update as playhead time changes.
@@ -617,7 +617,7 @@ Export behavior:
 - Accent colors in export must come from each overlay style's accent color instead of system accent defaults.
 - Activity data is sampled from the activity timeline for each segment using the configured Layer Data FPS cadence.
 - Adjacent video frames that resolve to the same quantized Layer Data sample may reuse the previous rendered overlay image while still writing one pixel buffer per output frame.
-- Export may cache a static decor layer and render dynamic overlays into a padded union rect when that rect covers less than most of the canvas.
+- Export renders every current overlay type as dynamic, using a padded union rect instead of the full canvas when that rect covers less than most of the canvas.
 - If the dynamic rect reaches the full-frame fallback threshold, export must use a single full-frame render/draw path rather than layered drawing.
 - If the dynamic rect reaches the full-frame threshold but individual dynamic overlay rects remain small enough in aggregate, export may render those overlays separately into padded local images and composite them in one pixel-buffer pass.
 - Per-overlay and dynamic-region export compositing must convert SwiftUI top-left overlay rects into pixel-buffer draw rects so exported overlay positions match the editor preview.

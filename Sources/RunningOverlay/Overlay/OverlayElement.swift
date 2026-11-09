@@ -20,7 +20,6 @@ struct OverlayElement: Identifiable, Equatable {
 }
 
 enum OverlayPasteCategory: String, Equatable {
-    case decor
     case distanceTimeline
     case elevationChart
     case intervalHUDBar
@@ -39,9 +38,6 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
     case zoneEdgeBar
     case routeMap
     case weatherWidget
-    case decorSolidColor
-    case decorIcon
-    case decorText
     /// A declarative overlay component instance. The definition and parameter
     /// values live on `OverlayElement.component`; see
     /// `docs/overlay-components/spec-v0.1.md`. Numeric readings are the
@@ -55,7 +51,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
             .distanceTimeline, .elevationChart,
             .intervalHUDBar, .intervalTimeline,
             .zoneEdgeBar, .routeMap,
-            .weatherWidget, .decorSolidColor, .decorIcon, .decorText
+            .weatherWidget
         ]
     }
 
@@ -67,7 +63,8 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
         "elapsedTime", "realTime", "date", "distance", "elevation", "cadence",
         "power", "verticalOscillation", "groundContactTime", "strideLength",
         "verticalRatio", "groundContactBalance", "temperature", "grade",
-        "customNumeric", "runningGauge", "intervalCountdown", "intervalWorkSummary"
+        "customNumeric", "runningGauge", "intervalCountdown", "intervalWorkSummary",
+        "decorSolidColor", "decorIcon", "decorText"
     ]
 
     var id: String { rawValue }
@@ -81,19 +78,7 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
         case .zoneEdgeBar: "Zone Edge Bar"
         case .routeMap: "Route Map"
         case .weatherWidget: "Weather Widget"
-        case .decorSolidColor: "Solid Color"
-        case .decorIcon: "Icon"
-        case .decorText: "Text"
         case .component: "Component"
-        }
-    }
-
-    /// Decor overlays are activity-data-independent visual elements
-    /// (Solid Color shapes, Icons, free-form Text).
-    var isDecorOverlay: Bool {
-        switch self {
-        case .decorSolidColor, .decorIcon, .decorText: true
-        default: false
         }
     }
 
@@ -115,8 +100,6 @@ enum OverlayElementType: String, CaseIterable, Identifiable, Codable {
             return .weather
         case .component:
             return .component
-        case .decorSolidColor, .decorIcon, .decorText:
-            return .decor
         }
     }
 }
@@ -332,10 +315,6 @@ struct OverlayStyle: Equatable, Codable {
     /// default so existing projects are unaffected.
     var routeMapStatsBar: OverlayRouteMapStatsBarConfig
 
-    /// Decor element configuration. Used by `.decorSolidColor`, `.decorIcon`,
-    /// `.decorText`. See `DecorStyle`.
-    var decor: DecorStyle
-
     /// Weather Widget configuration. Used only by `.weatherWidget`.
     var weatherWidget: WeatherWidgetStyle
 
@@ -426,7 +405,6 @@ struct OverlayStyle: Equatable, Codable {
         distanceTimeline: .default,
         elevationChart: .default,
         routeMapStatsBar: .default,
-        decor: .default,
         weatherWidget: .preset(.simpleCard),
         intervalHUDBar: .default,
         intervalTimeline: .default,
@@ -511,7 +489,6 @@ struct OverlayStyle: Equatable, Codable {
         distanceTimeline: DistanceTimelineStyle = .default,
         elevationChart: ElevationChartStyle = .default,
         routeMapStatsBar: OverlayRouteMapStatsBarConfig = .default,
-        decor: DecorStyle = .default,
         weatherWidget: WeatherWidgetStyle = .preset(.simpleCard),
         intervalHUDBar: IntervalHUDBarStyle = .default,
         intervalTimeline: IntervalTimelineStyle = .default,
@@ -594,7 +571,6 @@ struct OverlayStyle: Equatable, Codable {
         self.distanceTimeline = distanceTimeline
         self.elevationChart = elevationChart
         self.routeMapStatsBar = routeMapStatsBar
-        self.decor = decor
         self.weatherWidget = weatherWidget
         self.intervalHUDBar = intervalHUDBar
         self.intervalTimeline = intervalTimeline
@@ -680,7 +656,6 @@ struct OverlayStyle: Equatable, Codable {
         distanceTimeline = try container.decodeIfPresent(DistanceTimelineStyle.self, forKey: .distanceTimeline) ?? .default
         elevationChart = try container.decodeIfPresent(ElevationChartStyle.self, forKey: .elevationChart) ?? .default
         routeMapStatsBar = try container.decodeIfPresent(OverlayRouteMapStatsBarConfig.self, forKey: .routeMapStatsBar) ?? .default
-        decor = try container.decodeIfPresent(DecorStyle.self, forKey: .decor) ?? .default
         weatherWidget = try container.decodeIfPresent(WeatherWidgetStyle.self, forKey: .weatherWidget) ?? .preset(.simpleCard)
         intervalHUDBar = try container.decodeIfPresent(IntervalHUDBarStyle.self, forKey: .intervalHUDBar) ?? .default
         intervalTimeline = try container.decodeIfPresent(IntervalTimelineStyle.self, forKey: .intervalTimeline) ?? .default
@@ -2605,181 +2580,6 @@ struct OverlayColor: Equatable, Hashable, Codable {
         self == .routeMapEndCheckerboard
     }
 }
-
-// MARK: - Decor Text Support Types
-
-/// Font reference for the Decor Text element. The bundled case remains
-/// decodable for compatibility with early project files; new content uses
-/// system fonts or future user-uploaded font assets.
-enum DecorFontRef: Equatable, Codable {
-    case bundled(name: String)
-    case system(family: String)
-    case userAsset(id: UUID)
-}
-
-/// Gradient specification for text fill (Phase F6).
-struct GradientSpec: Equatable, Codable {
-    var stops: [GradientStop]
-    var direction: GradientDirection
-    enum GradientDirection: String, CaseIterable, Identifiable, Codable {
-        case topToBottom, leftToRight, bottomLeftToTopRight, topLeftToBottomRight
-        var id: String { rawValue }
-    }
-    struct GradientStop: Equatable, Codable {
-        var position: Double  // 0...1
-        var color: OverlayColor
-    }
-}
-
-/// Fill mode for Decor Text: solid color or gradient.
-enum DecorTextFill: Equatable, Codable {
-    case solid(color: OverlayColor)
-    case gradient(GradientSpec)
-}
-
-/// Text alignment options for the decor text block.
-enum DecorTextAlignment: String, CaseIterable, Identifiable, Codable {
-    case leading, center, trailing
-    var id: String { rawValue }
-    var label: String {
-        switch self {
-        case .leading: "Leading"
-        case .center: "Center"
-        case .trailing: "Trailing"
-        }
-    }
-}
-
-// MARK: - Decor
-
-/// Shape variants offered by the Solid Color decor element. Circle is a
-/// degenerate ellipse where width == height; the renderer collapses to the
-/// shorter side and the inspector keeps the controls in lockstep.
-enum DecorShape: String, CaseIterable, Identifiable, Codable {
-    case rectangle
-    case roundedRectangle
-    case circle
-    case capsule
-
-    var id: String { rawValue }
-
-    var label: String {
-        switch self {
-        case .rectangle: "Rectangle"
-        case .roundedRectangle: "Rounded"
-        case .circle: "Circle"
-        case .capsule: "Capsule"
-        }
-    }
-
-    var systemImage: String {
-        switch self {
-        case .rectangle: "square"
-        case .roundedRectangle: "square.dashed"
-        case .circle: "circle"
-        case .capsule: "capsule"
-        }
-    }
-}
-
-/// Sub-struct holding all decor element style fields. Per project convention
-/// (mirrors `gauge`, `distanceTimeline`, etc.) decor fields live in
-/// their own namespace so they don't pollute numeric overlay storage. Future
-/// decor element types (Icon, Text) will extend this same struct.
-struct DecorStyle: Equatable, Codable {
-    /// Active solid-color shape variant.
-    var shape: DecorShape
-    /// Fill color drawn into the shape path.
-    var fillColor: OverlayColor
-    /// Width in design units (before `element.scale` is applied).
-    var width: Double
-    var height: Double
-    var cornerRadius: Double
-
-    // Icon (optional for backward compat)
-    var iconAsset: IconAsset?
-    var iconTint: OverlayColor?
-    var iconPreserveSVGColors: Bool?
-    var iconContentMode: IconContentMode?
-
-    // Text (optional for backward compat)
-    var textContent: String?
-    var textFont: DecorFontRef?
-    var textSize: Double?
-    var textAlignment: DecorTextAlignment?
-    var textLineHeight: Double?
-    var textLetterSpacing: Double?
-    var textFillMode: DecorTextFill?
-    var textStrokeWidth: Double?
-    var textStrokeColor: OverlayColor?
-    var textAutoFit: Bool?
-
-    static let `default` = DecorStyle(
-        shape: .rectangle,
-        fillColor: .white,
-        width: 240,
-        height: 80,
-        cornerRadius: 12,
-        iconAsset: nil,
-        iconTint: nil,
-        iconPreserveSVGColors: nil,
-        iconContentMode: nil,
-        textContent: nil,
-        textFont: nil,
-        textSize: nil,
-        textAlignment: nil,
-        textLineHeight: nil,
-        textLetterSpacing: nil,
-        textFillMode: nil,
-        textStrokeWidth: nil,
-        textStrokeColor: nil,
-        textAutoFit: nil
-    )
-}
-
-
-    /// Resolved text fields for a decor element, coalescing nil optionals.
-    struct DecorTextResolved {
-        var content: String
-        var font: DecorFontRef
-        var size: Double
-        var alignment: DecorTextAlignment
-        var lineHeight: Double
-        var letterSpacing: Double
-        var fillMode: DecorTextFill
-        var strokeWidth: Double
-        var strokeColor: OverlayColor
-        var autoFit: Bool
-
-        init(from style: DecorStyle) {
-            content = style.textContent ?? "Hello"
-            font = style.textFont ?? .system(family: FontLibraryManager.currentDefaultFamily)
-            size = style.textSize ?? 36
-            alignment = style.textAlignment ?? .center
-            lineHeight = style.textLineHeight ?? 1.2
-            letterSpacing = style.textLetterSpacing ?? 0
-            fillMode = style.textFillMode ?? .solid(color: .white)
-            strokeWidth = style.textStrokeWidth ?? 0
-            strokeColor = style.textStrokeColor ?? .white
-            autoFit = style.textAutoFit ?? false
-        }
-    }
-
-    /// Resolved icon fields for a decor element, coalescing nil optionals
-    /// to their sensible defaults.
-    struct DecorIconResolved {
-        var asset: IconAsset
-        var tint: OverlayColor
-        var preserveSVGColors: Bool
-        var contentMode: IconContentMode
-
-        init(from style: DecorStyle) {
-            asset = style.iconAsset ?? .none
-            tint = style.iconTint ?? .white
-            preserveSVGColors = style.iconPreserveSVGColors ?? false
-            contentMode = style.iconContentMode ?? .fit
-        }
-    }
 
 // MARK: - Weather Widget
 

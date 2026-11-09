@@ -70,7 +70,7 @@ struct ExportPerformanceTests {
             fitStartTime: 1
         )
         source.overlayLayout = OverlayLayout(elements: [
-            OverlayElement(type: .decorSolidColor, position: CGPoint(x: 0.4, y: 0.6), scale: 1.2, style: .default)
+            OverlayElement(type: .zoneEdgeBar, position: CGPoint(x: 0.4, y: 0.6), scale: 1.2, style: .default)
         ])
         source.userAssets = [
             UserAsset(id: UUID(), kind: .svg, originalName: "icon.svg", sha256: "abc123", fileExtension: "svg")
@@ -79,7 +79,7 @@ struct ExportPerformanceTests {
         source.saveProjectSnapshot(to: snapshotURL)
 
         let restored = ProjectDocument()
-        restored.addOverlayElement(.decorText)
+        restored.addOverlayElement(.distanceTimeline)
         restored.selection = .overlayElement(restored.overlayLayout.elements[0].id)
         restored.isPlaying = true
         restored.playbackRate = 2
@@ -104,7 +104,7 @@ struct ExportPerformanceTests {
         #expect(restored.mediaFolders.first?.name == "Race")
         #expect(restored.timeline.tracks.first?.clips.first?.title == "camera.mov")
         #expect(restored.timeline.playhead == 3)
-        #expect(restored.overlayLayout.elements.first?.type == .decorSolidColor)
+        #expect(restored.overlayLayout.elements.first?.type == .zoneEdgeBar)
         #expect(restored.userAssets.first?.originalName == "icon.svg")
         #expect(restored.fitSourceName == "activity.fit")
         #expect(restored.selection == .none)
@@ -496,7 +496,7 @@ struct ExportPerformanceTests {
             ]
         case .layeredRegion:
             overlays = [
-                OverlayElement(type: .decorSolidColor, position: CGPoint(x: 0.2, y: 0.2), scale: 1, style: .default),
+                OverlayElement(type: .zoneEdgeBar, position: CGPoint(x: 0.2, y: 0.2), scale: 1, style: .default),
                 OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.7, y: 0.7), scale: 0.5, style: .default)
             ]
         }
@@ -598,18 +598,17 @@ struct ExportPerformanceTests {
         }
     }
 
-    @Test func renderPlanSeparatesStaticAndDynamicOverlays() {
+    @Test func renderPlanTreatsEveryOverlayAsDynamic() {
         let activity = ActivityTimeline.empty
-        let staticOverlay = OverlayElement(type: .decorSolidColor, position: CGPoint(x: 0.2, y: 0.2), scale: 1, style: .default)
-        let dynamicOverlay = OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.7, y: 0.7), scale: 0.5, style: .default)
+        let overlay = OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.7, y: 0.7), scale: 0.5, style: .default)
 
         let plan = ExportRenderPlan(
-            overlays: [staticOverlay, dynamicOverlay],
+            overlays: [overlay],
             canvasSize: CGSize(width: 1920, height: 1080),
             activity: activity
         )
 
-        #expect(plan.staticOverlays.map(\.type) == [.decorSolidColor])
+        #expect(plan.staticOverlays.isEmpty)
         #expect(plan.dynamicOverlays.map(\.type) == [.distanceTimeline])
         #expect(plan.dynamicRenderRect.width > 0)
         #expect(plan.dynamicRenderRect.height > 0)

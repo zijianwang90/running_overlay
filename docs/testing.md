@@ -106,7 +106,7 @@ SKIA_DIR=/path/to/skia-prebuilt SKIA_GPU=1 ./scripts/check.sh
   and concurrent Ganesh contexts and CPU raster passes have produced
   intermittent crashes and global-preference races.
 - `SkiaProductionExportTests` run the real export coordinator for ProRes 4444
-  and HEVC alpha using synthetic activity and authored decor/text. They decode
+  and HEVC alpha using synthetic activity and bundled decor components. They decode
   both segments and check alpha (including half opacity), orientation, z-order,
   BT.709 tags, timestamps, frame count, activity offset, progress, cancellation,
   frame reuse, profiling, and the selected PNG path. They require no map network

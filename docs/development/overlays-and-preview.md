@@ -59,7 +59,7 @@ Current implementation:
 - Added Overlays rows expose a context menu (`Copy Properties` / `Paste Properties`) for overlay configuration transfer.
 - Overlay visibility now gates both preview and export rendering across Skia and the SwiftUI oracle.
 - Overlay lock is persisted and currently blocks Preview canvas selection/drag plus position writes in `ProjectDocument.moveOverlay` / `setOverlayPosition`.
-- Overlay configuration paste is category-gated through `OverlayElementType.pasteCategory`; decor overlays paste only within the decor group and components within components.
+- Overlay configuration paste is category-gated through `OverlayElementType.pasteCategory`; components paste only to components, and each native module pastes within its own category.
 - Distance Timeline is a dedicated module with minimal, dense, sport, splits, glass, neon, lower-third, and route presets, backed by `DistanceTimelineStyle`.
 - Distance Timeline preview/export rendering supports distinct progress treatments, optional system-icon media slots for sport/lower-third, border/background controls, ticks, marker, glow, fade amount, route elevation underlay, and sampled GPS route geometry when available.
 - Distance Timeline Value is separate from Label, owns the value font controls, can be disabled, can switch between current/total distance and current distance only, switches metric/imperial units, and supports a Custom Values master toggle that expands four inline metric slots with independent group gap, item gap, size, color, and opacity. Group gap offsets the whole custom group without compressing custom text or changing item gap.
@@ -285,8 +285,9 @@ by each element's scale.
 
 Use the harness before porting a built-in. Differences are attributable to
 draw-tree construction, not the backend, so non-text geometry should be exact;
-text drawn through different rasterization paths (for example the AppKit decor
-text cache) needs a looser threshold or a structural comparison. Element-level
+text drawn through different rasterization paths (for example the AppKit
+paragraph text cache used by `richText`) needs a looser threshold or a
+structural comparison. Element-level
 opacity, shadow and glow in `OverlayStyle` are host styling: the component
 renderer applies them once around the whole element, so definitions must not
 repeat them.
