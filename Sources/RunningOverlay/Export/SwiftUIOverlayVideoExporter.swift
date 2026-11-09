@@ -209,10 +209,6 @@ struct ExportRenderPlan: Equatable {
             return OverlayRenderModel.intervalHUDBarLayout(for: element, in: context).rect
         case .intervalTimeline:
             return OverlayRenderModel.intervalTimelineLayout(for: element, in: context).rect
-        case .intervalCountdown:
-            return OverlayRenderModel.intervalCountdownLayout(for: element, in: context).rect
-        case .intervalWorkSummary:
-            return OverlayRenderModel.intervalWorkSummaryLayout(for: element, in: context).rect
         case .zoneEdgeBar:
             return OverlayRenderModel.zoneEdgeBarLayout(for: element, in: context).rect
         case .weatherWidget:
@@ -358,10 +354,6 @@ enum ExportRenderModelProbe {
                 withExtendedLifetime(OverlayRenderModel.intervalHUDBarLayout(for: element, in: context)) {}
             case .intervalTimeline:
                 withExtendedLifetime(OverlayRenderModel.intervalTimelineLayout(for: element, in: context)) {}
-            case .intervalCountdown:
-                withExtendedLifetime(OverlayRenderModel.intervalCountdownLayout(for: element, in: context)) {}
-            case .intervalWorkSummary:
-                withExtendedLifetime(OverlayRenderModel.intervalWorkSummaryLayout(for: element, in: context)) {}
             case .zoneEdgeBar:
                 // The export view evaluates this layout twice: once for the
                 // view and once for its position.
@@ -1911,16 +1903,6 @@ private struct SwiftUIOverlayFrameView: View {
                         OverlaySharedIntervalTimelineView(
                             element: element,
                             layout: OverlayRenderModel.intervalTimelineLayout(for: element, in: context)
-                        )
-                    case .intervalCountdown:
-                        OverlaySharedIntervalCountdownView(
-                            element: element,
-                            layout: OverlayRenderModel.intervalCountdownLayout(for: element, in: context)
-                        )
-                    case .intervalWorkSummary:
-                        OverlaySharedIntervalWorkSummaryView(
-                            element: element,
-                            layout: OverlayRenderModel.intervalWorkSummaryLayout(for: element, in: context)
                         )
                     case .zoneEdgeBar:
                         OverlaySharedZoneEdgeBarView(

@@ -92,7 +92,6 @@ import Testing
             .weatherWidget,
             .intervalHUDBar,
             .intervalTimeline,
-            .intervalCountdown,
             .zoneEdgeBar,
         ]
 
@@ -126,15 +125,6 @@ import Testing
             #expect(nonEmptySamples > 0, "\(type.rawValue) drew no pixels")
         }
 
-        // Work Summary draws only inside its display window. This test samples
-        // t=12s, so assert dispatch without requiring pixels here.
-        let workSummary = OverlayElement(
-            type: .intervalWorkSummary,
-            position: CGPoint(x: 0.5, y: 0.5),
-            scale: 1,
-            style: .default
-        )
-        #expect(SkiaEasyRunRenderer.supports(workSummary))
     }
 
     /// Interaction in Skia mode uses model rects for every visible element.
@@ -579,10 +569,8 @@ import Testing
             make(.elevationChart, 0.50, 0.70),
             make(.weatherWidget, 0.80, 0.70),
             make(.intervalTimeline, 0.50, 0.90),
-            make(.intervalCountdown, 0.75, 0.90),
             make(.intervalHUDBar, 0.30, 0.92),
             make(.zoneEdgeBar, 0.50, 0.96),
-            make(.intervalWorkSummary, 0.65, 0.55),
         ])
     }
 

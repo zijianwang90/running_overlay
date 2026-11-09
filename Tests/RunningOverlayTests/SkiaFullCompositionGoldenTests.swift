@@ -73,9 +73,6 @@ import Testing
         elements.append(
             element(.intervalTimeline, at: CGPoint(x: 0.50, y: 0.90), style: style)
         )
-        elements.append(
-            element(.intervalCountdown, at: CGPoint(x: 0.26, y: 0.42), style: style)
-        )
         // Edge placement ignores the anchor and pins the bar to the bottom edge.
         elements.append(
             element(.zoneEdgeBar, at: CGPoint(x: 0.50, y: 0.50), style: style)
@@ -101,11 +98,6 @@ import Testing
         style.routeMapStatsBar.valueFontName = "Menlo"
         style.routeMapStatsBar.labelFontName = "Menlo"
         style.intervalTimeline.markerFontName = "Menlo"
-        style.intervalCountdown.helperText.fontName = "Menlo"
-        style.intervalCountdown.phaseText.fontName = "Menlo"
-        style.intervalCountdown.repText.fontName = "Menlo"
-        style.intervalCountdown.countdownText.fontName = "Menlo"
-        style.intervalCountdown.captionText.fontName = "Menlo"
         style.zoneEdgeBar.markerText.fontName = "Menlo"
         return style
     }

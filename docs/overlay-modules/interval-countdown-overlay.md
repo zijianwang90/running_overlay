@@ -13,8 +13,9 @@ Design references:
 
 ## Data Model
 
-- Element type: `OverlayElementType.intervalCountdown`.
-- Style container: `OverlayStyle.intervalCountdown`.
+- Created from the bundled `studio.interval-countdown` component. The native
+  `intervalCountdown` element type and its `OverlayStyle` container were
+  removed without migration (ADR 0015); saved elements are dropped on load.
 - Source data: `ActivityTimeline.currentLap(at:)`, `ActivityTimeline.lapProgress(at:byDistance:)`,
   and `LapRecord.kind`.
 - Color source: `IntervalKindColorPreferences.currentSnapshot()`, shared with
@@ -31,9 +32,10 @@ component, outside its clip, and the ring glow is drawn by the definition.
 Parameter values that the native renderer treats as pixels are divided by
 `signal("host.scale")` to stay pixel-faithful at every element scale.
 
-The native renderer remains the parity oracle and is not removed; the port's
-remaining visible difference is an antialias fringe below 0.25% of pixels at
-ring edges. With both a background and the element glow enabled, the host glow
+The native renderer was the parity oracle and has been removed with the
+element type; parity results are recorded in the November 2026 project log.
+The port's remaining visible difference was an antialias fringe below 0.25% of
+pixels at ring edges. With both a background and the element glow enabled, the host glow
 follows the component's outer silhouette rather than only the ring, which is a
 small, deliberate difference; the host shadow also includes the border in its
 mask, costing at most two alpha levels at the edge. SVG/user-image selection
@@ -41,9 +43,9 @@ does not apply to this module.
 
 ## Rendering
 
-- Preview and SwiftUI export use `OverlaySharedIntervalCountdownView`.
-- Layout is computed in `OverlayRenderModel.intervalCountdownLayout(for:in:)`
-  so preview, export, hit testing, and tests share the same geometry.
+- Preview, export, hit testing and parameter editing use the component
+  renderer; geometry comes from the component's resolved node frames.
+- `SkiaIntervalModules` no longer dispatches a native countdown element.
 
 ## Behavior
 

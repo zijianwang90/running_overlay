@@ -31,9 +31,11 @@ and pool entry. The drawing engine itself stays as the component's capability.
 2. Removal is staged per type. A type is removed only after its bundled
    component reaches parity and every bundled template that used it has been
    converted to component instances, so no first-party template loses content.
-3. `runningGauge` is the first removal. The bundled `studio.running-gauge`
-   component has full parity coverage, no bundled template used the native
-   type, and its Skia drawing module remains the component renderer.
+3. `runningGauge`, `intervalCountdown` and `intervalWorkSummary` are the first
+   removals. Their bundled `studio.*` components have parity coverage and no
+   bundled template used the native types. The running gauge keeps its Skia
+   drawing module as the component renderer; the interval types are fully
+   declarative compositions.
 4. The SwiftUI comparison renderer (ADR 0012) cannot draw components, so a
    removed type disappears from its frames. Native/component parity tests for
    that type are retired with the native side; component behavior is covered by

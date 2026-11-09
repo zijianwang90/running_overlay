@@ -467,10 +467,6 @@ enum PreviewElementGeometry {
             return OverlayRenderModel.intervalHUDBarLayout(for: element, in: context).rect
         case .intervalTimeline:
             return OverlayRenderModel.intervalTimelineLayout(for: element, in: context).rect
-        case .intervalCountdown:
-            return OverlayRenderModel.intervalCountdownLayout(for: element, in: context).rect
-        case .intervalWorkSummary:
-            return OverlayRenderModel.intervalWorkSummaryLayout(for: element, in: context).rect
         case .zoneEdgeBar:
             return OverlayRenderModel.zoneEdgeBarLayout(for: element, in: context).rect
         case .routeMap:
@@ -1026,16 +1022,6 @@ private struct OverlayElementContent: View, @preconcurrency Equatable {
                 OverlaySharedIntervalTimelineView(
                     element: element,
                     layout: OverlayRenderModel.intervalTimelineLayout(for: element, in: renderContext)
-                )
-            case .intervalCountdown:
-                OverlaySharedIntervalCountdownView(
-                    element: element,
-                    layout: OverlayRenderModel.intervalCountdownLayout(for: element, in: renderContext)
-                )
-            case .intervalWorkSummary:
-                OverlaySharedIntervalWorkSummaryView(
-                    element: element,
-                    layout: OverlayRenderModel.intervalWorkSummaryLayout(for: element, in: renderContext)
                 )
             case .zoneEdgeBar:
                 OverlaySharedZoneEdgeBarView(

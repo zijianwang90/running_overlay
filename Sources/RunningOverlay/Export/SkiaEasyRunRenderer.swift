@@ -54,8 +54,6 @@ final class SkiaEasyRunRenderer {
     private static let portedIntervalTypes: Set<OverlayElementType> = [
         .intervalHUDBar,
         .intervalTimeline,
-        .intervalCountdown,
-        .intervalWorkSummary,
         .zoneEdgeBar
     ]
 

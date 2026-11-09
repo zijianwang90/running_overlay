@@ -134,17 +134,17 @@ struct OverlayComponentWorkoutDataTests {
         #expect(provider.signal(path: "structure.lastWork") == .null)
         provider.elapsedTime = 26
         #expect(provider.signal(path: "structure.lastWork").record?["completionAge"] == .number(6))
-        let element = OverlayElement(type: .intervalWorkSummary, position: .zero, scale: 1, style: .default)
-        for time in [19.999, 20, 26, 26.001, 60] {
-            provider.elapsedTime = time
+        // The summary displays for six seconds after the work lap ends; a
+        // second active lap ending at 60 s starts a new window.
+        let windows: [(time: Double, visible: Bool)] = [
+            (19.999, false), (20, true), (26, true), (26.001, false), (60, true)
+        ]
+        for window in windows {
+            provider.elapsedTime = window.time
             let summary = provider.signal(path: "structure.lastWork").record
             let age = summary?["completionAge"]?.number
             let visible = age.map { $0 >= 0 && $0 <= 6 } ?? false
-            let native = OverlayRenderModel.intervalWorkSummaryLayout(
-                for: element,
-                in: OverlayRenderContext(canvasSize: provider.canvasSize, activity: provider.activity, elapsedTime: time)
-            )
-            #expect(visible == native.isVisible)
+            #expect(visible == window.visible, "\(window.time)")
         }
     }
 
@@ -165,7 +165,61 @@ struct OverlayComponentWorkoutDataTests {
         #expect(recovery["dropPercent"] == .null)
     }
 
-    @Test func summaryMetricsMatchEveryNativeChoiceAndUnitSystem() throws {
+    /// Pinned formatting table for the finished work lap: distance 0 exercises
+    /// the missing-pace and missing-metric fallbacks, 100 m the metre branch
+    /// and 1500 m the kilometre branch.
+    @Test func summaryMetricsUsePinnedFormattingForEveryMetricAndUnitSystem() throws {
+        struct Expected {
+            var value: String
+            var unit: String
+        }
+        let activeMetric: [IntervalWorkSummaryMetric: Expected] = [
+            .lapTime: Expected(value: "0:20", unit: ""),
+            .avgHeartRate: Expected(value: "160", unit: "bpm"),
+            .maxHeartRate: Expected(value: "180", unit: "bpm"),
+            .avgPower: Expected(value: "250", unit: "W"),
+            .avgCadence: Expected(value: "175", unit: "spm"),
+        ]
+        let missingMetric: [IntervalWorkSummaryMetric: Expected] = [
+            .lapTime: Expected(value: "0:20", unit: ""),
+            .avgHeartRate: Expected(value: "--", unit: "bpm"),
+            .maxHeartRate: Expected(value: "--", unit: "bpm"),
+            .avgPower: Expected(value: "--", unit: "W"),
+            .avgCadence: Expected(value: "--", unit: "spm"),
+        ]
+        let expected: [Double: [IntervalWorkSummaryUnitSystem: [IntervalWorkSummaryMetric: Expected]]] = [
+            0: [
+                .metric: missingMetric.merging([
+                    .lapPace: Expected(value: "--:--", unit: "/km"),
+                    .lapDistance: Expected(value: "0", unit: "m"),
+                ]) { _, new in new },
+                .imperial: missingMetric.merging([
+                    .lapPace: Expected(value: "--:--", unit: "/mi"),
+                    .lapDistance: Expected(value: "0.00", unit: "mi"),
+                ]) { _, new in new },
+            ],
+            100: [
+                .metric: activeMetric.merging([
+                    .lapPace: Expected(value: "3:20", unit: "min/km"),
+                    .lapDistance: Expected(value: "100", unit: "m"),
+                ]) { _, new in new },
+                .imperial: activeMetric.merging([
+                    .lapPace: Expected(value: "5:22", unit: "min/mile"),
+                    .lapDistance: Expected(value: "0.06", unit: "mi"),
+                ]) { _, new in new },
+            ],
+            1500: [
+                .metric: activeMetric.merging([
+                    .lapPace: Expected(value: "0:13", unit: "min/km"),
+                    .lapDistance: Expected(value: "1.50", unit: "km"),
+                ]) { _, new in new },
+                .imperial: activeMetric.merging([
+                    .lapPace: Expected(value: "0:21", unit: "min/mile"),
+                    .lapDistance: Expected(value: "0.93", unit: "mi"),
+                ]) { _, new in new },
+            ],
+        ]
+
         for distance in [0.0, 100, 1500] {
             var source = activity()
             source.laps[0].totalDistanceMeters = distance
@@ -181,18 +235,11 @@ struct OverlayComponentWorkoutDataTests {
             for system in IntervalWorkSummaryUnitSystem.allCases {
                 let metrics = try #require(systems[system.rawValue]?.record)
                 for metric in IntervalWorkSummaryMetric.allCases {
-                    var style = OverlayStyle.default
-                    style.intervalWorkSummary.primaryMetric = metric
-                    style.intervalWorkSummary.unitSystem = system
-                    let element = OverlayElement(type: .intervalWorkSummary, position: .zero, scale: 1, style: style)
-                    let native = OverlayRenderModel.intervalWorkSummaryLayout(
-                        for: element,
-                        in: OverlayRenderContext(canvasSize: provider.canvasSize, activity: source, elapsedTime: 20)
-                    )
+                    let expectedItem = try #require(expected[distance]?[system]?[metric])
                     let record = try #require(metrics[metric.rawValue]?.record)
-                    #expect(record["value"] == .string(native.primary.value))
-                    #expect(record["unit"] == .string(native.primary.unit))
-                    #expect(record["label"] == .string(native.primary.label))
+                    #expect(record["value"] == .string(expectedItem.value), "\(metric) \(system) \(distance)")
+                    #expect(record["unit"] == .string(expectedItem.unit), "\(metric) \(system) \(distance)")
+                    #expect(record["label"] == .string(metric.shortLabel))
                 }
             }
         }
