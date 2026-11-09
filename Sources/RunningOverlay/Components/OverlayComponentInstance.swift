@@ -208,13 +208,28 @@ extension OverlayComponentDefinition {
 enum OverlayComponentRegistry {
     private static let lock = NSLock()
     nonisolated(unsafe) private static var definitionsByDigest: [String: OverlayComponentDefinition] = [:]
+    /// Bundled definitions resolve by reading and parsing a resource. Rendering
+    /// asks for them every frame, so a miss here costs the whole preview.
+    nonisolated(unsafe) private static var bundledDefinitions: [String: OverlayComponentDefinition] = [:]
+    #if DEBUG
+    /// Test hook: proves repeated lookups reuse the cached definition without
+    /// being disturbed by other bundled definitions loading in parallel tests.
+    nonisolated(unsafe) private static var bundledDefinitionLoads: [String: Int] = [:]
+
+    static func bundledLoadCount(for reference: OverlayComponentReference) -> Int {
+        let key = "\(reference.id)|\(reference.version)|\(reference.digest)"
+        lock.lock()
+        defer { lock.unlock() }
+        return bundledDefinitionLoads[key, default: 0]
+    }
+    #endif
 
     /// Returns the parsed definition for an instance, or nil when the
     /// reference cannot be resolved.
     static func definition(for reference: OverlayComponentReference) -> OverlayComponentDefinition? {
         guard let embedded = reference.definition,
               let data = try? embedded.canonicalData() else {
-            return OverlayComponentLibrary.definition(for: reference)
+            return bundledDefinition(for: reference)
         }
         let assetData = reference.assets ?? [:]
         let assetPaths = assetData.keys.sorted().joined(separator: "|")
@@ -239,6 +254,38 @@ enum OverlayComponentRegistry {
         definitionsByDigest[key] = package.definition
         lock.unlock()
         return package.definition
+    }
+
+    /// Bundled references carry no bytes, so their only identity is the id,
+    /// version and digest the project recorded. Cache the parsed definition:
+    /// the preview resolves every component each frame.
+    private static func bundledDefinition(
+        for reference: OverlayComponentReference
+    ) -> OverlayComponentDefinition? {
+        guard reference.source == .bundled else {
+            return OverlayComponentLibrary.definition(for: reference)
+        }
+        let key = "\(reference.id)|\(reference.version)|\(reference.digest)"
+        lock.lock()
+        if let cached = bundledDefinitions[key] {
+            lock.unlock()
+            return cached
+        }
+        lock.unlock()
+
+        // Parse outside the lock; a duplicate load during a race is harmless.
+        #if DEBUG
+        lock.lock()
+        bundledDefinitionLoads[key, default: 0] += 1
+        lock.unlock()
+        #endif
+        guard let definition = OverlayComponentLibrary.definition(for: reference) else {
+            return nil
+        }
+        lock.lock()
+        bundledDefinitions[key] = definition
+        lock.unlock()
+        return definition
     }
 
     /// Asset bytes available to a component, keyed by package-relative path.
@@ -275,6 +322,7 @@ enum OverlayComponentRegistry {
     static func clearCache() {
         lock.lock()
         definitionsByDigest.removeAll()
+        bundledDefinitions.removeAll()
         lock.unlock()
     }
 }

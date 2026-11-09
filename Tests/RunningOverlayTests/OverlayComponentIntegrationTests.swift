@@ -676,6 +676,22 @@ struct OverlayComponentIntegrationTests {
         }
     }
 
+    /// The preview resolves every component each frame. A bundled lookup that
+    /// re-reads and re-parses the resource makes timeline and element drags
+    /// unusable, so pin the cache.
+    @Test func bundledDefinitionsAreCached() throws {
+        let item = try #require(OverlayComponentLibraryItem.decor.first)
+        let reference = try OverlayComponentLibrary.reference(for: item)
+        // Warm the cache; other suites may load definitions concurrently, so
+        // only this reference's own load count must stay flat.
+        _ = OverlayComponentRegistry.definition(for: reference)
+        #if DEBUG
+        let afterWarm = OverlayComponentRegistry.bundledLoadCount(for: reference)
+        _ = OverlayComponentRegistry.definition(for: reference)
+        #expect(OverlayComponentRegistry.bundledLoadCount(for: reference) == afterWarm)
+        #endif
+    }
+
     // MARK: - Rendering
 
     #if canImport(CSkiaBridge)
