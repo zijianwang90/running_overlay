@@ -250,8 +250,15 @@ enum ComponentCommandRunner {
         } catch {
             throw ComponentCLIError.invalidParameters(error.localizedDescription)
         }
-        // Persistence tolerates stale parameters, but an authoring command
-        // should fail on typos instead of silently rendering the default.
+        return (activity, try validatedParameters(values, definition: definition), weather)
+    }
+
+    /// Persistence tolerates stale parameters, but authoring should fail on
+    /// typos instead of silently rendering the default.
+    static func validatedParameters(
+        _ values: [String: OverlayJSONValue],
+        definition: OverlayComponentDefinition
+    ) throws -> [String: OverlayJSONValue] {
         for id in values.keys.sorted() {
             guard let parameter = definition.parameter(named: id), let value = values[id] else {
                 throw ComponentCLIError.invalidParameters("unknown parameter '\(id)'.")
@@ -277,7 +284,7 @@ enum ComponentCommandRunner {
                 throw ComponentCLIError.invalidParameters("'\(id)' is outside its declared range or options.")
             }
         }
-        return (activity, values, weather)
+        return values
     }
 
     /// Reads the optional author-supplied weather snapshot. Authoring never
@@ -317,24 +324,59 @@ enum ComponentCommandRunner {
         guard let definition = OverlayComponentRegistry.definition(for: reference) else {
             throw ComponentCLIError.unresolvedDefinition
         }
+        let inputs = try inputs(for: command, definition: definition)
+        let rendered = try renderPNG(
+            reference: reference,
+            parameters: inputs.parameters,
+            activity: inputs.activity,
+            elapsedTime: command.elapsedTime,
+            weather: inputs.weather,
+            scale: command.scale
+        )
+        for diagnostic in rendered.diagnostics {
+            fputs("[RunningOverlay] warning: \(diagnostic)\n", stderr)
+        }
+        let outputURL = command.outputURL
+        try FileManager.default.createDirectory(
+            at: outputURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        do {
+            try rendered.png.write(to: outputURL, options: .atomic)
+        } catch {
+            throw ComponentCLIError.writeFailed(outputURL.path)
+        }
+        return outputURL
+    }
+
+    /// Renders a validated reference to PNG bytes cropped to its design
+    /// bounds. Shared by the CLI and the authoring MCP server so both show
+    /// exactly what the app draws.
+    static func renderPNG(
+        reference: OverlayComponentReference,
+        parameters: [String: OverlayJSONValue],
+        activity: ActivityTimeline,
+        elapsedTime requestedTime: TimeInterval,
+        weather: WeatherPayload?,
+        scale requestedScale: Double
+    ) throws -> (png: Data, size: CGSize, diagnostics: [String]) {
+        guard let definition = OverlayComponentRegistry.definition(for: reference) else {
+            throw ComponentCLIError.unresolvedDefinition
+        }
         var element = OverlayElement(
             type: .component,
             position: .zero,
             scale: 1,
             style: .default
         )
-        let inputs = try inputs(for: command, definition: definition)
-        element.component = OverlayComponentInstance(reference: reference, parameters: inputs.parameters)
-        let activity = inputs.activity
-        let elapsedTime = min(max(command.elapsedTime, 0), activity.duration)
+        element.component = OverlayComponentInstance(reference: reference, parameters: parameters)
+        let elapsedTime = min(max(requestedTime, 0), activity.duration)
         let data = OverlayComponentActivityData(
             activity: activity, elapsedTime: elapsedTime, canvasSize: OverlayRenderContext.referenceCanvasSize,
-            elementScale: 1, weatherPayload: inputs.weather
+            elementScale: 1, weatherPayload: weather
         )
         let resolved = element.component.flatMap { OverlayComponentRegistry.resolve(instance: $0, data: data) }
-        for diagnostic in resolved?.diagnostics ?? [] {
-            fputs("[RunningOverlay] warning: \(diagnostic)\n", stderr)
-        }
+        let diagnostics = (resolved?.diagnostics ?? []).map { "\($0)" }
         // A content-sized definition has no declared size; measure it once on
         // the reference canvas (one pixel per design unit).
         let design: OverlayComponentSize
@@ -345,7 +387,7 @@ enum ComponentCommandRunner {
                     canvasSize: OverlayRenderContext.referenceCanvasSize,
                     activity: activity,
                     elapsedTime: elapsedTime,
-                    weatherPayload: inputs.weather
+                    weatherPayload: weather
                 )
             )?.size ?? CGSize(width: 1, height: 1)
             design = OverlayComponentSize(
@@ -358,7 +400,7 @@ enum ComponentCommandRunner {
         // Keep the reference-canvas scale uniform so the component renders at
         // exactly `scale` pixels per design unit, then crop to its bounds.
         let scale = min(
-            command.scale,
+            requestedScale,
             OverlayRenderContext.referenceCanvasSize.width / design.width,
             OverlayRenderContext.referenceCanvasSize.height / design.height
         )
@@ -377,7 +419,7 @@ enum ComponentCommandRunner {
             canvasSize: CGSize(width: canvasWidth, height: canvasHeight),
             activity: activity,
             elapsedTime: elapsedTime,
-            weatherPayload: inputs.weather
+            weatherPayload: weather
         )
         OverlayComponentSkiaRenderer.draw(
             element,
@@ -414,24 +456,20 @@ enum ComponentCommandRunner {
             throw ComponentCLIError.renderFailed
         }
 
-        let outputURL = command.outputURL
-        try FileManager.default.createDirectory(
-            at: outputURL.deletingLastPathComponent(),
-            withIntermediateDirectories: true
-        )
-        guard let destination = CGImageDestinationCreateWithURL(
-            outputURL as CFURL,
+        let png = NSMutableData()
+        guard let destination = CGImageDestinationCreateWithData(
+            png as CFMutableData,
             UTType.png.identifier as CFString,
             1,
             nil
         ) else {
-            throw ComponentCLIError.writeFailed(outputURL.path)
+            throw ComponentCLIError.renderFailed
         }
         CGImageDestinationAddImage(destination, cropped, nil)
         guard CGImageDestinationFinalize(destination) else {
-            throw ComponentCLIError.writeFailed(outputURL.path)
+            throw ComponentCLIError.renderFailed
         }
-        return outputURL
+        return (png as Data, CGSize(width: outputWidth, height: outputHeight), diagnostics)
     }
     #endif
 }

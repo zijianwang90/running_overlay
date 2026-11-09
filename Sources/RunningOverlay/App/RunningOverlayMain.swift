@@ -4,6 +4,11 @@ import Foundation
 enum RunningOverlayMain {
     @MainActor
     static func main() {
+        // An AI client starts the app as a stdio MCP server for component
+        // authoring; no window or project is created.
+        if CommandLine.arguments.dropFirst().contains("--mcp") {
+            exit(ComponentAuthoringMCPServer.runStdio())
+        }
         do {
             if let command = try ComponentCLICommand.parse() {
                 exit(ComponentCommandRunner.run(command))

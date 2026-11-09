@@ -6,6 +6,40 @@ bundled and imported overlays; `params` generates the Inspector. Start with
 [specification](spec-v0.1.md) and [schema](schema/ros-component-0.1.schema.json)
 for the full vocabulary. No Swift source reading is needed to author one.
 
+## Authoring with an AI client in the app
+
+App users author components with the AI client they already have. Overlay Pool
+› Components › **Create with AI…** shows the steps for Claude Code, Codex,
+Claude Desktop, or any chat app. MCP clients connect once to the app
+executable as a local stdio server:
+
+```sh
+claude mcp add running-overlay -- \
+  "/Applications/Running Overlay Studio.app/Contents/MacOS/RunningOverlay" --mcp
+```
+
+The server (`RunningOverlay --mcp`) offers `get_authoring_guide` (this guide,
+the specification, the schema and the short workflow), `list_examples`,
+`get_example`, `list_metrics`, `validate_component`, `render_component` and
+`save_draft` / `list_drafts` / `get_draft`. `render_component` returns a PNG
+drawn by the app's renderer from a synthetic 12-minute interval workout
+(warmup 0–60 s, work 60–300 s, rest 300–360 s, work 360–600 s, rest 600–660 s,
+cooldown 660–720 s) with a fictional route and fixed sample weather. It never
+reads the user's projects or activities and never reaches the network.
+
+`save_draft` writes `<name>.json` into the drafts folder
+(`Application Support/RunningOverlay/ComponentDrafts`, inside the app
+container in sandboxed builds). Invalid documents and ids in the reserved
+`studio.` namespace are rejected. Drafts appear under Overlay Pool ›
+Components › **Drafts**. Adding one embeds its definition in the project. When
+the same draft is saved again while the app runs, placed instances with that
+component id switch to the new definition as one undo point and keep their
+parameter values. Hand-written drafts (`.json` files or `.rocomponent`
+folders) in the same folder are listed too; invalid ones show their
+diagnostics. Without MCP, the sheet copies a self-contained prompt and saves
+pasted JSON as a draft. See
+[ADR 0016](../adr/0016-ai-component-authoring-mcp.md).
+
 ## First render
 
 From the repository root, build with `swift build`. Validation works without

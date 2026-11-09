@@ -12,7 +12,14 @@ markdown_files = IO.popen(
   &:read
 ).split("\0").sort
 
+# Bundled copies of the authoring docs keep their links relative to
+# docs/overlay-components/; the canonical files are checked instead, and
+# ComponentAIAuthoringTests keeps the copies identical.
+bundled_copies = "Sources/RunningOverlay/Resources/Authoring/"
+
 markdown_files.each do |relative_file|
+  next if relative_file.start_with?(bundled_copies)
+
   source = root.join(relative_file)
   next unless source.file?
 

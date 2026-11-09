@@ -27,6 +27,7 @@ entries in `project-log.md`.
 | Ported visual overlays | `docs/adr/0015-remove-native-visual-overlays.md`, `docs/overlay-components/`, matching module doc under `docs/overlay-modules/` |
 | Featured overlays | `docs/overlay-modules/README.md`, matching module and design directory |
 | Overlay component format | `docs/adr/0013-declarative-overlay-components.md`, `docs/adr/0014-remove-native-numeric-overlays.md`, `docs/adr/0015-remove-native-visual-overlays.md`, `docs/overlay-components/` |
+| AI component authoring (MCP server, drafts) | `docs/adr/0016-ai-component-authoring-mcp.md`, `docs/overlay-components/authoring.md` |
 | Preview | `docs/architecture.md#preview`, `docs/design/panels/preview/` |
 | Skia SDK or GPU backend experiments | `docs/development/skia-sdk.md`, `docs/adr/0010-skia-ganesh-metal-renderer.md` |
 | Export or performance | `docs/architecture.md#export`, `docs/export-performance.md` |

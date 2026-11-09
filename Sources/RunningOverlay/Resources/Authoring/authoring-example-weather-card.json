@@ -1,0 +1,61 @@
+{
+  "spec": "ros.component/0.1",
+  "id": "examples.weather-card",
+  "version": "1.0.0",
+  "name": { "en": "Weather Card", "zh-Hans": "天气卡片" },
+  "description": "A host-drawn weather card. The host fetches the snapshot for the activity location; the component only renders it. Use --component-weather to reproduce it offline.",
+  "license": "MIT",
+  "size": "content",
+  "padding": [0, 0],
+  "params": [
+    { "id": "dataSource", "type": "enum", "label": "Data Source", "default": "openMeteo",
+      "section": "Weather Data",
+      "options": [
+        { "value": "manual", "label": "Manual" },
+        { "value": "openMeteo", "label": "Open-Meteo API" },
+        { "value": "openWeather", "label": "OpenWeather API" }
+      ] },
+    { "id": "preset", "type": "enum", "label": "Preset", "default": "simpleCard",
+      "options": [
+        { "value": "simpleCard", "label": "Simple Card" },
+        { "value": "compactStrip", "label": "Compact Strip" },
+        { "value": "forecastTile", "label": "Forecast Tile" },
+        { "value": "minimalText", "label": "Minimal Text" },
+        { "value": "dashboardBar", "label": "Dashboard Bar" }
+      ] },
+    { "id": "locationText", "type": "string", "label": "Location", "maxLength": 80, "default": "" },
+    { "id": "temperatureUnit", "type": "enum", "label": "Unit", "default": "celsius",
+      "options": [ { "value": "celsius", "label": "Celsius" }, { "value": "fahrenheit", "label": "Fahrenheit" } ] },
+    { "id": "palette", "type": "enum", "label": "Palette", "default": "blueGlass",
+      "options": [
+        { "value": "presetDefault", "label": "Preset Default" },
+        { "value": "blueGlass", "label": "Blue Glass" },
+        { "value": "lightGlass", "label": "Light Glass" },
+        { "value": "graphite", "label": "Graphite" },
+        { "value": "minimalWhite", "label": "Minimal White" }
+      ] },
+    { "id": "cardBackgroundOpacity", "type": "number", "label": "Card Opacity", "default": 0.92, "min": 0, "max": 1, "step": 0.01 },
+    { "id": "showHumidity", "type": "bool", "label": "Show Humidity", "default": true },
+    { "id": "showHighLow", "type": "bool", "label": "Show High / Low", "default": true },
+    { "id": "showWind", "type": "bool", "label": "Show Wind", "default": false }
+  ],
+  "nodes": [
+    {
+      "type": "weatherWidget",
+      "frame": [
+        0, 0,
+        "=preset == \"compactStrip\" ? 220 : preset == \"forecastTile\" ? 180 : preset == \"minimalText\" ? 160 : preset == \"dashboardBar\" ? 560 : 300",
+        "=preset == \"compactStrip\" ? 56 : preset == \"forecastTile\" ? 180 : preset == \"minimalText\" ? 92 : preset == \"dashboardBar\" ? 112 : 110"
+      ],
+      "dataSource": "=dataSource",
+      "preset": "=preset",
+      "locationText": "=locationText",
+      "temperatureUnit": "=temperatureUnit",
+      "palette": "=palette",
+      "cardBackgroundOpacity": "=cardBackgroundOpacity",
+      "showHumidity": "=showHumidity ? 1 : 0",
+      "showHighLow": "=showHighLow ? 1 : 0",
+      "showWind": "=showWind ? 1 : 0"
+    }
+  ]
+}

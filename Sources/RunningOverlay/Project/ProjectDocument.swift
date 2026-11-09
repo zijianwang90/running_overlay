@@ -687,6 +687,35 @@ final class ProjectDocument: ObservableObject {
         return id
     }
 
+    /// Adds an instance of a component draft. The definition is embedded like
+    /// an import, so the project stays self-contained if the draft is deleted.
+    @discardableResult
+    func addComponentFromDraft(_ draft: ComponentDraft) -> OverlayElement.ID? {
+        guard let reference = draft.reference else { return nil }
+        let id = addComponentElement(reference: reference)
+        statusMessage = "Added \(draft.displayName) draft."
+        return id
+    }
+
+    /// Replaces the definition of every non-bundled instance with the same
+    /// component id, as one undo point. Parameter values and placement are
+    /// kept; values for parameters the new definition no longer declares are
+    /// ignored by the renderer. Used when a component draft changes on disk.
+    func reloadComponentDefinition(_ reference: OverlayComponentReference, displayName: String) {
+        let indices = overlayLayout.elements.indices.filter { index in
+            guard let current = overlayLayout.elements[index].component?.reference else { return false }
+            return current.source != .bundled
+                && current.id == reference.id
+                && current.digest != reference.digest
+        }
+        guard !indices.isEmpty else { return }
+        registerUndoPoint()
+        for index in indices {
+            overlayLayout.elements[index].component?.reference = reference
+        }
+        statusMessage = "Reloaded \(displayName) from draft."
+    }
+
     /// Updates one component parameter as an undoable edit. Continuous edits
     /// (sliders) register one transaction; the caller finishes it with
     /// `finishContinuousEdit()`. Values are normalized against the declared

@@ -6,10 +6,14 @@ struct RunningOverlayApp: App {
     @AppStorage(EditorLayoutDefaults.showsInspectorKey) private var showsInspector = true
     @NSApplicationDelegateAdaptor(RunningOverlayAppDelegate.self) private var appDelegate
     @StateObject private var project: ProjectDocument
+    @StateObject private var componentDrafts: ComponentDraftLibrary
 
     init() {
         let project = ProjectDocument()
         _project = StateObject(wrappedValue: project)
+        let componentDrafts = ComponentDraftLibrary()
+        componentDrafts.start(project: project)
+        _componentDrafts = StateObject(wrappedValue: componentDrafts)
         RunningOverlayAppDelegate.project = project
         project.startAutosaving()
 
@@ -34,6 +38,7 @@ struct RunningOverlayApp: App {
         Window("Running Overlay Studio", id: "main") {
             MainEditorView()
                 .environmentObject(project)
+                .environmentObject(componentDrafts)
                 .preferredColorScheme(.dark)
                 .frame(minHeight: 760)
         }

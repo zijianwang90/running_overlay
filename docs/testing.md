@@ -83,6 +83,12 @@ GPU-parity tests also need `SKIA_GPU=1`. For example:
 SKIA_DIR=/path/to/skia-prebuilt SKIA_GPU=1 ./scripts/check.sh
 ```
 
+- `ComponentAIAuthoringTests` cover the drafts folder, live reload with
+  undo, the `--mcp` JSON-RPC server and its tools, and require the bundled
+  authoring guides in `Resources/Authoring/` to match `docs/overlay-components/`.
+  Previews use `ComponentAuthoringFixture`, a generated workout with fictional
+  coordinates and fixed sample weather; drafts are written to a unique
+  temporary directory.
 - `Skia*GoldenTests` compare normalized RGBA against
   `SwiftUIOverlayVideoExporter.renderFrameCGImage`. Thresholds are per suite:
   text goldens use changed-pixel ratios of 2-5% and mean deltas of 2-6; route

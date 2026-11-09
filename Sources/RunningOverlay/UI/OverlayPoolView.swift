@@ -3,8 +3,10 @@ import UniformTypeIdentifiers
 
 struct OverlayPoolView: View {
     @EnvironmentObject private var project: ProjectDocument
+    @EnvironmentObject private var componentDrafts: ComponentDraftLibrary
     @State private var activeCategory: OverlayCategory = .metrics
     @State private var alert: ComponentAlert?
+    @State private var showsAIGuide = false
 
     private struct ComponentAlert {
         var title: String
@@ -44,7 +46,16 @@ struct OverlayPoolView: View {
                 }
 
                 if activeCategory == .components {
-                    HStack {
+                    HStack(spacing: EditorTheme.space4) {
+                        Button {
+                            showsAIGuide = true
+                        } label: {
+                            Label("Create with AI…", systemImage: "sparkles")
+                                .font(EditorTheme.captionFont)
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(EditorTheme.accentBlue)
+                        .help("Design a component with Claude, Codex or another AI")
                         Button {
                             importComponent()
                         } label: {
@@ -61,6 +72,7 @@ struct OverlayPoolView: View {
                 ScrollView {
                     if activeCategory == .components {
                         VStack(alignment: .leading, spacing: EditorTheme.space3) {
+                            draftsSection
                             componentSectionHeader("Bundled")
                             LazyVGrid(columns: columns, spacing: EditorTheme.space2) {
                                 ForEach(OverlayComponentLibraryItem.bundledVisuals) { item in
@@ -127,6 +139,10 @@ struct OverlayPoolView: View {
             .padding(.vertical, EditorTheme.space3)
         }
         .background(EditorTheme.panelBackground)
+        .sheet(isPresented: $showsAIGuide) {
+            ComponentAIGuideSheet()
+                .environmentObject(componentDrafts)
+        }
         .alert(
             alert?.title ?? "Component",
             isPresented: Binding(
@@ -139,6 +155,69 @@ struct OverlayPoolView: View {
             }
         } message: {
             Text(alert?.message ?? "")
+        }
+    }
+
+    /// Drafts saved by an AI client or by hand, shown live from the drafts
+    /// folder. The section stays out of the way until a draft exists.
+    @ViewBuilder
+    private var draftsSection: some View {
+        if !componentDrafts.drafts.isEmpty {
+            HStack {
+                componentSectionHeader("Drafts")
+                Button {
+                    NSWorkspace.shared.activateFileViewerSelecting([componentDrafts.store.directory])
+                } label: {
+                    Image(systemName: "folder")
+                        .font(EditorTheme.captionFont)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(EditorTheme.textSecondary)
+                .help("Show Drafts Folder")
+            }
+            LazyVGrid(columns: columns, spacing: EditorTheme.space2) {
+                ForEach(componentDrafts.drafts) { draft in
+                    draftTile(draft)
+                }
+            }
+        }
+    }
+
+    private func draftTile(_ draft: ComponentDraft) -> some View {
+        let isValid = draft.reference != nil
+        let errorCount: Int
+        if case let .invalid(diagnostics) = draft.status {
+            errorCount = max(diagnostics.count, 1)
+        } else {
+            errorCount = 0
+        }
+        return OverlayComponentAddTile(
+            displayName: draft.displayName,
+            hint: isValid
+                ? "draft · \(draft.modified.formatted(.relative(presentation: .named)))"
+                : (errorCount == 1 ? "1 error" : "\(errorCount) errors"),
+            systemImage: isValid ? "sparkles" : "exclamationmark.triangle"
+        ) {
+            if isValid {
+                project.addComponentFromDraft(draft)
+            } else if case let .invalid(diagnostics) = draft.status {
+                alert = ComponentAlert(
+                    title: "Draft “\(draft.id)” Is Invalid",
+                    message: diagnostics.map { "\($0.path): \($0.message)" }.joined(separator: "\n")
+                )
+            }
+        }
+        .contextMenu {
+            Button("Show in Finder") {
+                NSWorkspace.shared.activateFileViewerSelecting([draft.url])
+            }
+            Button("Delete Draft", role: .destructive) {
+                do {
+                    try componentDrafts.delete(draft)
+                } catch {
+                    alert = ComponentAlert(title: "Could Not Delete Draft", message: error.localizedDescription)
+                }
+            }
         }
     }
 

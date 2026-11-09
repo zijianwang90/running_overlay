@@ -15,6 +15,10 @@
 		FD596E89332F89187293F2C5 /* RunningOverlayApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B3635999AFC1DB74B38849 /* RunningOverlayApp.swift */; };
 		C36F7A0AC35EBA570ACD3ABD /* RunningOverlayMain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 422C715ABE853E6DD27F309B /* RunningOverlayMain.swift */; };
 		FA54CF995BF15CB92457EDE4 /* RunningOverlayResources.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7025C2B0CBE7516EC095F597 /* RunningOverlayResources.swift */; };
+		8521D4AC068A808E81A6D836 /* ComponentAuthoringFixture.swift in Sources */ = {isa = PBXBuildFile; fileRef = 527BDEA817DEA43517DF3531 /* ComponentAuthoringFixture.swift */; };
+		ED27EA3D95711588A273447C /* ComponentAuthoringMCPServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55C82C40A624D296D8B71801 /* ComponentAuthoringMCPServer.swift */; };
+		51A169FB128826F28015D2B0 /* ComponentDraftLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDA40F61D80A48C18950B9D6 /* ComponentDraftLibrary.swift */; };
+		150CBA580B295DCEF092D136 /* ComponentDraftStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01EDB13BDAC8149D40645039 /* ComponentDraftStore.swift */; };
 		713BB0F8F12E7F4391386930 /* OverlayComponentArchive.swift in Sources */ = {isa = PBXBuildFile; fileRef = E25A6BAF5391B54FD4D22CF4 /* OverlayComponentArchive.swift */; };
 		473627BAF8C748504A83BCD4 /* OverlayComponentData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E26A6F96B943B72B8A07EDB /* OverlayComponentData.swift */; };
 		39CC4742C4B1439127E7331B /* OverlayComponentDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EB1970A744A1A12F23A8ABE /* OverlayComponentDocument.swift */; };
@@ -86,6 +90,7 @@
 		22260E54D7FD981A048E2C99 /* SkiaTextComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2148DA2EF9936CAB55BD1C0C /* SkiaTextComposer.swift */; };
 		26C99177CF6E641EBD271D2F /* SkiaTextEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C6AF568B865D5E46981EA29 /* SkiaTextEffects.swift */; };
 		BEC8055C7BC88AC23222F4FE /* TimelineModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD49E47BFAA48FB08BCA443D /* TimelineModel.swift */; };
+		2EA767B421F038E79975EA0B /* ComponentAIGuideSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFE2442EEE01DED3ADF69B1C /* ComponentAIGuideSheet.swift */; };
 		59E4829412D89B2A30F2E521 /* EditorEscapeKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 488BE84D1125EF935ED1D234 /* EditorEscapeKey.swift */; };
 		141398C0956C8E57CAA32C38 /* EditorTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C50E54B829DF19CC63E48CC /* EditorTheme.swift */; };
 		9F63644D3CB49CFFD73AF74C /* EditorTitlebarDoubleClick.swift in Sources */ = {isa = PBXBuildFile; fileRef = 268FCE0E771FCE6D91CE94DF /* EditorTitlebarDoubleClick.swift */; };
@@ -128,6 +133,14 @@
 		071FD18C31D70A7F8A09EF0B /* WeatherFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA38A65F091D5D6DCED7E4F1 /* WeatherFetcher.swift */; };
 		84CA11470A017464CE6A6CBE /* skia_bridge.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 135EDC9501582EC993BA0DCC /* skia_bridge.cpp */; };
 		A1DCA802AF2A72AFE715CE80 /* skia_gpu.mm in Sources */ = {isa = PBXBuildFile; fileRef = 81931A34584D763F45E6F30D /* skia_gpu.mm */; };
+		2962287485CCB9469B1F8670 /* authoring-example-hr-pill.json in Resources */ = {isa = PBXBuildFile; fileRef = 382F357E23CABC7C83F95037 /* authoring-example-hr-pill.json */; };
+		CDAA5DB6B6DB2851989F0D82 /* authoring-example-lap-splits.json in Resources */ = {isa = PBXBuildFile; fileRef = E21935643892929A48239651 /* authoring-example-lap-splits.json */; };
+		2B4EC29C64F292946CB7392C /* authoring-example-metric-card.json in Resources */ = {isa = PBXBuildFile; fileRef = AA475AAE49F7C4DEA7DFF60E /* authoring-example-metric-card.json */; };
+		B8141EC80FDB1042A45491C3 /* authoring-example-weather-card.json in Resources */ = {isa = PBXBuildFile; fileRef = D9028F1E41D7576CE4FE26F1 /* authoring-example-weather-card.json */; };
+		22C2F22FC61308ECDD9FBE69 /* authoring-guide.md in Resources */ = {isa = PBXBuildFile; fileRef = 0BF21F871571E34B9A7B5DC5 /* authoring-guide.md */; };
+		F6ABFAFF43DC2F0EE992868E /* authoring-schema.json in Resources */ = {isa = PBXBuildFile; fileRef = 5FE8FA85A525429716A14A8A /* authoring-schema.json */; };
+		50B5D72A855FB2A7271EC4F3 /* authoring-skill.md in Resources */ = {isa = PBXBuildFile; fileRef = 003C8AE20AE63700A399DEF5 /* authoring-skill.md */; };
+		9A2F01688D2B8CC05D1E534A /* authoring-spec.md in Resources */ = {isa = PBXBuildFile; fileRef = 79FF0BEC9618002BD7BD7F24 /* authoring-spec.md */; };
 		6CDFD229F4B0BBAF8DFCFCFD /* decor-icon.json in Resources */ = {isa = PBXBuildFile; fileRef = 811EC2AACF11FE061EFAA95B /* decor-icon.json */; };
 		BE4596E15B2DF82744A340AE /* decor-shape.json in Resources */ = {isa = PBXBuildFile; fileRef = 58C18E7BF084620FC6ECCF3B /* decor-shape.json */; };
 		6292EBB621794BED0DDCE65C /* decor-text.json in Resources */ = {isa = PBXBuildFile; fileRef = D5377ACCCDACFF48F0101D18 /* decor-text.json */; };
@@ -184,6 +197,10 @@
 		E4B3635999AFC1DB74B38849 /* RunningOverlayApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/RunningOverlayApp.swift"; sourceTree = SOURCE_ROOT; };
 		422C715ABE853E6DD27F309B /* RunningOverlayMain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/RunningOverlayMain.swift"; sourceTree = SOURCE_ROOT; };
 		7025C2B0CBE7516EC095F597 /* RunningOverlayResources.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/App/RunningOverlayResources.swift"; sourceTree = SOURCE_ROOT; };
+		527BDEA817DEA43517DF3531 /* ComponentAuthoringFixture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Authoring/ComponentAuthoringFixture.swift"; sourceTree = SOURCE_ROOT; };
+		55C82C40A624D296D8B71801 /* ComponentAuthoringMCPServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Authoring/ComponentAuthoringMCPServer.swift"; sourceTree = SOURCE_ROOT; };
+		DDA40F61D80A48C18950B9D6 /* ComponentDraftLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Authoring/ComponentDraftLibrary.swift"; sourceTree = SOURCE_ROOT; };
+		01EDB13BDAC8149D40645039 /* ComponentDraftStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Authoring/ComponentDraftStore.swift"; sourceTree = SOURCE_ROOT; };
 		E25A6BAF5391B54FD4D22CF4 /* OverlayComponentArchive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Components/OverlayComponentArchive.swift"; sourceTree = SOURCE_ROOT; };
 		6E26A6F96B943B72B8A07EDB /* OverlayComponentData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Components/OverlayComponentData.swift"; sourceTree = SOURCE_ROOT; };
 		7EB1970A744A1A12F23A8ABE /* OverlayComponentDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Components/OverlayComponentDocument.swift"; sourceTree = SOURCE_ROOT; };
@@ -255,6 +272,7 @@
 		2148DA2EF9936CAB55BD1C0C /* SkiaTextComposer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Shared/SkiaTextComposer.swift"; sourceTree = SOURCE_ROOT; };
 		3C6AF568B865D5E46981EA29 /* SkiaTextEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Render/Skia/Shared/SkiaTextEffects.swift"; sourceTree = SOURCE_ROOT; };
 		FD49E47BFAA48FB08BCA443D /* TimelineModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Timeline/TimelineModel.swift"; sourceTree = SOURCE_ROOT; };
+		FFE2442EEE01DED3ADF69B1C /* ComponentAIGuideSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/ComponentAIGuideSheet.swift"; sourceTree = SOURCE_ROOT; };
 		488BE84D1125EF935ED1D234 /* EditorEscapeKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/EditorEscapeKey.swift"; sourceTree = SOURCE_ROOT; };
 		2C50E54B829DF19CC63E48CC /* EditorTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/EditorTheme.swift"; sourceTree = SOURCE_ROOT; };
 		268FCE0E771FCE6D91CE94DF /* EditorTitlebarDoubleClick.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/UI/EditorTitlebarDoubleClick.swift"; sourceTree = SOURCE_ROOT; };
@@ -297,6 +315,14 @@
 		CA38A65F091D5D6DCED7E4F1 /* WeatherFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Sources/RunningOverlay/Weather/WeatherFetcher.swift"; sourceTree = SOURCE_ROOT; };
 		135EDC9501582EC993BA0DCC /* skia_bridge.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "Sources/CSkiaBridge/skia_bridge.cpp"; sourceTree = SOURCE_ROOT; };
 		81931A34584D763F45E6F30D /* skia_gpu.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = "Sources/CSkiaBridge/skia_gpu.mm"; sourceTree = SOURCE_ROOT; };
+		382F357E23CABC7C83F95037 /* authoring-example-hr-pill.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Authoring/authoring-example-hr-pill.json"; sourceTree = SOURCE_ROOT; };
+		E21935643892929A48239651 /* authoring-example-lap-splits.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Authoring/authoring-example-lap-splits.json"; sourceTree = SOURCE_ROOT; };
+		AA475AAE49F7C4DEA7DFF60E /* authoring-example-metric-card.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Authoring/authoring-example-metric-card.json"; sourceTree = SOURCE_ROOT; };
+		D9028F1E41D7576CE4FE26F1 /* authoring-example-weather-card.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Authoring/authoring-example-weather-card.json"; sourceTree = SOURCE_ROOT; };
+		0BF21F871571E34B9A7B5DC5 /* authoring-guide.md */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Sources/RunningOverlay/Resources/Authoring/authoring-guide.md"; sourceTree = SOURCE_ROOT; };
+		5FE8FA85A525429716A14A8A /* authoring-schema.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Authoring/authoring-schema.json"; sourceTree = SOURCE_ROOT; };
+		003C8AE20AE63700A399DEF5 /* authoring-skill.md */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Sources/RunningOverlay/Resources/Authoring/authoring-skill.md"; sourceTree = SOURCE_ROOT; };
+		79FF0BEC9618002BD7BD7F24 /* authoring-spec.md */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Sources/RunningOverlay/Resources/Authoring/authoring-spec.md"; sourceTree = SOURCE_ROOT; };
 		811EC2AACF11FE061EFAA95B /* decor-icon.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Components/decor-icon.json"; sourceTree = SOURCE_ROOT; };
 		58C18E7BF084620FC6ECCF3B /* decor-shape.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Components/decor-shape.json"; sourceTree = SOURCE_ROOT; };
 		D5377ACCCDACFF48F0101D18 /* decor-text.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "Sources/RunningOverlay/Resources/Components/decor-text.json"; sourceTree = SOURCE_ROOT; };
@@ -355,6 +381,10 @@
 			E4B3635999AFC1DB74B38849 /* RunningOverlayApp.swift */,
 			422C715ABE853E6DD27F309B /* RunningOverlayMain.swift */,
 			7025C2B0CBE7516EC095F597 /* RunningOverlayResources.swift */,
+			527BDEA817DEA43517DF3531 /* ComponentAuthoringFixture.swift */,
+			55C82C40A624D296D8B71801 /* ComponentAuthoringMCPServer.swift */,
+			DDA40F61D80A48C18950B9D6 /* ComponentDraftLibrary.swift */,
+			01EDB13BDAC8149D40645039 /* ComponentDraftStore.swift */,
 			E25A6BAF5391B54FD4D22CF4 /* OverlayComponentArchive.swift */,
 			6E26A6F96B943B72B8A07EDB /* OverlayComponentData.swift */,
 			7EB1970A744A1A12F23A8ABE /* OverlayComponentDocument.swift */,
@@ -426,6 +456,7 @@
 			2148DA2EF9936CAB55BD1C0C /* SkiaTextComposer.swift */,
 			3C6AF568B865D5E46981EA29 /* SkiaTextEffects.swift */,
 			FD49E47BFAA48FB08BCA443D /* TimelineModel.swift */,
+			FFE2442EEE01DED3ADF69B1C /* ComponentAIGuideSheet.swift */,
 			488BE84D1125EF935ED1D234 /* EditorEscapeKey.swift */,
 			2C50E54B829DF19CC63E48CC /* EditorTheme.swift */,
 			268FCE0E771FCE6D91CE94DF /* EditorTitlebarDoubleClick.swift */,
@@ -470,6 +501,14 @@
 			81931A34584D763F45E6F30D /* skia_gpu.mm */,
 		); name = Sources; sourceTree = "<group>"; };
 		50F0FC3AFD5FBC981B5A0DDD /* Resources */ = {isa = PBXGroup; children = (
+			382F357E23CABC7C83F95037 /* authoring-example-hr-pill.json */,
+			E21935643892929A48239651 /* authoring-example-lap-splits.json */,
+			AA475AAE49F7C4DEA7DFF60E /* authoring-example-metric-card.json */,
+			D9028F1E41D7576CE4FE26F1 /* authoring-example-weather-card.json */,
+			0BF21F871571E34B9A7B5DC5 /* authoring-guide.md */,
+			5FE8FA85A525429716A14A8A /* authoring-schema.json */,
+			003C8AE20AE63700A399DEF5 /* authoring-skill.md */,
+			79FF0BEC9618002BD7BD7F24 /* authoring-spec.md */,
 			811EC2AACF11FE061EFAA95B /* decor-icon.json */,
 			58C18E7BF084620FC6ECCF3B /* decor-shape.json */,
 			D5377ACCCDACFF48F0101D18 /* decor-text.json */,
@@ -522,6 +561,14 @@
 
 /* Begin PBXResourcesBuildPhase section */
 		86F6FE2DD6E869C1842A14B3 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (
+			2962287485CCB9469B1F8670 /* authoring-example-hr-pill.json in Resources */,
+			CDAA5DB6B6DB2851989F0D82 /* authoring-example-lap-splits.json in Resources */,
+			2B4EC29C64F292946CB7392C /* authoring-example-metric-card.json in Resources */,
+			B8141EC80FDB1042A45491C3 /* authoring-example-weather-card.json in Resources */,
+			22C2F22FC61308ECDD9FBE69 /* authoring-guide.md in Resources */,
+			F6ABFAFF43DC2F0EE992868E /* authoring-schema.json in Resources */,
+			50B5D72A855FB2A7271EC4F3 /* authoring-skill.md in Resources */,
+			9A2F01688D2B8CC05D1E534A /* authoring-spec.md in Resources */,
 			6CDFD229F4B0BBAF8DFCFCFD /* decor-icon.json in Resources */,
 			BE4596E15B2DF82744A340AE /* decor-shape.json in Resources */,
 			6292EBB621794BED0DDCE65C /* decor-text.json in Resources */,
@@ -573,6 +620,10 @@
 			FD596E89332F89187293F2C5 /* RunningOverlayApp.swift in Sources */,
 			C36F7A0AC35EBA570ACD3ABD /* RunningOverlayMain.swift in Sources */,
 			FA54CF995BF15CB92457EDE4 /* RunningOverlayResources.swift in Sources */,
+			8521D4AC068A808E81A6D836 /* ComponentAuthoringFixture.swift in Sources */,
+			ED27EA3D95711588A273447C /* ComponentAuthoringMCPServer.swift in Sources */,
+			51A169FB128826F28015D2B0 /* ComponentDraftLibrary.swift in Sources */,
+			150CBA580B295DCEF092D136 /* ComponentDraftStore.swift in Sources */,
 			713BB0F8F12E7F4391386930 /* OverlayComponentArchive.swift in Sources */,
 			473627BAF8C748504A83BCD4 /* OverlayComponentData.swift in Sources */,
 			39CC4742C4B1439127E7331B /* OverlayComponentDocument.swift in Sources */,
@@ -644,6 +695,7 @@
 			22260E54D7FD981A048E2C99 /* SkiaTextComposer.swift in Sources */,
 			26C99177CF6E641EBD271D2F /* SkiaTextEffects.swift in Sources */,
 			BEC8055C7BC88AC23222F4FE /* TimelineModel.swift in Sources */,
+			2EA767B421F038E79975EA0B /* ComponentAIGuideSheet.swift in Sources */,
 			59E4829412D89B2A30F2E521 /* EditorEscapeKey.swift in Sources */,
 			141398C0956C8E57CAA32C38 /* EditorTheme.swift in Sources */,
 			9F63644D3CB49CFFD73AF74C /* EditorTitlebarDoubleClick.swift in Sources */,

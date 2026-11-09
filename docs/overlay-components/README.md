@@ -9,7 +9,9 @@ The Overlay Pool lists bundled components and imports `.rocomponent` packages
 (folders or ZIP archives) or component JSON files, manages project definitions
 under **My Components** (add, export, remove), the Inspector generates controls
 from `params`, and `--component-validate` / `--component-render` cover headless
-authoring. See
+authoring. **Create with AI…** connects Claude Code, Codex or Claude Desktop
+to `RunningOverlay --mcp`, whose drafts appear live under **Drafts** in the
+Overlay Pool ([ADR 0016](../adr/0016-ai-component-authoring-mcp.md)). See
 [ADR 0013](../adr/0013-declarative-overlay-components.md) for the decision and
 gates.
 
