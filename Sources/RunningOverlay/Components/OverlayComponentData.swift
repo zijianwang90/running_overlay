@@ -339,7 +339,10 @@ struct OverlayComponentActivityData: OverlayComponentDataProviding {
 
     private static func secondsSinceMidnight(_ date: Date) -> Double {
         let components = Calendar.current.dateComponents([.hour, .minute, .second], from: date)
-        return Double((components.hour ?? 0) * 3600 + (components.minute ?? 0) * 60 + (components.second ?? 0))
+        let hours = components.hour ?? 0
+        let minutes = components.minute ?? 0
+        let seconds = components.second ?? 0
+        return Double(hours * 3600 + minutes * 60 + seconds)
     }
 
     private static func dateString(_ date: Date) -> String {
