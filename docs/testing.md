@@ -163,11 +163,20 @@ contain local source paths.
 
 ## Native Skia Build Coverage
 
-The `skia-product` CI job supplements SDK-free checks with the pinned m159
-Graphite SDK. It runs the full SwiftPM test suite, visual regression, an ad-hoc signed
-native Xcode Release archive and an ad-hoc SwiftPM bundle. Both packaging paths
+The `skia-product` CI check aggregates parallel jobs using the pinned m159
+Graphite SDK. The built-in template suite runs separately from the rest of the
+SwiftPM tests; together they run the full suite. Visual regression, an ad-hoc signed
+native Xcode Release archive and an ad-hoc SwiftPM bundle are included in the check.
+Both packaging paths
 validate the SDK manifest and bundled dependency paths/notices. SDK build caches
 are scoped to source recipe, builder, architecture and Xcode version.
+When checks are selected, the aggregate fails if any job fails, is cancelled,
+or is skipped; explicitly out-of-scope PRs report an intentional skip instead.
+See the [merge guidance](contributing.md#skia-ci-and-merge-guidance) for scope,
+manual dispatch and when to wait. Parallel macOS jobs reduce elapsed time but
+use more runner minutes and depend on runner availability. `scripts/check.sh`
+forwards optional arguments to `swift test`;
+without arguments it still runs the complete suite.
 
 For local archive preflight, use the commands in the [release guide](development/release.md).
 Check `validate-packaged-skia.py` against the archived app as well as the SwiftPM

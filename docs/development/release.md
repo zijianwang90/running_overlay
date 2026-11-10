@@ -180,7 +180,7 @@ preflight only and cannot establish distribution-signing acceptance.
 
 Both packaging paths validate the source commit, recipe/builder identity and
 binary digest from the SDK manifest, and include the SDK's Skia/skcms license
-texts. The CI `skia-product` job builds/caches the pinned SDK on arm64, runs the
+texts. The CI `skia-product` check aggregates parallel jobs that build/cache the pinned SDK on arm64, run the
 Graphite tests and creates an ad-hoc signed native archive plus an ad-hoc SwiftPM
 bundle. It also smoke-exports all three built-in templates from a disposable
 sandboxed archive copy; the harness grants only its temporary output directory.

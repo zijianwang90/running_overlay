@@ -5,16 +5,20 @@ on:
     branches: [main]
   push:
     branches: [main]
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build-and-test:
+    if: github.event_name != 'schedule'
     runs-on: macos-15
     timeout-minutes: 30
     steps:
@@ -32,16 +36,62 @@ jobs:
       - name: Publication audit
         run: ./scripts/publication-audit.sh
 
-  skia-product:
+  skia-scope:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.scope.outputs.run }}
+    steps:
+      - uses: actions/checkout@v7
+        if: github.event_name == 'pull_request'
+        with:
+          fetch-depth: 0
+      - name: Select Skia checks
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          if [ "$EVENT_NAME" = pull_request ]; then
+            decision=$(python3 scripts/skia-ci-scope.py "$BASE_SHA" "$HEAD_SHA")
+          else
+            decision=true
+          fi
+          echo "run=$decision" >> "$GITHUB_OUTPUT"
+          echo "Run Skia checks: $decision"
+
+  skia-tests:
+    needs: skia-scope
+    if: needs.skia-scope.outputs.run == 'true'
     runs-on: macos-15
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-skia
       - name: Skia build and tests
-        run: caffeinate -d -u ./scripts/check.sh
+        run: caffeinate -d -u ./scripts/check.sh --skip SkiaBuiltInTemplateTests
       - name: Skia visual regression
         run: ./scripts/visual-test.sh
+
+  skia-templates:
+    needs: skia-scope
+    if: needs.skia-scope.outputs.run == 'true'
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-skia
+      - name: Built-in template tests
+        run: caffeinate -d -u ./scripts/test.sh SkiaBuiltInTemplateTests
+
+  skia-native-archive:
+    needs: skia-scope
+    if: needs.skia-scope.outputs.run == 'true'
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-skia
       - name: Native Skia archive
         run: |
           xcodebuild -project RunningOverlay.xcodeproj -scheme RunningOverlay -configuration Release -archivePath "$RUNNER_TEMP/RunningOverlay.xcarchive" SKIA_DIR="$SKIA_DIR" ARCHS=arm64 CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM= ENABLE_HARDENED_RUNTIME=NO archive
@@ -49,5 +99,40 @@ jobs:
           codesign --verify --deep --strict "$RUNNER_TEMP/RunningOverlay.xcarchive/Products/Applications/RunningOverlay.app"
       - name: Sandboxed archive template exports
         run: python3 scripts/smoke-skia-app.py "$RUNNER_TEMP/RunningOverlay.xcarchive/Products/Applications/RunningOverlay.app"
+
+  skia-swiftpm-bundle:
+    needs: skia-scope
+    if: needs.skia-scope.outputs.run == 'true'
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-skia
       - name: SwiftPM Skia bundle
         run: ./scripts/build-appstore-app.sh
+
+  # Report intentional skips separately from failures and unexpected skips.
+  skia-product:
+    if: always()
+    needs: [skia-scope, skia-tests, skia-templates, skia-native-archive, skia-swiftpm-bundle]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all Skia checks
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+
+          results = json.loads(os.environ["RESULTS"])
+          for name, job in results.items():
+              print(f"{name}: {job['result']}")
+          scope = results.pop("skia-scope")
+          decision = scope.get("outputs", {}).get("run")
+          if scope["result"] != "success" or decision not in ("true", "false"):
+              sys.exit(1)
+          expected = "success" if decision == "true" else "skipped"
+          sys.exit(any(job["result"] != expected for job in results.values()))
+          PY
