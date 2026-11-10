@@ -5,15 +5,13 @@ import Foundation
 
 /// Dispatch seam for the interval-family Skia ports.
 ///
-/// The lead can route `OverlayElementType.intervalHUDBar`, `.intervalTimeline`,
-/// `.intervalCountdown`, `.intervalWorkSummary`, and `.zoneEdgeBar` here without
-/// editing the shared renderer files owned by other groups.
+/// The lead can route `OverlayElementType.intervalHUDBar`, `.intervalTimeline`
+/// and `.zoneEdgeBar` here without editing the shared renderer files owned by
+/// other groups.
 enum SkiaIntervalModules {
     static let supportedTypes: Set<OverlayElementType> = [
         .intervalHUDBar,
         .intervalTimeline,
-        .intervalCountdown,
-        .intervalWorkSummary,
         .zoneEdgeBar
     ]
 
@@ -47,28 +45,6 @@ enum SkiaIntervalModules {
                 in: renderContext
             )
             IntervalTimelineSkiaRenderer.draw(
-                element,
-                layout: layout,
-                context: skiaContext,
-                maskCache: maskCache
-            )
-        case .intervalCountdown:
-            let layout = OverlayRenderModel.intervalCountdownLayout(
-                for: element,
-                in: renderContext
-            )
-            IntervalCountdownSkiaRenderer.draw(
-                element,
-                layout: layout,
-                context: skiaContext,
-                maskCache: maskCache
-            )
-        case .intervalWorkSummary:
-            let layout = OverlayRenderModel.intervalWorkSummaryLayout(
-                for: element,
-                in: renderContext
-            )
-            IntervalWorkSummarySkiaRenderer.draw(
                 element,
                 layout: layout,
                 context: skiaContext,

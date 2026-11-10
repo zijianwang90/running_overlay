@@ -23,255 +23,6 @@ struct OverlayRenderModelTests {
         #expect(white(24, 30) > white(8, 30))
     }
 
-    @Test func scalesTextLayoutFromReferenceCanvas() {
-        let element = OverlayElement(type: .heartRate, position: CGPoint(x: 0.25, y: 0.75), scale: 1, style: .default)
-        let context = OverlayRenderContext(
-            canvasSize: CGSize(width: 1920, height: 1080),
-            activity: sampleActivity(),
-            elapsedTime: 5
-        )
-
-        let layout = OverlayRenderModel.textLayout(for: element, in: context)
-
-        #expect(layout.value == "110 bpm")
-        #expect(layout.fontSize == 42)
-        #expect(layout.horizontalPadding == 15)
-        #expect(layout.verticalPadding == 9)
-        #expect(layout.iconSystemName == "heart")
-    }
-
-    @Test func customNumericTextLayoutUsesSelectedFieldComponents() {
-        var style = OverlayStyle.default
-        style.customNumericField = .distance
-        style.customNumericFormat = .number
-        style.customNumericPrecision = 1
-        style.customUnit = "m"
-        let element = OverlayElement(type: .customNumeric, position: CGPoint(x: 0.25, y: 0.75), scale: 1, style: style)
-        let context = OverlayRenderContext(
-            canvasSize: OverlayRenderContext.referenceCanvasSize,
-            activity: sampleActivity(),
-            elapsedTime: 5
-        )
-
-        let layout = OverlayRenderModel.textLayout(for: element, in: context)
-
-        #expect(layout.value == "50.0 m")
-        #expect(layout.components.label == "Distance")
-        #expect(layout.components.unit == "m")
-        #expect(layout.preset == .minimal)
-    }
-
-    @Test func numericOverlayMinimumSizeScalesWithCanvasAndElement() {
-        var style = OverlayStyle.default
-        style.numericMinWidth = 120
-        style.numericMinHeight = 44
-        let element = OverlayElement(type: .heartRate, position: CGPoint(x: 0.5, y: 0.5), scale: 1.25, style: style)
-        let context = OverlayRenderContext(
-            canvasSize: CGSize(width: 1920, height: 1080),
-            activity: sampleActivity(),
-            elapsedTime: 5
-        )
-
-        let layout = OverlayRenderModel.textLayout(for: element, in: context)
-
-        #expect(layout.minimumWidth == 225)
-        #expect(layout.minimumHeight == 82.5)
-    }
-
-    @Test func numericOverlayForcesMinimalStyleAndDisablesDivider() {
-        var style = OverlayStyle.default
-        style.textPreset = .splitLabel
-        style.dividerEnabled = true
-        style.dividerThickness = 4
-        let element = OverlayElement(type: .pace, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
-        let context = OverlayRenderContext(
-            canvasSize: OverlayRenderContext.referenceCanvasSize,
-            activity: sampleActivity(),
-            elapsedTime: 5
-        )
-
-        let layout = OverlayRenderModel.textLayout(for: element, in: context)
-
-        #expect(layout.preset == .minimal)
-        #expect(layout.dividerEnabled == false)
-    }
-
-    @Test func numericOverlayIconLayoutScalesFromStyle() {
-        var style = OverlayStyle.default
-        style.iconEnabled = true
-        style.iconSystemName = "bolt"
-        style.iconPosition = .top
-        style.iconTextAlignment = .trailing
-        style.iconSize = 24
-        style.iconSpacing = 6
-        style.iconColor = .yellow
-        style.iconOpacity = 0.65
-        let element = OverlayElement(type: .power, position: CGPoint(x: 0.5, y: 0.5), scale: 1.25, style: style)
-        let context = OverlayRenderContext(
-            canvasSize: CGSize(width: 1920, height: 1080),
-            activity: sampleActivity(),
-            elapsedTime: 5
-        )
-
-        let layout = OverlayRenderModel.textLayout(for: element, in: context)
-
-        #expect(layout.iconEnabled)
-        #expect(layout.iconSystemName == "bolt")
-        #expect(layout.iconPosition == .top)
-        #expect(layout.iconTextAlignment == .trailing)
-        #expect(layout.iconSize == 45)
-        #expect(layout.iconSpacing == 11.25)
-        #expect(layout.iconColor == .yellow)
-        #expect(layout.iconOpacity == 0.65)
-    }
-
-    @MainActor
-    @Test func heartRateIconCanFollowZoneColorIndependentlyFromText() {
-        let prefs = HeartRateZonePreferences.shared
-        let oldCount = prefs.zoneCount
-        let oldZones = prefs.zones
-        let oldThresholdHR = prefs.thresholdHR
-        let oldThresholdPace = prefs.thresholdPaceSecPerKm
-        defer {
-            prefs.zoneCount = oldCount
-            prefs.zones = oldZones
-            prefs.thresholdHR = oldThresholdHR
-            prefs.thresholdPaceSecPerKm = oldThresholdPace
-        }
-
-        prefs.zoneCount = .five
-        prefs.zones = [
-            HeartRateZone(minHR: 90, maxHR: 105),
-            HeartRateZone(minHR: 106, maxHR: 115),
-            HeartRateZone(minHR: 116, maxHR: 125),
-            HeartRateZone(minHR: 126, maxHR: 135),
-            HeartRateZone(minHR: 136, maxHR: 160),
-            HeartRateZone()
-        ]
-
-        var style = OverlayStyle.default
-        style.iconColorsFollowHeartRateZones = true
-        style.valueColorsFollowHeartRateZones = false
-        style.labelColorsFollowHeartRateZones = false
-        style.unitColorsFollowHeartRateZones = false
-        style.iconColor = .white
-        let element = OverlayElement(type: .heartRate, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
-        let context = OverlayRenderContext(
-            canvasSize: OverlayRenderContext.referenceCanvasSize,
-            activity: sampleActivity(),
-            elapsedTime: 5
-        )
-
-        let layout = OverlayRenderModel.textLayout(for: element, in: context)
-
-        #expect(layout.dynamicHeartRateZoneColor == HRZonePalette.overlayColor(forIndex: 1))
-        #expect(layout.iconColorsFollowHeartRateZones)
-        #expect(layout.valueColorsFollowHeartRateZones == false)
-        #expect(layout.labelColorsFollowHeartRateZones == false)
-        #expect(layout.unitColorsFollowHeartRateZones == false)
-        #expect(layout.iconColor == .white)
-    }
-
-    @MainActor
-    @Test func heartRateZoneTextRolesCanResolveZoneColorIndependently() {
-        let prefs = HeartRateZonePreferences.shared
-        let oldCount = prefs.zoneCount
-        let oldZones = prefs.zones
-        let oldThresholdHR = prefs.thresholdHR
-        let oldThresholdPace = prefs.thresholdPaceSecPerKm
-        defer {
-            prefs.zoneCount = oldCount
-            prefs.zones = oldZones
-            prefs.thresholdHR = oldThresholdHR
-            prefs.thresholdPaceSecPerKm = oldThresholdPace
-        }
-
-        prefs.zoneCount = .five
-        prefs.zones = [
-            HeartRateZone(minHR: 90, maxHR: 105),
-            HeartRateZone(minHR: 106, maxHR: 115),
-            HeartRateZone(minHR: 116, maxHR: 125),
-            HeartRateZone(minHR: 126, maxHR: 135),
-            HeartRateZone(minHR: 136, maxHR: 160),
-            HeartRateZone()
-        ]
-
-        var style = OverlayStyle.default
-        style.iconColorsFollowHeartRateZones = true
-        style.valueColorsFollowHeartRateZones = true
-        style.labelColorsFollowHeartRateZones = false
-        style.unitColorsFollowHeartRateZones = true
-        let element = OverlayElement(type: .heartRateZone, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
-        let context = OverlayRenderContext(
-            canvasSize: OverlayRenderContext.referenceCanvasSize,
-            activity: sampleActivity(),
-            elapsedTime: 5
-        )
-
-        let layout = OverlayRenderModel.textLayout(for: element, in: context)
-
-        #expect(layout.dynamicHeartRateZoneColor == HRZonePalette.overlayColor(forIndex: 1))
-        #expect(layout.valueColorsFollowHeartRateZones)
-        #expect(layout.labelColorsFollowHeartRateZones == false)
-        #expect(layout.unitColorsFollowHeartRateZones)
-    }
-
-    @MainActor
-    @Test func heartRateIconZoneColorFallsBackWhenHeartRateUnavailable() {
-        let prefs = HeartRateZonePreferences.shared
-        let oldCount = prefs.zoneCount
-        let oldZones = prefs.zones
-        let oldThresholdHR = prefs.thresholdHR
-        let oldThresholdPace = prefs.thresholdPaceSecPerKm
-        defer {
-            prefs.zoneCount = oldCount
-            prefs.zones = oldZones
-            prefs.thresholdHR = oldThresholdHR
-            prefs.thresholdPaceSecPerKm = oldThresholdPace
-        }
-
-        prefs.zoneCount = .five
-        prefs.zones = [
-            HeartRateZone(minHR: 90, maxHR: 105),
-            HeartRateZone(minHR: 106, maxHR: 115),
-            HeartRateZone(minHR: 116, maxHR: 125),
-            HeartRateZone(minHR: 126, maxHR: 135),
-            HeartRateZone(minHR: 136, maxHR: 160),
-            HeartRateZone()
-        ]
-
-        var style = OverlayStyle.default
-        style.iconColorsFollowHeartRateZones = true
-        let element = OverlayElement(type: .heartRate, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
-        let context = OverlayRenderContext(
-            canvasSize: OverlayRenderContext.referenceCanvasSize,
-            activity: ActivityTimeline(
-                startDate: Date(timeIntervalSince1970: 1_000),
-                duration: 10,
-                distanceMeters: 100,
-                records: [
-                    ActivityRecord(
-                        elapsedTime: 0,
-                        timestamp: Date(timeIntervalSince1970: 1_000),
-                        distanceMeters: 0,
-                        heartRate: nil,
-                        paceSecondsPerKilometer: nil,
-                        elevationMeters: 100,
-                        cadence: nil,
-                        powerWatts: nil,
-                        calories: nil
-                    )
-                ],
-                laps: []
-            ),
-            elapsedTime: 0
-        )
-
-        let layout = OverlayRenderModel.textLayout(for: element, in: context)
-
-        #expect(layout.dynamicHeartRateZoneColor == nil)
-    }
-
     @Test func distanceTimelineLayoutUsesSharedProgressAndGeometry() {
         let element = OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.25), scale: 1, style: .default)
         let context = OverlayRenderContext(
@@ -698,35 +449,9 @@ struct OverlayRenderModelTests {
         }
     }
 
-    @Test func runningGaugeLayoutCarriesCoreMetricsAndProgress() {
-        let element = OverlayElement(type: .runningGauge, position: CGPoint(x: 0.4, y: 0.6), scale: 1, style: .default)
-        let context = OverlayRenderContext(
-            canvasSize: OverlayRenderContext.referenceCanvasSize,
-            activity: sampleActivity(),
-            elapsedTime: 5
-        )
-
-        let layout = OverlayRenderModel.runningGaugeLayout(for: element, in: context)
-
-        // Default style preset is `.roadRun` whose layout preset is
-        // `.topTwoMiddleBottom`. Verify the canonical four regions land in
-        // the right slots with expected metric values bound.
-        let regions = Dictionary(uniqueKeysWithValues: layout.regions.map { ($0.config.region, $0) })
-        #expect(regions[.top]?.components.value == "0.05")
-        #expect(regions[.middleLeft]?.components.value == "--'--\"")
-        #expect(regions[.middleRight]?.components.value == "00:00:05")
-        #expect(regions[.bottom]?.components.value == "110")
-        #expect(layout.progress == 0.5)
-        #expect(layout.rect.width == 300)
-        #expect(layout.rect.midX == 512)
-        #expect(layout.rect.midY == 432)
-        #expect(layout.style.layoutPreset == .topTwoMiddleBottom)
-        #expect(layout.style.stylePreset == .roadRun)
-    }
-
     @Test func weatherWidgetLayoutHonorsManualOpenMeteoAndFITTemperatureOverride() {
         var style = OverlayStyle.default
-        style.weatherWidget = .preset(.simpleCard)
+        style.weatherWidget = .simpleCard
         style.weatherWidget.dataSource = .manual
         style.weatherWidget.temperatureUnit = .celsius
         style.weatherWidget.useFITTemperature = true
@@ -791,7 +516,7 @@ struct OverlayRenderModelTests {
 
     @Test func weatherWidgetOpenMeteoWithoutCacheUsesPlaceholders() {
         var style = OverlayStyle.default
-        style.weatherWidget = .preset(.simpleCard)
+        style.weatherWidget = .simpleCard
         style.weatherWidget.dataSource = .openMeteo
         style.weatherWidget.locationText = ""
         style.weatherWidget.cachedWeather = nil
@@ -818,7 +543,7 @@ struct OverlayRenderModelTests {
 
     @Test func weatherWidgetLayoutUsesOverridesAndFahrenheitFormatting() {
         var style = OverlayStyle.default
-        style.weatherWidget = .preset(.dashboardBar)
+        style.weatherWidget = .simpleCard
         style.weatherWidget.dataSource = .manual
         style.weatherWidget.manualTemperatureCelsius = 10
         style.weatherWidget.manualFeelsLike = 5
@@ -1172,154 +897,9 @@ struct OverlayRenderModelTests {
         #expect(lapPace?.unit == "/km")
     }
 
-    @MainActor
-    @Test func intervalCountdownLayoutUsesCurrentLapRemainingTimeAndGroupColor() {
-        var style = OverlayStyle.default
-        style.intervalCountdown.fillColorMode = .followGroupColor
-        let element = OverlayElement(type: .intervalCountdown, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
-        let context = OverlayRenderContext(
-            canvasSize: OverlayRenderContext.referenceCanvasSize,
-            activity: sampleIntervalActivity(),
-            elapsedTime: 40
-        )
-
-        let layout = OverlayRenderModel.intervalCountdownLayout(for: element, in: context)
-
-        #expect(layout.countdownText == "1:00")
-        #expect(layout.phaseText == "WORK")
-        #expect(layout.repText == "1 / 2")
-        #expect(layout.progress == 0.6)
-        #expect(layout.style.resolvedRingDirection == .clockwise)
-        #expect(layout.ringColor == IntervalKindColorPreferences.currentSnapshot().color(for: .active))
-        #expect(layout.textItems.contains { $0.role == .countdown && $0.text == "1:00" })
-    }
-
-    @Test func intervalCountdownCounterclockwiseDirectionFillsElapsedTime() {
-        var style = OverlayStyle.default
-        style.intervalCountdown.ringDirection = .counterclockwise
-        let element = OverlayElement(type: .intervalCountdown, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
-        let context = OverlayRenderContext(
-            canvasSize: OverlayRenderContext.referenceCanvasSize,
-            activity: sampleIntervalActivity(),
-            elapsedTime: 40
-        )
-
-        let layout = OverlayRenderModel.intervalCountdownLayout(for: element, in: context)
-
-        #expect(layout.progress == 0.4)
-        #expect(layout.style.resolvedRingDirection == .counterclockwise)
-    }
-
-    @Test func intervalCountdownCenterValueSupportsTimeAndDistanceDirections() {
-        var style = OverlayStyle.default
-        style.intervalCountdown.centerMetric = .time
-        style.intervalCountdown.centerValueDirection = .elapsed
-        let timeElement = OverlayElement(type: .intervalCountdown, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
-        let context = OverlayRenderContext(
-            canvasSize: OverlayRenderContext.referenceCanvasSize,
-            activity: sampleIntervalActivity(),
-            elapsedTime: 40
-        )
-
-        let elapsedTimeLayout = OverlayRenderModel.intervalCountdownLayout(for: timeElement, in: context)
-
-        #expect(elapsedTimeLayout.countdownText == "0:40")
-        #expect(elapsedTimeLayout.textItems.contains { $0.role == .caption && $0.text == "elapsed" })
-
-        style.intervalCountdown.centerMetric = .distance
-        style.intervalCountdown.centerValueDirection = .elapsed
-        let element = OverlayElement(type: .intervalCountdown, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
-
-        let elapsedLayout = OverlayRenderModel.intervalCountdownLayout(for: element, in: context)
-
-        #expect(elapsedLayout.countdownText == "80 m")
-        #expect(elapsedLayout.textItems.contains { $0.role == .caption && $0.text == "distance" })
-
-        style.intervalCountdown.centerValueDirection = .remaining
-        let remainingElement = OverlayElement(type: .intervalCountdown, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
-        let remainingLayout = OverlayRenderModel.intervalCountdownLayout(for: remainingElement, in: context)
-
-        #expect(remainingLayout.countdownText == "120 m")
-        #expect(remainingLayout.textItems.contains { $0.role == .caption && $0.text == "distance left" })
-    }
-
-    @Test func intervalCountdownCanHideEveryTextRoleExceptCountdown() {
-        var style = OverlayStyle.default
-        style.intervalCountdown.helperText.isVisible = false
-        style.intervalCountdown.phaseText.isVisible = false
-        style.intervalCountdown.repText.isVisible = false
-        style.intervalCountdown.captionText.isVisible = false
-        let element = OverlayElement(type: .intervalCountdown, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
-        let context = OverlayRenderContext(
-            canvasSize: OverlayRenderContext.referenceCanvasSize,
-            activity: sampleIntervalActivity(),
-            elapsedTime: 120
-        )
-
-        let layout = OverlayRenderModel.intervalCountdownLayout(for: element, in: context)
-
-        #expect(layout.textItems.map(\.role) == [.countdown])
-        #expect(layout.countdownText == "0:40")
-        #expect(layout.lapKind == .rest)
-    }
-
-    @MainActor
-    @Test func intervalWorkSummaryShowsCompletedActiveLapInsideDisplayWindow() {
-        var style = OverlayStyle.default
-        style.intervalWorkSummary = .default
-        let element = OverlayElement(type: .intervalWorkSummary, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
-        let context = OverlayRenderContext(
-            canvasSize: OverlayRenderContext.referenceCanvasSize,
-            activity: sampleIntervalActivity(),
-            elapsedTime: 103
-        )
-
-        let layout = OverlayRenderModel.intervalWorkSummaryLayout(for: element, in: context)
-
-        #expect(layout.isVisible)
-        #expect(layout.completedLap?.lapIndex == 0)
-        #expect(layout.primary.value == "1:40")
-        #expect(layout.primary.label == "LAP TIME")
-        #expect(layout.secondaryItems.map(\.label) == ["PACE", "DIST", "HR"])
-        #expect(layout.secondaryItems[0].value == "4:20")
-        #expect(layout.secondaryItems[0].unit == "min/km")
-        #expect(layout.secondaryItems[1].value == "200")
-        #expect(layout.secondaryItems[1].unit == "m")
-        #expect(layout.secondaryItems[2].value == "165")
-        #expect(layout.secondaryItems[2].unit == "bpm")
-        #expect(layout.accentColor == IntervalKindColorPreferences.currentSnapshot().color(for: .active))
-    }
-
-    @Test func intervalWorkSummaryHidesOutsideDisplayWindowAndRespectsSlotVisibility() {
-        var style = OverlayStyle.default
-        style.intervalWorkSummary.displayDuration = 6
-        style.intervalWorkSummary.secondarySlots[0].isVisible = false
-        style.intervalWorkSummary.secondarySlots[1].customLabel = "METERS"
-        style.intervalWorkSummary.secondarySlots[2].labelVisible = false
-        let element = OverlayElement(type: .intervalWorkSummary, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
-        let inside = OverlayRenderContext(
-            canvasSize: OverlayRenderContext.referenceCanvasSize,
-            activity: sampleIntervalActivity(),
-            elapsedTime: 103
-        )
-        let outside = OverlayRenderContext(
-            canvasSize: OverlayRenderContext.referenceCanvasSize,
-            activity: sampleIntervalActivity(),
-            elapsedTime: 107
-        )
-
-        let insideLayout = OverlayRenderModel.intervalWorkSummaryLayout(for: element, in: inside)
-        let outsideLayout = OverlayRenderModel.intervalWorkSummaryLayout(for: element, in: outside)
-
-        #expect(insideLayout.isVisible)
-        #expect(insideLayout.secondaryItems.map(\.label) == ["METERS", "HR"])
-        #expect(insideLayout.secondaryItems.last?.labelVisible == false)
-        #expect(!outsideLayout.isVisible)
-    }
-
     @Test func intervalHUDBarMetricsIncludeAllNumericOverlayTypes() {
-        let intervalMetricTypes = Set(IntervalHUDBarMetric.numericCases.compactMap(\.elementType))
-        let numericTypes = Set(ActivityMetricCatalog.selectableElementTypes)
+        let intervalMetricTypes = Set(IntervalHUDBarMetric.numericCases.compactMap(\.overlayMetric))
+        let numericTypes = Set(ActivityMetricCatalog.selectableMetrics)
 
         #expect(intervalMetricTypes == numericTypes)
         #expect(!IntervalHUDBarMetric.numericCases.contains(.heartRateZone))
@@ -1327,12 +907,12 @@ struct OverlayRenderModelTests {
     }
 
     @Test func metricPickersShareActivityMetricCatalog() {
-        let catalogTypes = ActivityMetricCatalog.selectableElementTypes
+        let catalogTypes = ActivityMetricCatalog.selectableMetrics
 
         #expect(RouteMapStatsMetric.selectableCases.first == .progress)
-        #expect(RouteMapStatsMetric.selectableCases.dropFirst().map(\.elementType) == catalogTypes)
-        #expect(OverlayGaugeMetric.selectableCases.map(\.elementType) == catalogTypes)
-        #expect(IntervalHUDBarMetric.selectableCases.compactMap(\.elementType) == catalogTypes)
+        #expect(RouteMapStatsMetric.selectableCases.dropFirst().map(\.overlayMetric) == catalogTypes)
+        #expect(OverlayGaugeMetric.selectableCases.map(\.overlayMetric) == catalogTypes)
+        #expect(IntervalHUDBarMetric.selectableCases.compactMap(\.overlayMetric) == catalogTypes)
         #expect(SharedStatsBarInspectorUI.metrics == RouteMapStatsMetric.selectableCases)
     }
 
@@ -1965,16 +1545,16 @@ struct OverlayRenderModelTests {
     }
 
     @MainActor
-    @Test func selectedExporterWritesRunningGaugePNG() async throws {
+    @Test func selectedExporterWritesDistanceTimelinePNG() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer {
             try? FileManager.default.removeItem(at: directory)
         }
 
-        let outputURL = directory.appendingPathComponent("running-gauge.png")
+        let outputURL = directory.appendingPathComponent("distance-timeline.png")
         let layout = OverlayLayout(elements: [
-            OverlayElement(type: .runningGauge, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: .default)
+            OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: .default)
         ])
         try await renderFramePNG(
             to: outputURL,
@@ -2047,34 +1627,6 @@ struct OverlayRenderModelTests {
     }
 
     @MainActor
-    @Test func selectedExporterWritesIntervalCountdownPNG() async throws {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        defer {
-            try? FileManager.default.removeItem(at: directory)
-        }
-
-        var style = OverlayStyle.default
-        style.intervalCountdown = .default
-        style.backgroundRadius = 172
-        let outputURL = directory.appendingPathComponent("interval-countdown.png")
-        let layout = OverlayLayout(elements: [
-            OverlayElement(type: .intervalCountdown, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
-        ])
-        try await renderFramePNG(
-            to: outputURL,
-            size: CGSize(width: 640, height: 360),
-            layout: layout,
-            activity: sampleIntervalActivity(),
-            elapsedTime: 40
-        )
-
-        let data = try Data(contentsOf: outputURL)
-        #expect(data.starts(with: [0x89, 0x50, 0x4E, 0x47]))
-        #expect(data.count > 100)
-    }
-
-    @MainActor
     @Test func selectedExporterWritesDistanceTimelineAnimatedSVGSlotPNG() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -2124,7 +1676,10 @@ struct OverlayRenderModelTests {
     @Test func calibrationOverlayLayoutCoversReferencePositions() {
         let layout = ProjectDocument.calibrationOverlayLayout()
 
-        #expect(layout.elements.map(\.type) == [.distanceTimeline, .elevationChart, .heartRate, .distance, .pace, .elapsedTime])
+        #expect(layout.elements.map(\.type) == [.distanceTimeline, .elevationChart, .component, .component, .component, .component])
+        #expect(layout.elements.compactMap { $0.component?.parameters["metricId"] } == [
+            .string("heartRate"), .string("distance"), .string("pace"), .string("elapsedTime")
+        ])
         #expect(layout.elements.allSatisfy { element in
             element.position.x >= 0 && element.position.x <= 1 && element.position.y >= 0 && element.position.y <= 1
         })
@@ -2155,40 +1710,6 @@ struct OverlayRenderModelTests {
             layout: ProjectDocument.calibrationOverlayLayout(),
             activity: ProjectDocument.calibrationActivity(),
             elapsedTime: 1.5
-        )
-
-        let data = try Data(contentsOf: outputURL)
-        #expect(data.starts(with: [0x89, 0x50, 0x4E, 0x47]))
-        #expect(data.count > 100)
-    }
-
-    @MainActor
-    @Test func selectedExporterWritesIntervalWorkSummaryPNG() async throws {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        defer {
-            try? FileManager.default.removeItem(at: directory)
-        }
-
-        var style = OverlayStyle.default
-        style.intervalWorkSummary = .default
-        style.backgroundEnabled = true
-        style.backgroundColor = .black
-        style.backgroundOpacity = 0.76
-        style.backgroundRadius = 24
-        style.backgroundPaddingX = 38
-        style.backgroundPaddingY = 26
-        style.borderEnabled = true
-        let outputURL = directory.appendingPathComponent("interval-work-summary.png")
-        let layout = OverlayLayout(elements: [
-            OverlayElement(type: .intervalWorkSummary, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: style)
-        ])
-        try await renderFramePNG(
-            to: outputURL,
-            size: CGSize(width: 640, height: 360),
-            layout: layout,
-            activity: sampleIntervalActivity(),
-            elapsedTime: 103
         )
 
         let data = try Data(contentsOf: outputURL)

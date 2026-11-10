@@ -6,21 +6,14 @@ import Metal
 import Testing
 @testable import RunningOverlay
 
-/// GPU-path parity for the text and decor modules.
+/// GPU-path parity for the text and decor component renderers.
 ///
-/// `SkiaTextGoldenTests` compares `SkiaTextModule` against the SwiftUI oracle
-/// on a CPU raster context. Preview and export instead draw through
-/// `SkiaEasyRunRenderer`, which may be Metal-backed. These tests render the
-/// same production elements through both hosts and compare the resulting
-/// pixels, so GPU-only differences (glyph masks, image upload, layer
-/// compositing) are visible.
+/// These tests render production elements through both hosts and compare the
+/// resulting pixels, so GPU-only differences (glyph masks, image upload, layer
+/// compositing) are visible. The CPU host is the reference.
 ///
 /// Metal is optional: the suite is disabled when no device exists, and the
 /// test returns without failing when the bridge was built without GPU support.
-///
-/// The export-frame opacity divergence is unchanged and intentionally not
-/// worked around here; see
-/// `docs/superpowers/plans/notes/2026-11-02-skia-text-inventory.md`.
 @Suite(.serialized, .skiaSerialized) struct SkiaTextGPUParityTests {
     /// Metal handles are thread-safe and created once, but `MTLDevice` is only
     /// declared `Sendable` by newer SDKs, so the handles are marked explicitly.
@@ -40,34 +33,44 @@ import Testing
     }()
 
     @Test(.enabled(if: SkiaTextGPUParityTests.metal != nil))
-    func minimalTextMatchesGPU() throws {
-        var style = SkiaTextFixtureFactory.style()
-        style.iconEnabled = true
-        style.iconSystemName = "heart.fill"
-        // The default minimal element exercises glyphs, the rounded
-        // background, label/unit runs, and the icon's BGRA upload.
+    func numericComponentMatchesGPU() throws {
+        // The bundled numeric component exercises glyphs, the rounded
+        // background, label/unit runs, and the SF Symbol's BGRA upload.
         // Fractional anchors exercise subpixel glyph and shape coverage, where
         // Ganesh and the raster backend are most likely to differ.
-        let element = SkiaTextFixtureFactory.element(
+        var element = try #require(OverlayComponentLibrary.numericElement(
+            .heartRate,
             position: CGPoint(x: 0.2137, y: 0.3071),
-            style: style
-        )
+            scale: 1.5,
+            style: SkiaTextFixtureFactory.style()
+        ))
+        element.component?.parameters.merge([
+            "valueFont": .string("Menlo-Bold"),
+            "unitFont": .string("Menlo"),
+            "labelFont": .string("Menlo"),
+            "showLabel": .boolean(true),
+            "iconName": .string("heart.fill")
+        ]) { $1 }
         try compareGPU(
             element: element,
-            label: "minimal-text",
+            label: "numeric-component",
             maxChangedRatio: 0.02,
             maxMeanDelta: 1
         )
     }
 
     @Test(.enabled(if: SkiaTextGPUParityTests.metal != nil))
-    func decorIconMatchesGPU() throws {
-        let base = SkiaTextFixtureFactory.iconElement()
+    func decorIconComponentMatchesGPU() throws {
+        let item = try #require(
+            OverlayComponentLibraryItem.decor.first { $0.id == "studio.decor-icon" }
+        )
+        let reference = try OverlayComponentLibrary.reference(for: item)
         let element = OverlayElement(
-            type: base.type,
+            type: .component,
             position: CGPoint(x: 0.5031, y: 0.4969),
-            scale: base.scale,
-            style: base.style
+            scale: 1,
+            style: SkiaTextFixtureFactory.style(),
+            component: OverlayComponentInstance(reference: reference, parameters: item.parameters)
         )
         try compareGPU(
             element: element,

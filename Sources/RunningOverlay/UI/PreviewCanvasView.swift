@@ -90,6 +90,7 @@ struct PreviewCanvasView: View {
                                 activity: project.activity,
                                 elapsedTime: project.layerDataSampleTime,
                                 canvasSize: projectCanvasPixelSize,
+                                weatherPayload: project.weatherPayloadForComponents,
                                 isPaused: !project.isPlaying
                             )
                             .frame(width: canvasSize.width, height: canvasSize.height)
@@ -295,7 +296,7 @@ struct PreviewCanvasView: View {
                 if dragStartPositions[element.id] == nil {
                     draggingElementID = element.id
                     dragStartPositions[element.id] = element.position
-                    if element.type.isNumericOverlay,
+                    if element.type == .component,
                        let frame = frames[element.id] {
                         dragGrabOffsets[element.id] = CGSize(
                             width: value.startLocation.x - frame.minX,
@@ -306,7 +307,7 @@ struct PreviewCanvasView: View {
                 }
                 guard let start = dragStartPositions[element.id] else { return }
                 let proposedPosition: CGPoint
-                if element.type.isNumericOverlay,
+                if element.type == .component,
                    let grabOffset = dragGrabOffsets[element.id] {
                     proposedPosition = CGPoint(
                         x: (value.location.x - grabOffset.width) / max(canvasSize.width, 1),
@@ -321,7 +322,7 @@ struct PreviewCanvasView: View {
                 // Holding Command bypasses snapping for free placement.
                 let isSnappingEnabled = !NSEvent.modifierFlags.contains(.command)
                 let snapResult: PreviewSnapResult
-                if element.type.isNumericOverlay {
+                if element.type == .component {
                     snapResult = PreviewSnapResolver().snapTopLeading(
                         movingElementID: element.id,
                         proposedPosition: proposedPosition,
@@ -416,7 +417,8 @@ struct PreviewCanvasView: View {
         let context = OverlayRenderContext(
             canvasSize: canvasSize,
             activity: project.activity,
-            elapsedTime: project.layerDataSampleTime
+            elapsedTime: project.layerDataSampleTime,
+            weatherPayload: project.weatherPayloadForComponents
         )
         var frames: [OverlayElement.ID: CGRect] = [:]
         for element in skiaPreviewLayout.elements where element.isVisible {
@@ -461,156 +463,52 @@ enum PreviewElementGeometry {
             return OverlayRenderModel.distanceTimelineLayout(for: element, in: context).rect
         case .elevationChart:
             return OverlayRenderModel.elevationChartLayout(for: element, in: context).rect
-        case .runningGauge:
-            return OverlayRenderModel.runningGaugeLayout(for: element, in: context).rect
         case .intervalHUDBar:
             return OverlayRenderModel.intervalHUDBarLayout(for: element, in: context).rect
         case .intervalTimeline:
             return OverlayRenderModel.intervalTimelineLayout(for: element, in: context).rect
-        case .intervalCountdown:
-            return OverlayRenderModel.intervalCountdownLayout(for: element, in: context).rect
-        case .intervalWorkSummary:
-            return OverlayRenderModel.intervalWorkSummaryLayout(for: element, in: context).rect
         case .zoneEdgeBar:
             return OverlayRenderModel.zoneEdgeBarLayout(for: element, in: context).rect
         case .routeMap:
             return OverlayRenderModel.routeMapLayout(for: element, in: context).rect
         case .weatherWidget:
             return OverlayRenderModel.weatherWidgetLayout(for: element, in: context).rect
-        case .decorSolidColor:
-            let layout = OverlayRenderModel.decorSolidColorLayout(for: element, in: context)
-            return centeredRect(
-                position: element.position,
-                size: layout.size,
-                canvasSize: context.canvasSize
-            )
-        case .decorIcon:
-            let layout = OverlayRenderModel.decorIconLayout(for: element, in: context)
-            return centeredRect(
-                position: element.position,
-                size: layout.size,
-                canvasSize: context.canvasSize
-            )
-        case .decorText:
-            let layout = OverlayRenderModel.decorTextLayout(for: element, in: context)
-            return centeredRect(
-                position: element.position,
-                size: layout.size,
-                canvasSize: context.canvasSize
-            )
-        default:
-            return textFrame(for: element, in: context)
+        case .component:
+            return componentFrame(for: element, in: context)
         }
     }
 
-    /// Numeric and text overlays are top-leading anchored at the normalized
-    /// element position. Mirror the SwiftUI minimal preset's label/unit/icon
-    /// placement (the only numeric preset `OverlayRenderModel` emits) so the hit
-    /// rect covers the same content a SwiftUI render would.
-    private static func textFrame(
+    /// Components use a top-leading normalized anchor and their own declared
+    /// size, scaled by the existing reference-canvas factor.
+    static func componentFrame(
         for element: OverlayElement,
         in context: OverlayRenderContext
     ) -> CGRect {
-        let layout = OverlayRenderModel.textLayout(for: element, in: context)
-        let origin = CGPoint(
-            x: context.canvasSize.width * element.position.x,
-            y: context.canvasSize.height * element.position.y
-        )
-
-        let valueFont = OverlayFontResolver.appKitFont(
-            family: element.style.fontName,
-            size: layout.fontSize,
-            weight: .semibold
-        )
-        let unitFont = OverlayFontResolver.appKitFont(
-            family: layout.unitFontName,
-            size: layout.unitFontSize,
-            weight: nsWeight(layout.unitFontWeight)
-        )
-        let labelFont = OverlayFontResolver.appKitFont(
-            family: layout.labelFontName,
-            size: layout.labelFontSize,
-            weight: nsWeight(layout.labelFontWeight)
-        )
-        let valueLine = lineMetrics(
-            layout.components.value,
-            font: valueFont,
-            tracking: -layout.fontSize * 0.012
-        )
-        let unitLine = lineMetrics(
-            layout.components.unit,
-            font: unitFont,
-            tracking: 0
-        )
-        let labelLine = lineMetrics(
-            layout.components.label,
-            font: labelFont,
-            tracking: layout.labelFontSize * 0.10
-        )
-        let showUnit = element.style.showUnit && !layout.components.unit.isEmpty
-        let showLabel = element.style.showLabel && !layout.components.label.isEmpty
-        let showIcon = layout.iconEnabled && !layout.iconSystemName.isEmpty
-
-        let valueHeight = lineHeight(valueLine)
-        let unitHeight = lineHeight(unitLine)
-        let labelHeight = lineHeight(labelLine)
-
-        // Value and unit cluster.
-        var contentWidth = valueLine.width
-        var contentHeight = valueHeight
-        if showUnit {
-            switch layout.unitPosition {
-            case .leading, .trailing:
-                contentWidth += layout.unitSpacing + unitLine.width
-                contentHeight = max(contentHeight, unitHeight)
-            case .bottom:
-                contentHeight += layout.unitSpacing + unitHeight
-                contentWidth = max(contentWidth, unitLine.width)
-            case .top:
-                // The SwiftUI minimal preset does not render a top unit.
-                break
-            }
+        #if canImport(CSkiaBridge)
+        if let frame = OverlayComponentSkiaRenderer.frame(for: element, renderContext: context) {
+            return frame
         }
-
-        if showLabel {
-            switch layout.labelPosition {
-            case .leading, .trailing:
-                contentWidth += layout.labelSpacing + labelLine.width
-                contentHeight = max(contentHeight, labelHeight)
-            case .top, .bottom:
-                contentHeight += layout.labelSpacing + labelHeight
-                contentWidth = max(contentWidth, labelLine.width)
-            }
-        }
-
-        if showIcon {
-            switch layout.iconPosition {
-            case .leading, .trailing:
-                contentWidth += layout.iconSize + layout.iconSpacing
-                contentHeight = max(contentHeight, layout.iconSize)
-            case .top, .bottom:
-                contentHeight += layout.iconSize + layout.iconSpacing
-                contentWidth = max(contentWidth, layout.iconSize)
-            }
-        }
-
-        // `minimalCleanView` frames the content to the minimum size first, then
-        // applies background padding only when a background is enabled.
-        let horizontalPadding = element.style.backgroundEnabled ? layout.horizontalPadding : 0
-        let verticalPadding = element.style.backgroundEnabled ? layout.verticalPadding : 0
-        let width = max(contentWidth, layout.minimumWidth) + horizontalPadding * 2
-        let height = max(contentHeight, layout.minimumHeight) + verticalPadding * 2
-
+        #endif
+        let size = componentSize(for: element) ?? CGSize(width: 160, height: 48)
+        let scale = element.scale * context.canvasScale
         return CGRect(
-            origin: origin,
-            size: CGSize(width: width, height: height)
+            x: context.canvasSize.width * element.position.x,
+            y: context.canvasSize.height * element.position.y,
+            width: size.width * scale,
+            height: size.height * scale
         )
     }
 
-    private static func lineHeight(
-        _ metrics: (width: CGFloat, ascent: CGFloat, descent: CGFloat, leading: CGFloat)
-    ) -> CGFloat {
-        metrics.ascent + metrics.descent + metrics.leading
+    /// Design-unit size of the instance's resolved definition; `nil` for a
+    /// content-sized definition, whose size depends on measured content.
+    static func componentSize(for element: OverlayElement) -> CGSize? {
+        guard let instance = element.component,
+              let definition = OverlayComponentRegistry.definition(for: instance.reference),
+              definition.contentLayout == nil
+        else {
+            return nil
+        }
+        return CGSize(width: definition.size.width, height: definition.size.height)
     }
 
     private static func centeredRect(
@@ -624,37 +522,6 @@ enum PreviewElementGeometry {
             width: size.width,
             height: size.height
         )
-    }
-
-    private static func lineMetrics(
-        _ text: String,
-        font: NSFont,
-        tracking: Double
-    ) -> (width: CGFloat, ascent: CGFloat, descent: CGFloat, leading: CGFloat) {
-        guard !text.isEmpty else {
-            return (0, font.ascender, -font.descender, font.leading)
-        }
-        var attributes: [NSAttributedString.Key: Any] = [.font: font]
-        if tracking != 0 {
-            attributes[.kern] = tracking
-        }
-        let line = CTLineCreateWithAttributedString(
-            NSAttributedString(string: text, attributes: attributes)
-        )
-        var ascent: CGFloat = 0
-        var descent: CGFloat = 0
-        var leading: CGFloat = 0
-        let width = CTLineGetTypographicBounds(line, &ascent, &descent, &leading)
-        return (width, ascent, descent, leading)
-    }
-
-    private static func nsWeight(_ weight: OverlayFontWeight) -> NSFont.Weight {
-        switch weight {
-        case .regular: .regular
-        case .medium: .medium
-        case .semibold: .semibold
-        case .bold: .bold
-        }
     }
 }
 
@@ -1125,12 +992,6 @@ private struct OverlayElementContent: View, @preconcurrency Equatable {
                     element: element,
                     layout: OverlayRenderModel.elevationChartLayout(for: element, in: renderContext)
                 )
-            case .runningGauge:
-                OverlaySharedRunningGaugeView(
-                    element: element,
-                    layout: OverlayRenderModel.runningGaugeLayout(for: element, in: renderContext),
-                    isInteractive: isSelected
-                )
             case .intervalHUDBar:
                 OverlaySharedIntervalHUDBarView(
                     element: element,
@@ -1140,16 +1001,6 @@ private struct OverlayElementContent: View, @preconcurrency Equatable {
                 OverlaySharedIntervalTimelineView(
                     element: element,
                     layout: OverlayRenderModel.intervalTimelineLayout(for: element, in: renderContext)
-                )
-            case .intervalCountdown:
-                OverlaySharedIntervalCountdownView(
-                    element: element,
-                    layout: OverlayRenderModel.intervalCountdownLayout(for: element, in: renderContext)
-                )
-            case .intervalWorkSummary:
-                OverlaySharedIntervalWorkSummaryView(
-                    element: element,
-                    layout: OverlayRenderModel.intervalWorkSummaryLayout(for: element, in: renderContext)
                 )
             case .zoneEdgeBar:
                 OverlaySharedZoneEdgeBarView(
@@ -1162,32 +1013,14 @@ private struct OverlayElementContent: View, @preconcurrency Equatable {
                     layout: OverlayRenderModel.routeMapLayout(for: element, in: renderContext),
                     isInteractive: isSelected
                 )
-            case .decorSolidColor:
-                OverlaySharedDecorSolidColorView(
-                    element: element,
-                    layout: OverlayRenderModel.decorSolidColorLayout(for: element, in: renderContext)
-                )
-            case .decorIcon:
-                OverlaySharedDecorIconView(
-                    element: element,
-                    layout: OverlayRenderModel.decorIconLayout(for: element, in: renderContext)
-                )
-            case .decorText:
-                OverlaySharedDecorTextView(
-                    element: element,
-                    layout: OverlayRenderModel.decorTextLayout(for: element, in: renderContext)
-                )
             case .weatherWidget:
                 OverlaySharedWeatherWidgetView(
                     element: element,
                     layout: OverlayRenderModel.weatherWidgetLayout(for: element, in: renderContext)
                 )
-            default:
-                OverlaySharedTextPresetView(
-                    element: element,
-                    layout: OverlayRenderModel.textLayout(for: element, in: renderContext),
-                    isInteractive: isSelected
-                )
+            case .component:
+                // Components render only through the shared Skia pipeline.
+                EmptyView()
             }
         }
         .opacity(element.opacity)
@@ -1269,7 +1102,7 @@ private struct PreviewOverlayPositionModifier: ViewModifier {
     let activity: ActivityTimeline
 
     func body(content: Content) -> some View {
-        if element.type.isNumericOverlay {
+        if element.type == .component {
             content
                 .alignmentGuide(HorizontalAlignment.center) { _ in
                     canvasSize.width * (0.5 - position.x)
@@ -1825,1055 +1658,6 @@ struct RouteMapOverlayView: View {
                 marker(point, color: color, sizeMultiplier: sizeMultiplier)
             }
         }
-    }
-}
-
-struct TextPresetOverlayView: View {
-    let element: OverlayElement
-    let layout: OverlayTextRenderLayout
-    let isSelected: Bool
-
-    var body: some View {
-        Group {
-            switch layout.preset {
-            case .minimal:
-                minimalCleanView
-            case .minimalLabel:
-                minimalLabelView
-            case .pillBadge:
-                pillView
-            case .metricCard:
-                VStack(alignment: .leading, spacing: layout.verticalPadding * 0.7) {
-                    Text(layout.components.label)
-                        .font(labelFont)
-                        .foregroundStyle(labelTextColor)
-                    HStack(alignment: .firstTextBaseline, spacing: layout.horizontalPadding * 0.35) {
-                        valueText
-                        unitText
-                    }
-                }
-                .padding(.horizontal, layout.horizontalPadding)
-                .padding(.vertical, layout.verticalPadding)
-                .background(background)
-                .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius))
-            case .bigNumber:
-                bigNumberView
-            case .sportWatch:
-                VStack(spacing: layout.verticalPadding * 0.65) {
-                    Text(layout.components.shortLabel)
-                        .font(labelFont.weight(.bold))
-                        .foregroundStyle(labelTextColor)
-                    divider
-                    valueText
-                    divider
-                    unitText
-                        .font(labelFont.weight(.bold))
-                        .foregroundStyle(unitTextColor)
-                }
-                .frame(minWidth: layout.fontSize * 3.2)
-                .padding(.horizontal, layout.horizontalPadding)
-                .padding(.vertical, layout.verticalPadding)
-                .background(background)
-                .overlay {
-                    RoundedRectangle(cornerRadius: layout.cornerRadius)
-                        .stroke(Color(element.style.foregroundColor).opacity(0.35), lineWidth: max(layout.fontSize / 28, 1))
-                }
-                .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius))
-            case .splitLabel:
-                splitLabelView
-            case .neonGlow:
-                neonGlowView
-            case .racingStripe:
-                racingStripeView
-            case .editorial:
-                editorialView
-            case .digitalWatch:
-                digitalWatchView
-            case .inlineGhost:
-                inlineGhostView
-            case .accentBar:
-                accentBarView
-            case .sportNeon:
-                sportNeonView
-            case .serifEditorial:
-                serifEditorialView
-            }
-        }
-        .frame(minWidth: layout.minimumWidth, minHeight: layout.minimumHeight, alignment: .topLeading)
-        .foregroundStyle(overlayGroupForegroundColor)
-        .monospacedDigit()
-        .overlayGenericBorder(element: element, cornerRadius: layout.cornerRadius)
-        .overlayForegroundEffects(element: element, shadowRadius: layout.shadowRadius)
-    }
-
-    // MARK: - Canonical 10 numeric overlay presets
-
-    @ViewBuilder
-    private var minimalCleanView: some View {
-        metricCoreContent
-        .frame(minWidth: layout.minimumWidth, minHeight: layout.minimumHeight, alignment: .topLeading)
-        .padding(.horizontal, element.style.backgroundEnabled ? layout.horizontalPadding : 0)
-        .padding(.vertical, element.style.backgroundEnabled ? layout.verticalPadding : 0)
-        .background {
-            if isSelected {
-                RoundedRectangle(cornerRadius: layout.cornerRadius)
-                    .fill(Color.accentColor.opacity(0.45))
-            } else if element.style.backgroundEnabled {
-                OverlayFeatheredBackground(
-                    isSelected: false,
-                    backgroundEnabled: element.style.backgroundEnabled,
-                    color: Color(element.style.backgroundColor),
-                    opacity: element.style.backgroundOpacity,
-                    cornerRadius: layout.cornerRadius,
-                    fadeEnabled: layout.backgroundFadeOutEnabled,
-                    fadeAmount: layout.backgroundFadeOutAmount,
-                    blurRadius: layout.backgroundBlurRadius
-                )
-            }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius))
-    }
-
-    @ViewBuilder
-    private var minimalLabelView: some View {
-        metricCoreContent
-    }
-
-    @ViewBuilder
-    private var pillView: some View {
-        let foreground = Color(element.style.foregroundColor)
-        let valueAndUnit = HStack(alignment: .lastTextBaseline, spacing: layout.fontSize * 0.14) {
-            Text(layout.components.value)
-                .font(.overlayFont(family: element.style.fontName, size: layout.fontSize * 0.92, weight: .bold))
-                .tracking(-layout.fontSize * 0.009)
-                .foregroundStyle(valueTextColor)
-            if element.style.showUnit, !layout.components.unit.isEmpty {
-                Text(layout.components.unit)
-                    .font(.overlayFont(family: element.style.fontName, size: layout.unitFontSize, weight: .medium))
-                    .foregroundStyle(unitTextColor)
-            }
-        }
-        Group {
-            if element.style.showLabel, !layout.components.label.isEmpty {
-                HStack(alignment: labelVAlignment, spacing: layout.fontSize * 0.32) {
-                    Text(layout.components.label.uppercased())
-                        .font(.overlayFont(family: element.style.fontName, size: layout.labelFontSize, weight: .medium))
-                        .tracking(layout.labelFontSize * 0.10)
-                        .foregroundStyle(labelTextColor)
-                        .multilineTextAlignment(labelTextAlignmentSwiftUI)
-                    if layout.dividerEnabled {
-                        Rectangle()
-                            .fill(dividerColor)
-                            .frame(width: max(layout.dividerThickness, 0), height: layout.fontSize * 0.78)
-                    }
-                    valueAndUnit
-                }
-            } else {
-                valueAndUnit
-            }
-        }
-        .padding(.horizontal, layout.horizontalPadding)
-        .padding(.vertical, layout.verticalPadding)
-        .background(
-            OverlayFeatheredBackground(
-                isSelected: isSelected,
-                backgroundEnabled: element.style.backgroundEnabled,
-                color: Color(element.style.backgroundColor),
-                opacity: element.style.backgroundOpacity,
-                cornerRadius: layout.cornerRadius,
-                usesCapsuleRadius: true,
-                fadeEnabled: layout.backgroundFadeOutEnabled,
-                fadeAmount: layout.backgroundFadeOutAmount,
-                blurRadius: layout.backgroundBlurRadius
-            )
-        )
-        .overlay(
-            Capsule().stroke(foreground.opacity(0.16), lineWidth: 1)
-                .opacity(element.style.backgroundEnabled ? 1 : 0)
-        )
-    }
-
-    @ViewBuilder
-    private var splitLabelView: some View {
-        let labelColor = Color(element.style.labelColor).opacity(element.style.labelOpacity)
-        VStack(alignment: .leading, spacing: layout.fontSize * 0.10) {
-            if element.style.showLabel, !layout.components.label.isEmpty {
-                Text(layout.components.label.uppercased())
-                    .font(.overlayFont(family: element.style.fontName, size: layout.labelFontSize, weight: .semibold))
-                    .tracking(layout.labelFontSize * 0.18)
-                    .foregroundStyle(labelColor)
-                    .multilineTextAlignment(labelTextAlignmentSwiftUI)
-                    .frame(maxWidth: .infinity, alignment: labelStackFrameAlignment)
-            }
-            if layout.dividerEnabled {
-                Rectangle()
-                    .fill(dividerColor)
-                    .frame(width: layout.fontSize * 2.4, height: max(layout.dividerThickness, 0))
-                    .frame(maxWidth: .infinity, alignment: valueStackFrameAlignment)
-            }
-            // Value and unit live on their own rows so each can drive its own
-            // frame alignment. The user wants unit-align to behave independently
-            // from value-align — sharing an HStack would glue them together.
-            Text(layout.components.value)
-                .font(.overlayFont(family: element.style.fontName, size: layout.fontSize, weight: .bold))
-                .tracking(-layout.fontSize * 0.012)
-                .foregroundStyle(valueTextColor)
-                .frame(maxWidth: .infinity, alignment: valueStackFrameAlignment)
-            if element.style.showUnit, !layout.components.unit.isEmpty {
-                Text(layout.components.unit)
-                    .font(.overlayFont(family: element.style.fontName, size: layout.unitFontSize, weight: .medium))
-                    .foregroundStyle(unitTextColor)
-                    .frame(maxWidth: .infinity, alignment: unitStackFrameAlignment)
-            }
-        }
-        .fixedSize(horizontal: true, vertical: false)
-    }
-
-    @ViewBuilder
-    private var neonGlowView: some View {
-        let accent = Color(element.style.accentColor)
-        HStack(alignment: .lastTextBaseline, spacing: layout.fontSize * 0.14) {
-            Text(layout.components.value)
-                .font(.overlayFont(family: element.style.fontName, size: layout.fontSize, weight: .bold))
-                .tracking(-layout.fontSize * 0.010)
-                .foregroundStyle(valueTextColor)
-                .shadow(color: accent.opacity(0.80), radius: layout.fontSize * 0.34)
-                .shadow(color: accent.opacity(0.36), radius: layout.fontSize * 0.62)
-            if element.style.showUnit, !layout.components.unit.isEmpty {
-                Text(layout.components.unit)
-                    .font(.overlayFont(family: element.style.fontName, size: layout.unitFontSize, weight: .semibold))
-                    .foregroundStyle(unitTextColor)
-                    .shadow(color: accent.opacity(0.65), radius: layout.fontSize * 0.24)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var racingStripeView: some View {
-        let foreground = Color(element.style.foregroundColor)
-        let labelColor = Color(element.style.labelColor).opacity(element.style.labelOpacity)
-        // Stripe is the racing-stripe preset's divider — drive width from the
-        // shared divider thickness so users can scale or hide it from the
-        // Inspector along with the other divider-bearing presets.
-        let stripeWidth = layout.dividerEnabled ? max(layout.dividerThickness * 2.4, 4) : 0
-        let stripeGap = layout.fontSize * 0.34
-        VStack(alignment: .leading, spacing: layout.fontSize * 0.10) {
-            if element.style.showLabel, !layout.components.label.isEmpty {
-                Text(layout.components.label.uppercased())
-                    .font(.overlayFont(family: element.style.fontName, size: layout.labelFontSize, weight: .bold))
-                    .tracking(layout.labelFontSize * 0.10)
-                    .foregroundStyle(labelColor)
-                    .multilineTextAlignment(labelTextAlignmentSwiftUI)
-                    .frame(maxWidth: .infinity, alignment: labelStackFrameAlignment)
-            }
-            Text(layout.components.value)
-                .font(.overlayFont(family: element.style.fontName, size: layout.fontSize, weight: .bold))
-                .tracking(-layout.fontSize * 0.010)
-                .foregroundStyle(valueTextColor)
-                .frame(maxWidth: .infinity, alignment: valueStackFrameAlignment)
-            if element.style.showUnit, !layout.components.unit.isEmpty {
-                Text(layout.components.unit)
-                    .font(.overlayFont(family: element.style.fontName, size: layout.unitFontSize, weight: .medium))
-                    .foregroundStyle(unitTextColor)
-                    .frame(maxWidth: .infinity, alignment: unitStackFrameAlignment)
-            }
-        }
-        .fixedSize(horizontal: true, vertical: false)
-        .padding(.leading, stripeWidth + (layout.dividerEnabled ? stripeGap : 0))
-        .overlay(alignment: .leading) {
-            if layout.dividerEnabled {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(dividerColor)
-                    .frame(width: stripeWidth)
-            }
-        }
-        .padding(.horizontal, layout.horizontalPadding)
-        .padding(.vertical, layout.verticalPadding)
-        .background(background)
-        .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius))
-        .overlay(
-            RoundedRectangle(cornerRadius: layout.cornerRadius)
-                .stroke(foreground.opacity(0.14), lineWidth: 1)
-                .opacity(element.style.backgroundEnabled ? 1 : 0)
-        )
-    }
-
-    @ViewBuilder
-    private var editorialView: some View {
-        let labelColor = Color(element.style.labelColor).opacity(element.style.labelOpacity)
-        VStack(alignment: .leading, spacing: layout.fontSize * 0.04) {
-            if element.style.showLabel, !layout.components.label.isEmpty {
-                Text(layout.components.label.uppercased())
-                    .font(.overlayFont(family: element.style.fontName, size: layout.labelFontSize, weight: .bold))
-                    .tracking(layout.labelFontSize * 0.18)
-                    .foregroundStyle(labelColor)
-                    .multilineTextAlignment(labelTextAlignmentSwiftUI)
-                    .frame(maxWidth: .infinity, alignment: labelStackFrameAlignment)
-            }
-            Text(layout.components.value)
-                .font(.overlayFont(family: element.style.fontName, size: layout.fontSize, weight: .heavy))
-                .tracking(-layout.fontSize * 0.018)
-                .foregroundStyle(valueTextColor)
-                .frame(maxWidth: .infinity, alignment: valueStackFrameAlignment)
-            if element.style.showUnit, !layout.components.unit.isEmpty {
-                Text(layout.components.unit)
-                    .font(.overlayFont(family: element.style.fontName, size: layout.unitFontSize, weight: .medium))
-                    .foregroundStyle(unitTextColor)
-                    .frame(maxWidth: .infinity, alignment: unitStackFrameAlignment)
-            }
-            if layout.dividerEnabled {
-                Rectangle()
-                    .fill(dividerColor)
-                    .frame(width: layout.fontSize * 2.2, height: max(layout.dividerThickness, 0))
-                    .frame(maxWidth: .infinity, alignment: valueStackFrameAlignment)
-                    .padding(.top, layout.fontSize * 0.04)
-            }
-        }
-        .fixedSize(horizontal: true, vertical: false)
-    }
-
-    @ViewBuilder
-    private var digitalWatchView: some View {
-        let accent = Color(element.style.accentColor)
-        // Menlo Bold provides stable monospaced digits on every supported
-        // macOS version. Wide tracking and the layered accent glow preserve
-        // the compact electronic instrument-panel character.
-        let digitalFont = PresetFontName.digitalWatch
-        VStack(alignment: .leading, spacing: layout.fontSize * 0.10) {
-            if element.style.showLabel, !layout.components.label.isEmpty {
-                Text(layout.components.label.uppercased())
-                    .font(.custom(digitalFont, size: layout.labelFontSize))
-                    .tracking(layout.labelFontSize * 0.18)
-                    .foregroundStyle(labelTextColor)
-            }
-            HStack(alignment: .lastTextBaseline, spacing: layout.fontSize * 0.14) {
-                Text(layout.components.value)
-                    .font(.custom(digitalFont, size: layout.fontSize))
-                    .tracking(layout.fontSize * 0.020)
-                    .foregroundStyle(valueTextColor)
-                    .shadow(color: accent.opacity(0.85), radius: layout.fontSize * 0.18)
-                    .shadow(color: accent.opacity(0.45), radius: layout.fontSize * 0.42)
-                if element.style.showUnit, !layout.components.unit.isEmpty {
-                    Text(layout.components.unit)
-                        .font(.custom(digitalFont, size: layout.unitFontSize))
-                        .foregroundStyle(unitTextColor)
-                        .shadow(color: accent.opacity(0.55), radius: layout.fontSize * 0.14)
-                }
-            }
-        }
-        .padding(.horizontal, layout.horizontalPadding)
-        .padding(.vertical, layout.verticalPadding)
-        .background(background)
-        .clipShape(RoundedRectangle(cornerRadius: layout.cornerRadius))
-        .overlay(
-            RoundedRectangle(cornerRadius: layout.cornerRadius)
-                .stroke(accent.opacity(0.70), lineWidth: 1)
-        )
-    }
-
-    // MARK: - Legacy / deprecated previews kept for backward compatibility
-
-    @ViewBuilder
-    private var inlineGhostView: some View {
-        let foreground = Color(element.style.foregroundColor)
-        VStack(alignment: .leading, spacing: layout.fontSize * 0.06) {
-            if element.style.showLabel, !layout.components.label.isEmpty {
-                Text(layout.components.label.uppercased())
-                    .font(.overlayFont(family: element.style.fontName, size: layout.labelFontSize, weight: .regular))
-                    .tracking(layout.labelFontSize * 0.12)
-                    .foregroundStyle(heartRateZoneTextPaletteActive ? labelTextColor : foreground.opacity(0.28))
-            }
-            HStack(alignment: .firstTextBaseline, spacing: layout.fontSize * 0.18) {
-                Text(layout.components.value)
-                    .font(.overlayFont(family: element.style.fontName, size: layout.fontSize, weight: .light))
-                    .tracking(-layout.fontSize * 0.02)
-                    .foregroundStyle(
-                        heartRateZoneTextPaletteActive
-                            ? valueTextColor
-                            : Color(element.style.valueColor).opacity(element.style.valueOpacity * 0.88)
-                    )
-                if element.style.showUnit, !layout.components.unit.isEmpty {
-                    Text(layout.components.unit)
-                        .font(.overlayFont(family: element.style.fontName, size: layout.unitFontSize, weight: .regular))
-                        .foregroundStyle(heartRateZoneTextPaletteActive ? unitTextColor : foreground.opacity(0.30))
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var accentBarView: some View {
-        let bar = Color(element.style.accentColor)
-        let foreground = Color(element.style.foregroundColor)
-        HStack(alignment: .center, spacing: layout.fontSize * 0.33) {
-            RoundedRectangle(cornerRadius: max(layout.fontSize * 0.06, 1))
-                .fill(bar)
-                .frame(width: max(layout.fontSize * 0.083, 1.5), height: layout.fontSize * 1.55)
-            VStack(alignment: .leading, spacing: layout.fontSize * 0.06) {
-                if element.style.showLabel, !layout.components.label.isEmpty {
-                    Text(layout.components.label.uppercased())
-                        .font(.overlayFont(family: element.style.fontName, size: layout.labelFontSize, weight: .regular))
-                        .tracking(layout.labelFontSize * 0.12)
-                        .foregroundStyle(heartRateZoneTextPaletteActive ? labelTextColor : foreground.opacity(0.32))
-                }
-                Text(layout.components.value)
-                    .font(.overlayFont(family: element.style.fontName, size: layout.fontSize, weight: .bold))
-                    .tracking(-layout.fontSize * 0.05)
-                    .foregroundStyle(valueTextColor)
-                if element.style.showUnit, !layout.components.unit.isEmpty {
-                    Text(layout.components.unit)
-                        .font(.overlayFont(family: element.style.fontName, size: layout.unitFontSize, weight: .regular))
-                        .foregroundStyle(heartRateZoneTextPaletteActive ? unitTextColor : foreground.opacity(0.38))
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var sportNeonView: some View {
-        let accent = Color(element.style.accentColor)
-        let foreground = Color(element.style.foregroundColor)
-        VStack(alignment: .leading, spacing: layout.fontSize * 0.05) {
-            if element.style.showLabel, !layout.components.label.isEmpty {
-                Text(layout.components.label.uppercased())
-                    .font(.overlayFont(family: element.style.fontName, size: layout.labelFontSize, weight: .bold))
-                    .tracking(layout.labelFontSize * 0.16)
-                    .foregroundStyle(heartRateZoneTextPaletteActive ? labelTextColor : accent)
-            }
-            Text(layout.components.value)
-                .font(.overlayFont(family: element.style.fontName, size: layout.fontSize, weight: .heavy))
-                .tracking(-layout.fontSize * 0.06)
-                .foregroundStyle(valueTextColor)
-            if element.style.showUnit, !layout.components.unit.isEmpty {
-                HStack(alignment: .center, spacing: layout.fontSize * 0.18) {
-                    Rectangle()
-                        .fill(foreground.opacity(0.10))
-                        .frame(width: layout.fontSize * 0.6, height: 0.5)
-                    Circle()
-                        .fill(accent)
-                        .frame(width: max(layout.fontSize * 0.14, 4), height: max(layout.fontSize * 0.14, 4))
-                    Text(layout.components.unit)
-                        .font(.overlayFont(family: element.style.fontName, size: layout.unitFontSize, weight: .regular))
-                        .foregroundStyle(heartRateZoneTextPaletteActive ? unitTextColor : foreground.opacity(0.35))
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var serifEditorialView: some View {
-        let foreground = Color(element.style.foregroundColor)
-        let serifFont = "Georgia"
-        VStack(spacing: layout.fontSize * 0.05) {
-            if element.style.showLabel, !layout.components.label.isEmpty {
-                Text(layout.components.label.uppercased())
-                    .font(.system(size: layout.labelFontSize, weight: .regular))
-                    .tracking(layout.labelFontSize * 0.2)
-                    .foregroundStyle(heartRateZoneTextPaletteActive ? labelTextColor : foreground.opacity(0.30))
-            }
-            Text(layout.components.value)
-                .font(.custom(serifFont, size: layout.fontSize))
-                .tracking(-layout.fontSize * 0.01)
-                .foregroundStyle(valueTextColor)
-            if element.style.showUnit, !layout.components.unit.isEmpty {
-                Rectangle()
-                    .fill(foreground.opacity(0.20))
-                    .frame(width: layout.fontSize * 0.78, height: 0.5)
-                    .padding(.vertical, layout.fontSize * 0.18)
-                Text(layout.components.unit)
-                    .font(.system(size: layout.unitFontSize, weight: .regular))
-                    .tracking(layout.unitFontSize * 0.1)
-                    .foregroundStyle(heartRateZoneTextPaletteActive ? unitTextColor : foreground.opacity(0.28))
-            }
-        }
-    }
-
-    private var valueText: Text {
-        Text(layout.components.value)
-            .font(.overlayFont(family: element.style.fontName, size: layout.fontSize, weight: Font.Weight(element.style.fontWeight)))
-            .foregroundColor(valueTextColor)
-    }
-
-    private var unitText: Text {
-        Text(layout.components.unit)
-            .font(.overlayFont(family: layout.unitFontName, size: layout.unitFontSize, weight: Font.Weight(layout.unitFontWeight)))
-    }
-
-    private var labelFont: Font {
-        .overlayFont(family: layout.labelFontName, size: layout.labelFontSize, weight: Font.Weight(layout.labelFontWeight))
-    }
-
-    private var background: some View {
-        OverlayFeatheredBackground(
-            isSelected: isSelected,
-            backgroundEnabled: element.style.backgroundEnabled,
-            color: Color(element.style.backgroundColor),
-            opacity: element.style.backgroundOpacity,
-            cornerRadius: layout.cornerRadius,
-            fadeEnabled: layout.backgroundFadeOutEnabled,
-            fadeAmount: layout.backgroundFadeOutAmount,
-            blurRadius: layout.backgroundBlurRadius
-        )
-    }
-
-    private var divider: some View {
-        Rectangle()
-            .fill(dividerColor)
-            .frame(width: layout.fontSize * 2.7, height: max(layout.dividerThickness, 1))
-    }
-
-    /// Style-fed divider color (with opacity applied). Returns `.clear` when
-    /// the user has disabled the divider for this overlay — keeps the layout
-    /// rect intact while making the line invisible.
-    private var dividerColor: Color {
-        guard layout.dividerEnabled else { return .clear }
-        return Color(layout.dividerColor).opacity(layout.dividerOpacity)
-    }
-
-    /// Maps the label text alignment to a SwiftUI `HorizontalAlignment` for
-    /// VStack stacks (used when the label sits above/below the value).
-    private var labelHAlignment: HorizontalAlignment {
-        horizontalAlignment(layout.labelTextAlignment)
-    }
-
-    /// Maps the label text alignment to a SwiftUI `VerticalAlignment` for
-    /// HStack stacks (used when the label sits to the left/right of the value;
-    /// leading → top, center → middle, trailing → bottom).
-    private var labelVAlignment: VerticalAlignment {
-        verticalAlignment(layout.labelTextAlignment)
-    }
-
-    private var labelTextAlignmentSwiftUI: TextAlignment {
-        textAlignment(layout.labelTextAlignment)
-    }
-
-    /// Frame-anchor for the label row inside a stacked layout. We pin the row
-    /// at `maxWidth: .infinity` and let this alignment do the actual visual
-    /// positioning — that way the label can move horizontally without
-    /// influencing the value row above/below it.
-    private var labelStackFrameAlignment: Alignment {
-        alignmentForFrame(layout.labelTextAlignment)
-    }
-
-    private var valueStackFrameAlignment: Alignment {
-        alignmentForFrame(layout.valueTextAlignment)
-    }
-
-    /// Frame-anchor for the unit row when the unit sits on its own line. Inline
-    /// unit positions (`.leading`/`.trailing` of the value) stay baseline-locked
-    /// to the value and ignore this anchor.
-    private var unitStackFrameAlignment: Alignment {
-        alignmentForFrame(layout.unitTextAlignment)
-    }
-
-    private var iconStackFrameAlignment: Alignment {
-        alignmentForFrame(layout.iconTextAlignment)
-    }
-
-    private var iconVAlignment: VerticalAlignment {
-        verticalAlignment(layout.iconTextAlignment)
-    }
-
-    private func horizontalAlignment(_ a: OverlayTextAlignment) -> HorizontalAlignment {
-        switch a {
-        case .leading: .leading
-        case .center: .center
-        case .trailing: .trailing
-        }
-    }
-
-    private func verticalAlignment(_ a: OverlayTextAlignment) -> VerticalAlignment {
-        switch a {
-        case .leading: .top
-        case .center: .center
-        case .trailing: .bottom
-        }
-    }
-
-    private func textAlignment(_ a: OverlayTextAlignment) -> TextAlignment {
-        switch a {
-        case .leading: .leading
-        case .center: .center
-        case .trailing: .trailing
-        }
-    }
-
-    private func alignmentForFrame(_ a: OverlayTextAlignment) -> Alignment {
-        switch a {
-        case .leading: .leading
-        case .center: .center
-        case .trailing: .trailing
-        }
-    }
-
-    @ViewBuilder
-    private var bigNumberView: some View {
-        let value = Text(layout.components.value)
-            .font(.overlayFont(family: element.style.fontName, size: layout.fontSize * 1.95, weight: .bold))
-            .foregroundStyle(valueTextColor)
-        let unit = Text(layout.components.unit)
-            .font(.overlayFont(family: element.style.fontName, size: layout.unitFontSize * 1.25, weight: .bold))
-            .foregroundStyle(unitTextColor)
-        let label = Text(layout.components.label)
-            .font(labelFont)
-            .tracking(layout.labelFontSize * 0.10)
-            .foregroundStyle(labelTextColor)
-            .multilineTextAlignment(labelTextAlignmentSwiftUI)
-        let showLabel = element.style.showLabel && !layout.components.label.isEmpty
-        let showUnit = element.style.showUnit && !layout.components.unit.isEmpty
-        switch layout.labelPosition {
-        case .top, .bottom:
-            // Flatten value+unit into the outer leading-anchored VStack so each
-            // row gets its own `frame(maxWidth:, alignment:)`. That keeps unit
-            // alignment independent from both label and value.
-            VStack(alignment: .leading, spacing: 0) {
-                if showLabel && layout.labelPosition == .top {
-                    label
-                        .frame(maxWidth: .infinity, alignment: labelStackFrameAlignment)
-                        .padding(.bottom, layout.labelSpacing)
-                }
-                value
-                    .frame(maxWidth: .infinity, alignment: valueStackFrameAlignment)
-                if showUnit {
-                    unit
-                        .frame(maxWidth: .infinity, alignment: unitStackFrameAlignment)
-                }
-                if showLabel && layout.labelPosition == .bottom {
-                    label
-                        .frame(maxWidth: .infinity, alignment: labelStackFrameAlignment)
-                        .padding(.top, layout.labelSpacing)
-                }
-            }
-            .fixedSize(horizontal: true, vertical: false)
-        case .leading, .trailing:
-            HStack(alignment: labelVAlignment, spacing: 0) {
-                if showLabel && layout.labelPosition == .leading {
-                    label.padding(.trailing, layout.labelSpacing)
-                }
-                VStack(alignment: .leading, spacing: 0) {
-                    value
-                        .frame(maxWidth: .infinity, alignment: valueStackFrameAlignment)
-                    if showUnit {
-                        unit
-                            .frame(maxWidth: .infinity, alignment: unitStackFrameAlignment)
-                    }
-                }
-                .fixedSize(horizontal: true, vertical: false)
-                if showLabel && layout.labelPosition == .trailing {
-                    label.padding(.leading, layout.labelSpacing)
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var metricCoreContent: some View {
-        let showIcon = layout.iconEnabled && !layout.iconSystemName.isEmpty
-        if showIcon {
-            switch layout.iconPosition {
-            case .top:
-                VStack(alignment: .leading, spacing: 0) {
-                    metricIconView
-                        .frame(maxWidth: .infinity, alignment: iconStackFrameAlignment)
-                        .padding(.bottom, layout.iconSpacing)
-                    metricTextContent
-                }
-                .fixedSize(horizontal: true, vertical: false)
-            case .bottom:
-                VStack(alignment: .leading, spacing: 0) {
-                    metricTextContent
-                    metricIconView
-                        .frame(maxWidth: .infinity, alignment: iconStackFrameAlignment)
-                        .padding(.top, layout.iconSpacing)
-                }
-                .fixedSize(horizontal: true, vertical: false)
-            case .leading:
-                HStack(alignment: iconVAlignment, spacing: 0) {
-                    metricIconView
-                        .padding(.trailing, layout.iconSpacing)
-                    metricTextContent
-                }
-                .fixedSize(horizontal: true, vertical: false)
-            case .trailing:
-                HStack(alignment: iconVAlignment, spacing: 0) {
-                    metricTextContent
-                    metricIconView
-                        .padding(.leading, layout.iconSpacing)
-                }
-                .fixedSize(horizontal: true, vertical: false)
-            }
-        } else {
-            metricTextContent
-        }
-    }
-
-    private var metricIconView: some View {
-        Image(systemName: layout.iconSystemName)
-            .font(.system(size: layout.iconSize, weight: .medium))
-            .foregroundStyle(iconTextColor)
-            .frame(width: layout.iconSize, height: layout.iconSize)
-            .fixedSize(horizontal: true, vertical: true)
-    }
-
-    @ViewBuilder
-    private var metricTextContent: some View {
-        let label = Text(layout.components.label)
-            .font(labelFont)
-            .tracking(layout.labelFontSize * 0.10)
-            .foregroundStyle(labelTextColor)
-            .multilineTextAlignment(labelTextAlignmentSwiftUI)
-        let unit = Text(layout.components.unit)
-            .font(.overlayFont(family: layout.unitFontName, size: layout.unitFontSize, weight: Font.Weight(layout.unitFontWeight)))
-            .foregroundStyle(unitTextColor)
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
-        let value = Text(layout.components.value)
-            .font(.overlayFont(family: element.style.fontName, size: layout.fontSize, weight: .semibold))
-            .tracking(-layout.fontSize * 0.012)
-            .foregroundStyle(valueTextColor)
-        let showLabel = element.style.showLabel && !layout.components.label.isEmpty
-        let showUnitFlag = element.style.showUnit && !layout.components.unit.isEmpty
-        let hasSideLabel = showLabel && (layout.labelPosition == .leading || layout.labelPosition == .trailing)
-        let hasInlineUnit = showUnitFlag && (layout.unitPosition == .leading || layout.unitPosition == .trailing)
-        let valueUnitClusterAlignment: VerticalAlignment = hasInlineUnit
-            ? verticalAlignment(layout.unitTextAlignment)
-            : .center
-
-        // The outer VStack pins on `.leading` so that the per-row
-        // `frame(maxWidth: .infinity, alignment:)` modifiers on the label and
-        // value rows each take effect independently. If we set the VStack
-        // alignment to either label's or value's alignment, the shorter row
-        // would inherit the other's offset and the two controls would couple.
-        VStack(alignment: .leading, spacing: 0) {
-            if showLabel && layout.labelPosition == .top {
-                label
-                    .frame(maxWidth: .infinity, alignment: labelStackFrameAlignment)
-                    .padding(.bottom, layout.labelSpacing)
-            }
-            Group {
-                let valueUnitCluster = HStack(alignment: valueUnitClusterAlignment, spacing: 0) {
-                    if showUnitFlag && layout.unitPosition == .leading {
-                        unit
-                            .padding(.trailing, layout.unitSpacing)
-                    }
-                    value
-                        .frame(maxWidth: .infinity, alignment: valueStackFrameAlignment)
-                    if showUnitFlag && layout.unitPosition == .trailing {
-                        unit
-                            .padding(.leading, layout.unitSpacing)
-                    }
-                }
-                if hasSideLabel {
-                    HStack(alignment: labelVAlignment, spacing: 0) {
-                        if showLabel && layout.labelPosition == .leading {
-                            label
-                                .padding(.trailing, layout.labelSpacing)
-                        }
-                        valueUnitCluster
-                        if showLabel && layout.labelPosition == .trailing {
-                            label
-                                .padding(.leading, layout.labelSpacing)
-                        }
-                    }
-                } else {
-                    valueUnitCluster
-                }
-            }
-            // Expand the row to the VStack width with a neutral cluster anchor so
-            // `valueTextAlignment` only affects the value slot — inline units are
-            // not shifted when the value alignment changes.
-            .frame(maxWidth: .infinity, alignment: .leading)
-            if showUnitFlag && layout.unitPosition == .bottom {
-                unit
-                    .frame(maxWidth: .infinity, alignment: unitStackFrameAlignment)
-                    .padding(.top, layout.unitSpacing)
-            }
-            if showLabel && layout.labelPosition == .bottom {
-                label
-                    .frame(maxWidth: .infinity, alignment: labelStackFrameAlignment)
-                    .padding(.top, layout.labelSpacing)
-            }
-        }
-        // Let the stack collapse to its natural width so the overlay doesn't
-        // stretch across the canvas; `maxWidth: .infinity` on the row frames
-        // expands them only as wide as the widest sibling.
-        .fixedSize(horizontal: true, vertical: false)
-    }
-
-    private var dynamicHeartRateZoneColor: OverlayColor? {
-        layout.dynamicHeartRateZoneColor
-    }
-
-    private var heartRateZoneTextPaletteActive: Bool {
-        dynamicHeartRateZoneColor != nil
-            && (layout.valueColorsFollowHeartRateZones
-                || layout.labelColorsFollowHeartRateZones
-                || layout.unitColorsFollowHeartRateZones)
-    }
-
-    private var overlayGroupForegroundColor: Color {
-        if layout.valueColorsFollowHeartRateZones, let base = dynamicHeartRateZoneColor {
-            return Color(base).opacity(element.style.valueOpacity)
-        }
-        return Color(element.style.foregroundColor)
-    }
-
-    private var valueTextColor: Color {
-        if layout.valueColorsFollowHeartRateZones, let base = dynamicHeartRateZoneColor {
-            return Color(base).opacity(element.style.valueOpacity)
-        }
-        return Color(element.style.valueColor).opacity(element.style.valueOpacity)
-    }
-
-    private var labelTextColor: Color {
-        if layout.labelColorsFollowHeartRateZones, let base = dynamicHeartRateZoneColor {
-            return Color(base).opacity(element.style.labelOpacity)
-        }
-        return Color(element.style.labelColor).opacity(element.style.labelOpacity)
-    }
-
-    private var unitTextColor: Color {
-        if layout.unitColorsFollowHeartRateZones, let base = dynamicHeartRateZoneColor {
-            return Color(base).opacity(element.style.unitOpacity)
-        }
-        return Color(element.style.unitColor).opacity(element.style.unitOpacity)
-    }
-
-    private var iconTextColor: Color {
-        if layout.iconColorsFollowHeartRateZones, let base = dynamicHeartRateZoneColor {
-            return Color(base).opacity(layout.iconOpacity)
-        }
-        return Color(layout.iconColor).opacity(layout.iconOpacity)
-    }
-}
-
-struct RunningGaugeOverlayView: View {
-    let element: OverlayElement
-    let layout: OverlayRunningGaugeRenderLayout
-    let isSelected: Bool
-
-    private var style: RunningGaugeStyle { layout.style }
-    private var diameter: Double { layout.rect.width }
-
-    var body: some View {
-        ZStack {
-            // Dial background.
-            Circle()
-                .fill(Color(style.dialBackgroundColor).opacity(style.dialBackgroundOpacity))
-                .overlay {
-                    if style.glassEffectEnabled {
-                        Circle()
-                            .stroke(Color.white.opacity(0.18), lineWidth: max(layout.outerRingWidth * 0.5, 1))
-                            .blur(radius: layout.outerRingWidth * 0.4)
-                    }
-                }
-
-            // Outer ring.
-            if style.outerRingEnabled {
-                Circle()
-                    .strokeBorder(
-                        Color(style.outerRingColor).opacity(style.outerRingOpacity),
-                        lineWidth: layout.outerRingWidth
-                    )
-            }
-
-            // Tick marks.
-            if style.tickMarksEnabled {
-                GaugeTicksView(
-                    tickCount: max(style.tickCount, 6),
-                    majorEvery: max(style.majorTickEvery, 1),
-                    tickLength: diameter * 0.025,
-                    majorTickLength: diameter * 0.040,
-                    tickWidth: max(style.dividerWidth, 1),
-                    color: Color(style.tickColor),
-                    tickOpacity: style.tickOpacity,
-                    majorOpacity: style.majorTickOpacity
-                )
-                .padding(layout.outerRingWidth + 2)
-            }
-
-            // Progress ring (track + arc).
-            if style.progressRingEnabled {
-                let inset = layout.outerRingWidth + layout.progressRingWidth + 2
-                Circle()
-                    .stroke(
-                        Color(style.progressTrackColor).opacity(style.progressTrackOpacity),
-                        lineWidth: layout.progressRingWidth
-                    )
-                    .padding(inset)
-                Circle()
-                    .trim(from: 0, to: max(min(layout.progress, 1), 0))
-                    .stroke(
-                        Color(style.progressColor),
-                        style: StrokeStyle(
-                            lineWidth: layout.progressRingWidth,
-                            lineCap: style.progressRoundedCaps ? .round : .butt
-                        )
-                    )
-                    .rotationEffect(.degrees(-90))
-                    .padding(inset)
-            }
-
-            // Dividers.
-            if style.dividerEnabled {
-                GaugeDividersView(
-                    segments: RunningGaugeLayoutEngine.dividerSegments(for: style.layoutPreset),
-                    lineWidth: max(style.dividerWidth, 1),
-                    color: Color(style.dividerColor).opacity(style.dividerOpacity),
-                    safeRadius: layout.safeRadius / (diameter / 2)
-                )
-            }
-
-            // Data regions.
-            ForEach(layout.regions, id: \.config.id) { region in
-                regionView(region)
-                    .frame(width: region.rect.width, height: region.rect.height)
-                    .position(
-                        x: region.rect.midX - layout.rect.minX,
-                        y: region.rect.midY - layout.rect.minY
-                    )
-            }
-        }
-        .frame(width: diameter, height: diameter)
-        .overlay {
-            if isSelected {
-                Circle()
-                    .stroke(Color.accentColor.opacity(0.85), lineWidth: 2)
-            }
-        }
-        .overlayLayeredShadow(
-            color: Color(element.style.shadowColor),
-            isEnabled: element.style.shadowEnabled,
-            opacity: element.style.shadowOpacity,
-            radius: element.style.shadowRadius,
-            x: element.style.shadowOffsetX,
-            y: element.style.shadowOffsetY,
-            thickness: element.style.shadowThickness
-        )
-        .overlayForegroundGlow(element: element)
-        .modifier(GaugeMonospacedDigit(enabled: style.monospacedDigits))
-    }
-
-    @ViewBuilder
-    private func regionView(_ region: OverlayRunningGaugeRegionLayout) -> some View {
-        let config = region.config
-        let label = config.customLabel.isEmpty ? config.metric.compactLabel : config.customLabel.uppercased()
-        let valueColor = Color(config.valueColor ?? style.primaryTextColor)
-        let labelColor = Color(config.labelColor ?? style.secondaryTextColor).opacity(0.78)
-
-        VStack(spacing: max(region.unitFontSize * 0.10, 1)) {
-            if config.showLabel {
-                Text(label)
-                    .font(.overlayFont(family: style.fontName, size: region.labelFontSize, weight: swiftFontWeight(config.labelWeight)))
-                    .foregroundStyle(labelColor)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-            }
-            Text(region.components.value)
-                .font(.overlayFont(family: style.fontName, size: region.valueFontSize, weight: swiftFontWeight(config.valueWeight)))
-                .foregroundStyle(valueColor)
-                .lineLimit(1)
-                .minimumScaleFactor(0.5)
-                .modifier(
-                    GaugeGlow(
-                        enabled: style.glowEnabled,
-                        color: Color(style.glowColor).opacity(style.glowOpacity),
-                        radius: style.glowRadius
-                    )
-                )
-            if config.showUnit, !region.components.unit.isEmpty {
-                Text(region.components.unit)
-                    .font(.overlayFont(family: style.fontName, size: region.unitFontSize, weight: .medium))
-                    .foregroundStyle(labelColor)
-                    .lineLimit(1)
-            }
-        }
-    }
-}
-
-private struct GaugeTicksView: View {
-    let tickCount: Int
-    let majorEvery: Int
-    let tickLength: Double
-    let majorTickLength: Double
-    let tickWidth: Double
-    let color: Color
-    let tickOpacity: Double
-    let majorOpacity: Double
-
-    var body: some View {
-        GeometryReader { proxy in
-            let size = min(proxy.size.width, proxy.size.height)
-            let radius = size / 2
-            ZStack {
-                ForEach(0..<tickCount, id: \.self) { index in
-                    let isMajor = index.isMultiple(of: majorEvery)
-                    let length = isMajor ? majorTickLength : tickLength
-                    Rectangle()
-                        .fill(color.opacity(isMajor ? majorOpacity : tickOpacity))
-                        .frame(width: tickWidth, height: length)
-                        .offset(y: -radius + length / 2)
-                        .rotationEffect(.degrees(Double(index) / Double(tickCount) * 360))
-                }
-            }
-            .frame(width: proxy.size.width, height: proxy.size.height)
-        }
-    }
-}
-
-private struct GaugeDividersView: View {
-    let segments: [(CGPoint, CGPoint)]
-    let lineWidth: Double
-    let color: Color
-    /// Fraction of half-side (0...1) describing the safe inset within which
-    /// dividers are drawn — keeps lines off the dial bezel.
-    let safeRadius: Double
-
-    var body: some View {
-        GeometryReader { proxy in
-            Path { path in
-                let width = proxy.size.width
-                let height = proxy.size.height
-                let safeW = width * safeRadius
-                let safeH = height * safeRadius
-                let originX = (width - safeW) / 2
-                let originY = (height - safeH) / 2
-                for (start, end) in segments {
-                    path.move(to: CGPoint(x: originX + start.x * safeW, y: originY + start.y * safeH))
-                    path.addLine(to: CGPoint(x: originX + end.x * safeW, y: originY + end.y * safeH))
-                }
-            }
-            .stroke(color, lineWidth: lineWidth)
-        }
-    }
-}
-
-private struct GaugeMonospacedDigit: ViewModifier {
-    let enabled: Bool
-    func body(content: Content) -> some View {
-        if enabled { content.monospacedDigit() } else { content }
-    }
-}
-
-private struct GaugeGlow: ViewModifier {
-    let enabled: Bool
-    let color: Color
-    let radius: Double
-    func body(content: Content) -> some View {
-        if enabled, radius > 0 {
-            content.shadow(color: color, radius: radius)
-        } else {
-            content
-        }
-    }
-}
-
-private func swiftFontWeight(_ w: OverlayFontWeight) -> Font.Weight {
-    switch w {
-    case .regular: .regular
-    case .medium: .medium
-    case .semibold: .semibold
-    case .bold: .bold
     }
 }
 

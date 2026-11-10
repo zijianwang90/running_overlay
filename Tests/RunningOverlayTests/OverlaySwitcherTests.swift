@@ -6,9 +6,9 @@ import Testing
 struct OverlaySwitcherTests {
     @Test func adjacentSelectionWrapsAndSkipsLockedOverlays() {
         let project = ProjectDocument()
-        project.addOverlayElement(.heartRate)
-        project.addOverlayElement(.pace)
-        project.addOverlayElement(.distance)
+        project.addOverlayElement(.distanceTimeline)
+        project.addOverlayElement(.elevationChart)
+        project.addOverlayElement(.zoneEdgeBar)
         let ids = project.overlayLayout.elements.map(\.id)
         project.setOverlayLocked(ids[1], isLocked: true)
         project.selection = .overlayElement(ids[0])
@@ -25,8 +25,8 @@ struct OverlaySwitcherTests {
 
     @Test func adjacentSelectionStartsFromTheEndsWithoutAnOverlaySelection() {
         let project = ProjectDocument()
-        project.addOverlayElement(.heartRate)
-        project.addOverlayElement(.pace)
+        project.addOverlayElement(.distanceTimeline)
+        project.addOverlayElement(.elevationChart)
         let ids = project.overlayLayout.elements.map(\.id)
 
         project.selection = .none
@@ -40,7 +40,7 @@ struct OverlaySwitcherTests {
 
     @Test func adjacentSelectionDoesNothingWhenEveryOverlayIsLocked() {
         let project = ProjectDocument()
-        project.addOverlayElement(.heartRate)
+        project.addOverlayElement(.distanceTimeline)
         let id = project.overlayLayout.elements[0].id
         project.setOverlayLocked(id, isLocked: true)
         project.selection = .none

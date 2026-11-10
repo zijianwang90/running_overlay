@@ -10,29 +10,6 @@ import Testing
 struct SkiaRenderAssetTests {
     private static let canvas = CGSize(width: 1280, height: 720)
 
-    @Test func featherMaskSurvivesCacheEvictionUntilDrawFinishes() throws {
-        let context = try #require(skb_create(64, 48))
-        defer { skb_destroy(context) }
-        weak var observed: SkiaTextEffects.MaskHandle?
-        do {
-            let mask = try #require(SkiaTextEffects.maskImage(
-                size: CGSize(width: 64, height: 48), cornerRadius: 12, fadeAmount: 0.5
-            ))
-            observed = mask
-            SkiaTextEffects.removeCachedMasks()
-            #expect(observed != nil)
-            withExtendedLifetime(mask) {
-                skb_fill_round_rect(context, 0, 0, 64, 48, 0, 1, 1, 1, 1)
-                skb_draw_image_dst_in(context, mask.pointer, 0, 0, 64, 48)
-            }
-            var rowBytes = 0
-            let pixels = try #require(skb_pixels(context, &rowBytes))
-            #expect(pixels[24 * rowBytes + 32 * 4 + 3] > 240)
-            #expect(pixels[3] < 5)
-        }
-        #expect(observed == nil)
-    }
-
     @Test func routeSnapshotAndMaskRegistration() throws {
         try OverlayPreferenceFixtures.withDefaults {
             let activity = SkiaRouteWeatherGoldenTests.activity()
@@ -94,23 +71,71 @@ struct SkiaRenderAssetTests {
         }
     }
 
-    @Test func weatherIconsPreloadAllPresets() throws {
+    @Test func componentRouteMapSnapshotRequestsAndPreload() throws {
         try OverlayPreferenceFixtures.withDefaults {
             let activity = SkiaRouteWeatherGoldenTests.activity()
-            let elements = WeatherWidgetPreset.allCases.map { preset in
-                var style = OverlayStyle.default
-                style.weatherWidget = .preset(preset)
-                return OverlayElement(
-                    type: .weatherWidget,
-                    position: CGPoint(x: 0.5, y: 0.5),
-                    scale: 1,
-                    style: style
-                )
+            let item = try #require(
+                OverlayComponentLibraryItem.all.first { $0.id == "studio.route-map" }
+            )
+            let reference = try OverlayComponentLibrary.reference(for: item)
+            let element = OverlayElement(
+                type: .component,
+                position: CGPoint(x: 0.5, y: 0.5),
+                scale: 1,
+                style: .default,
+                component: OverlayComponentInstance(reference: reference)
+            )
+
+            let requests = SkiaRouteMapModule.snapshotRequests(
+                elements: [element],
+                activity: activity,
+                canvasSize: Self.canvas
+            )
+            let request = try #require(requests.first)
+            #expect(request.backgroundStyle == .dark)
+            #expect(request.size.width > 1)
+            #expect(request.size.height > 1)
+
+            let snapshot = NSImage(size: request.size, flipped: false) { rect in
+                NSColor.systemTeal.setFill()
+                rect.fill()
+                return true
             }
 
             let assets = SkiaRenderAssets()
+            SkiaRouteMapModule.preloadAssets(
+                elements: [element],
+                activity: activity,
+                canvasSize: Self.canvas,
+                mapSnapshots: [request: snapshot],
+                into: assets
+            )
+            defer { assets.releaseImages() }
+
+            let key = SkiaRenderAssets.ImageSource.mapSnapshot(
+                request,
+                pixelWidth: Int(request.size.width.rounded()),
+                pixelHeight: Int(request.size.height.rounded())
+            )
+            #expect(assets.image(for: key) != nil)
+        }
+    }
+
+    @Test func weatherIconPreloadsSimpleCard() throws {
+        try OverlayPreferenceFixtures.withDefaults {
+            let activity = SkiaRouteWeatherGoldenTests.activity()
+            var style = OverlayStyle.default
+            style.weatherWidget = .simpleCard
+            let element = OverlayElement(
+                type: .weatherWidget,
+                position: CGPoint(x: 0.5, y: 0.5),
+                scale: 1,
+                style: style
+            )
+
+            let assets = SkiaRenderAssets()
             SkiaWeatherWidgetModule.preloadAssets(
-                elements: elements,
+                elements: [element],
                 activity: activity,
                 canvasSize: Self.canvas,
                 into: assets
@@ -122,29 +147,16 @@ struct SkiaRenderAssetTests {
                 activity: activity,
                 elapsedTime: 0
             )
-            for element in elements {
-                let layout = OverlayRenderModel.weatherWidgetLayout(
-                    for: element,
-                    in: context
-                )
-                let scale = layout.rect.width / max(layout.style.width, 1)
-                let designSize: Double
-                switch layout.style.preset {
-                case .simpleCard: designSize = 58
-                case .compactStrip: designSize = 34
-                case .forecastTile: designSize = 54
-                case .minimalText: designSize = 30
-                case .dashboardBar: designSize = 44
-                }
-                let key = SkiaRenderAssets.ImageSource.weatherIcon(
-                    layout.condition,
-                    pixelSize: Int((designSize * scale).rounded(.up))
-                )
-                #expect(
-                    assets.image(for: key) != nil,
-                    "missing icon for \(layout.style.preset.rawValue)"
-                )
-            }
+            let layout = OverlayRenderModel.weatherWidgetLayout(
+                for: element,
+                in: context
+            )
+            let scale = layout.rect.width / max(layout.style.width, 1)
+            let key = SkiaRenderAssets.ImageSource.weatherIcon(
+                layout.condition,
+                pixelSize: Int((58 * scale).rounded(.up))
+            )
+            #expect(assets.image(for: key) != nil, "missing weather icon")
         }
     }
 
@@ -311,7 +323,7 @@ struct SkiaRenderAssetTests {
             #expect(assets.image(for: firstMaskKey) != nil)
 
             var weatherStyle = OverlayStyle.default
-            weatherStyle.weatherWidget = .preset(.simpleCard)
+            weatherStyle.weatherWidget = .simpleCard
             var weatherElement = OverlayElement(
                 type: .weatherWidget,
                 position: CGPoint(x: 0.5, y: 0.5),
@@ -374,9 +386,8 @@ struct SkiaRenderAssetTests {
             #expect(assets.image(for: secondMaskKey) != nil)
             #expect(assets.image(for: firstIconKey) != nil)
 
-            // Change the weather preset and scale: only the old weather icon
-            // goes, and route assets stay valid.
-            weatherStyle.weatherWidget = .preset(.compactStrip)
+            // Scale the weather widget: only the old weather icon goes, and
+            // route assets stay valid.
             weatherElement.style = weatherStyle
             weatherElement.scale = 1.5
             let secondWeatherLayout = OverlayRenderModel.weatherWidgetLayout(
@@ -426,17 +437,9 @@ struct SkiaRenderAssetTests {
         _ layout: WeatherWidgetRenderLayout
     ) -> SkiaRenderAssets.ImageSource {
         let scale = layout.rect.width / max(layout.style.width, 1)
-        let designSize: Double
-        switch layout.style.preset {
-        case .simpleCard: designSize = 58
-        case .compactStrip: designSize = 34
-        case .forecastTile: designSize = 54
-        case .minimalText: designSize = 30
-        case .dashboardBar: designSize = 44
-        }
         return .weatherIcon(
             layout.condition,
-            pixelSize: Int((designSize * scale).rounded(.up))
+            pixelSize: Int((58 * scale).rounded(.up))
         )
     }
 

@@ -10,6 +10,9 @@ struct OverlayTemplate: Identifiable, Codable, Equatable {
     var elements: [OverlayTemplateElement]
     /// Embedded asset blobs for self-contained template export (Phase E6).
     var assets: [TemplateAsset]
+    /// Elements of removed native numeric types skipped while decoding
+    /// (ADR 0014). Not persisted.
+    var droppedLegacyElementCount = 0
 
     init(
         schemaVersion: Int = 2,
@@ -62,7 +65,9 @@ struct OverlayTemplate: Identifiable, Codable, Equatable {
         createdAt = try c.decode(Date.self, forKey: .createdAt)
         updatedAt = try c.decode(Date.self, forKey: .updatedAt)
         referenceResolution = try c.decodeIfPresent(OverlayTemplateResolution.self, forKey: .referenceResolution)
-        elements = try c.decode([OverlayTemplateElement].self, forKey: .elements)
+        let list = try c.decode(OverlayTemplateElementList.self, forKey: .elements)
+        elements = list.elements
+        droppedLegacyElementCount = list.droppedLegacyCount
         assets = try c.decodeIfPresent([TemplateAsset].self, forKey: .assets) ?? []
     }
 
@@ -134,6 +139,10 @@ struct OverlayTemplateElement: Codable, Equatable {
     var isVisible: Bool
     var isLocked: Bool
     var style: OverlayStyle
+    /// Component reference, persisted as `component`. Nil for native types.
+    var componentReference: OverlayComponentReference?
+    /// Component parameter values, persisted beside `component` as `params`.
+    var componentParameters: [String: OverlayJSONValue]
 
     init(
         type: OverlayElementType,
@@ -143,7 +152,9 @@ struct OverlayTemplateElement: Codable, Equatable {
         opacity: Double = 1,
         isVisible: Bool = true,
         isLocked: Bool = false,
-        style: OverlayStyle
+        style: OverlayStyle,
+        componentReference: OverlayComponentReference? = nil,
+        componentParameters: [String: OverlayJSONValue] = [:]
     ) {
         self.type = type
         self.positionX = positionX
@@ -153,6 +164,8 @@ struct OverlayTemplateElement: Codable, Equatable {
         self.isVisible = isVisible
         self.isLocked = isLocked
         self.style = style
+        self.componentReference = componentReference
+        self.componentParameters = componentParameters
     }
 
     init(element: OverlayElement) {
@@ -164,19 +177,36 @@ struct OverlayTemplateElement: Codable, Equatable {
             opacity: element.opacity,
             isVisible: element.isVisible,
             isLocked: element.isLocked,
-            style: element.style
+            style: element.style,
+            componentReference: element.component?.reference,
+            componentParameters: element.component?.parameters ?? [:]
         )
     }
 
     var overlayElement: OverlayElement {
-        OverlayElement(
+        let component = componentReference.map { reference in
+            // Projects and templates authored against an older app build keep
+            // their id and version; refresh a bundled reference the host no
+            // longer ships so the element keeps rendering with the current
+            // definition. Imported and project definitions never refresh.
+            let current = reference.source == .bundled
+                && OverlayComponentRegistry.definition(for: reference) == nil
+                ? OverlayComponentLibrary.currentBundledReference(matching: reference)
+                : nil
+            return OverlayComponentInstance(
+                reference: current ?? reference,
+                parameters: componentParameters
+            )
+        }
+        return OverlayElement(
             type: type,
             position: CGPoint(x: positionX, y: positionY),
             scale: scale,
             opacity: opacity,
             isVisible: isVisible,
             isLocked: isLocked,
-            style: style
+            style: style,
+            component: component
         )
     }
 
@@ -189,6 +219,24 @@ struct OverlayTemplateElement: Codable, Equatable {
         case isVisible
         case isLocked
         case style
+        case component
+        case params
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(type, forKey: .type)
+        try container.encode(positionX, forKey: .positionX)
+        try container.encode(positionY, forKey: .positionY)
+        try container.encode(scale, forKey: .scale)
+        try container.encode(opacity, forKey: .opacity)
+        try container.encode(isVisible, forKey: .isVisible)
+        try container.encode(isLocked, forKey: .isLocked)
+        try container.encode(style, forKey: .style)
+        try container.encodeIfPresent(componentReference, forKey: .component)
+        if !componentParameters.isEmpty {
+            try container.encode(componentParameters, forKey: .params)
+        }
     }
 
     init(from decoder: Decoder) throws {
@@ -201,6 +249,55 @@ struct OverlayTemplateElement: Codable, Equatable {
         isVisible = try container.decodeIfPresent(Bool.self, forKey: .isVisible) ?? true
         isLocked = try container.decodeIfPresent(Bool.self, forKey: .isLocked) ?? false
         style = try container.decode(OverlayStyle.self, forKey: .style)
+        componentReference = try container.decodeIfPresent(OverlayComponentReference.self, forKey: .component)
+        componentParameters = try container.decodeIfPresent(
+            [String: OverlayJSONValue].self,
+            forKey: .params
+        ) ?? [:]
+        if type == .component, componentReference == nil {
+            throw DecodingError.dataCorruptedError(
+                forKey: .component,
+                in: container,
+                debugDescription: "component element requires a component reference"
+            )
+        }
+    }
+}
+
+/// Persisted overlay elements for projects and templates. Decoding skips the
+/// native numeric element types removed without migration (ADR 0014) and
+/// counts them so the caller can tell the user; every other element decodes
+/// strictly. Encodes as a plain array.
+struct OverlayTemplateElementList: Codable, Equatable {
+    var elements: [OverlayTemplateElement]
+    var droppedLegacyCount = 0
+
+    init(_ elements: [OverlayTemplateElement]) {
+        self.elements = elements
+    }
+
+    private struct TypeProbe: Decodable {
+        var type: String
+    }
+
+    init(from decoder: Decoder) throws {
+        var container = try decoder.unkeyedContainer()
+        var elements: [OverlayTemplateElement] = []
+        while !container.isAtEnd {
+            let elementDecoder = try container.superDecoder()
+            let probe = try TypeProbe(from: elementDecoder)
+            if OverlayElementType.removedRawValues.contains(probe.type) {
+                droppedLegacyCount += 1
+                continue
+            }
+            elements.append(try OverlayTemplateElement(from: elementDecoder))
+        }
+        self.elements = elements
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(elements)
     }
 }
 

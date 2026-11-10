@@ -1,0 +1,735 @@
+{
+  "spec": "ros.component/0.1",
+  "id": "studio.elevation-chart",
+  "version": "1.0.0",
+  "name": {
+    "en": "Elevation Chart",
+    "zh-Hans": "海拔图"
+  },
+  "description": {
+    "en": "Elevation profile with area fill, marker and axis labels.",
+    "zh-Hans": "带面积填充、标记与刻度的海拔曲线。"
+  },
+  "author": "Running Overlay Studio",
+  "license": "MIT",
+  "size": "content",
+  "params": [
+    {
+      "id": "chartStyle",
+      "type": "enum",
+      "label": {
+        "en": "chartStyle",
+        "zh-Hans": "chartStyle"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": "area",
+      "options": [
+        {
+          "value": "area",
+          "label": "area"
+        },
+        {
+          "value": "lineOnly",
+          "label": "lineOnly"
+        }
+      ]
+    },
+    {
+      "id": "smoothingEnabled",
+      "type": "bool",
+      "label": {
+        "en": "smoothingEnabled",
+        "zh-Hans": "smoothingEnabled"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": true
+    },
+    {
+      "id": "smoothingAmount",
+      "type": "number",
+      "label": {
+        "en": "smoothingAmount",
+        "zh-Hans": "smoothingAmount"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": 0.85,
+      "min": 0,
+      "max": 1
+    },
+    {
+      "id": "progressMode",
+      "type": "enum",
+      "label": {
+        "en": "progressMode",
+        "zh-Hans": "progressMode"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": "fullProfile",
+      "options": [
+        {
+          "value": "fullProfile",
+          "label": "fullProfile"
+        },
+        {
+          "value": "progressToCurrent",
+          "label": "progressToCurrent"
+        }
+      ]
+    },
+    {
+      "id": "chartPaddingX",
+      "type": "number",
+      "label": {
+        "en": "chartPaddingX",
+        "zh-Hans": "chartPaddingX"
+      },
+      "default": 18,
+      "min": 0,
+      "max": 120,
+      "advanced": true
+    },
+    {
+      "id": "chartPaddingY",
+      "type": "number",
+      "label": {
+        "en": "chartPaddingY",
+        "zh-Hans": "chartPaddingY"
+      },
+      "default": 16,
+      "min": 0,
+      "max": 120,
+      "advanced": true
+    },
+    {
+      "id": "lineColor",
+      "type": "color",
+      "label": {
+        "en": "lineColor",
+        "zh-Hans": "lineColor"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "lineWidth",
+      "type": "number",
+      "label": {
+        "en": "lineWidth",
+        "zh-Hans": "lineWidth"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": 2.5,
+      "min": 0.5,
+      "max": 16
+    },
+    {
+      "id": "lineOpacity",
+      "type": "number",
+      "label": {
+        "en": "lineOpacity",
+        "zh-Hans": "lineOpacity"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": 0.96,
+      "min": 0,
+      "max": 1
+    },
+    {
+      "id": "fillEnabled",
+      "type": "bool",
+      "label": {
+        "en": "fillEnabled",
+        "zh-Hans": "fillEnabled"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": true
+    },
+    {
+      "id": "fillStartColor",
+      "type": "color",
+      "label": {
+        "en": "fillStartColor",
+        "zh-Hans": "fillStartColor"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": "#40D161"
+    },
+    {
+      "id": "fillEndColor",
+      "type": "color",
+      "label": {
+        "en": "fillEndColor",
+        "zh-Hans": "fillEndColor"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": "#3894FF"
+    },
+    {
+      "id": "fillOpacity",
+      "type": "number",
+      "label": {
+        "en": "fillOpacity",
+        "zh-Hans": "fillOpacity"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": 0.4,
+      "min": 0,
+      "max": 1
+    },
+    {
+      "id": "dualAreaEnabled",
+      "type": "bool",
+      "label": {
+        "en": "dualAreaEnabled",
+        "zh-Hans": "dualAreaEnabled"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": false
+    },
+    {
+      "id": "upperFillColor",
+      "type": "color",
+      "label": {
+        "en": "upperFillColor",
+        "zh-Hans": "upperFillColor"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": "#FF8A1F"
+    },
+    {
+      "id": "lowerFillColor",
+      "type": "color",
+      "label": {
+        "en": "lowerFillColor",
+        "zh-Hans": "lowerFillColor"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": "#40BFFF"
+    },
+    {
+      "id": "currentMarkerEnabled",
+      "type": "bool",
+      "label": {
+        "en": "currentMarkerEnabled",
+        "zh-Hans": "currentMarkerEnabled"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": true
+    },
+    {
+      "id": "markerColor",
+      "type": "color",
+      "label": {
+        "en": "markerColor",
+        "zh-Hans": "markerColor"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": "#3894FF"
+    },
+    {
+      "id": "markerSizeMultiplier",
+      "type": "number",
+      "label": {
+        "en": "markerSizeMultiplier",
+        "zh-Hans": "markerSizeMultiplier"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": 1,
+      "min": 0.25,
+      "max": 4
+    },
+    {
+      "id": "markerPlayheadLineEnabled",
+      "type": "bool",
+      "label": {
+        "en": "markerPlayheadLineEnabled",
+        "zh-Hans": "markerPlayheadLineEnabled"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": true
+    },
+    {
+      "id": "markerLabelEnabled",
+      "type": "bool",
+      "label": {
+        "en": "markerLabelEnabled",
+        "zh-Hans": "markerLabelEnabled"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": true
+    },
+    {
+      "id": "gridEnabled",
+      "type": "bool",
+      "label": {
+        "en": "gridEnabled",
+        "zh-Hans": "gridEnabled"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": false
+    },
+    {
+      "id": "axisLineEnabled",
+      "type": "bool",
+      "label": {
+        "en": "axisLineEnabled",
+        "zh-Hans": "axisLineEnabled"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": true
+    },
+    {
+      "id": "axisLabelsEnabled",
+      "type": "bool",
+      "label": {
+        "en": "axisLabelsEnabled",
+        "zh-Hans": "axisLabelsEnabled"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": true
+    },
+    {
+      "id": "bigNumbersEnabled",
+      "type": "bool",
+      "label": {
+        "en": "bigNumbersEnabled",
+        "zh-Hans": "bigNumbersEnabled"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": false
+    },
+    {
+      "id": "bigNumberMetric",
+      "type": "enum",
+      "label": {
+        "en": "bigNumberMetric",
+        "zh-Hans": "bigNumberMetric"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": "currentElevation",
+      "options": [
+        {
+          "value": "currentElevation",
+          "label": "currentElevation"
+        },
+        {
+          "value": "elevationGain",
+          "label": "elevationGain"
+        },
+        {
+          "value": "maxElevation",
+          "label": "maxElevation"
+        },
+        {
+          "value": "minElevation",
+          "label": "minElevation"
+        }
+      ]
+    },
+    {
+      "id": "bigNumberFontSize",
+      "type": "number",
+      "label": {
+        "en": "bigNumberFontSize",
+        "zh-Hans": "bigNumberFontSize"
+      },
+      "default": 42,
+      "min": 12,
+      "max": 200,
+      "advanced": true
+    },
+    {
+      "id": "bigNumberFontFamily",
+      "type": "string",
+      "label": {
+        "en": "bigNumberFontFamily",
+        "zh-Hans": "bigNumberFontFamily"
+      },
+      "default": "Helvetica Neue",
+      "maxLength": 128,
+      "advanced": true
+    },
+    {
+      "id": "bigNumberFontWeight",
+      "type": "enum",
+      "label": {
+        "en": "bigNumberFontWeight",
+        "zh-Hans": "bigNumberFontWeight"
+      },
+      "default": "semibold",
+      "options": [
+        {
+          "value": "regular",
+          "label": "regular"
+        },
+        {
+          "value": "medium",
+          "label": "medium"
+        },
+        {
+          "value": "semibold",
+          "label": "semibold"
+        },
+        {
+          "value": "bold",
+          "label": "bold"
+        }
+      ],
+      "advanced": true
+    },
+    {
+      "id": "backgroundEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Background",
+        "zh-Hans": "背景"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": true
+    },
+    {
+      "id": "backgroundColor",
+      "type": "color",
+      "label": {
+        "en": "Background Color",
+        "zh-Hans": "背景颜色"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": "#000000"
+    },
+    {
+      "id": "backgroundOpacity",
+      "type": "number",
+      "label": {
+        "en": "Background Opacity",
+        "zh-Hans": "背景不透明度"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 0.42,
+      "min": 0,
+      "max": 1
+    },
+    {
+      "id": "backgroundRadius",
+      "type": "number",
+      "label": {
+        "en": "Corner Radius",
+        "zh-Hans": "圆角"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 18,
+      "min": 0,
+      "max": 80
+    },
+    {
+      "id": "borderEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Border",
+        "zh-Hans": "边框"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": true
+    },
+    {
+      "id": "borderOpacity",
+      "type": "number",
+      "label": {
+        "en": "Border Opacity",
+        "zh-Hans": "边框不透明度"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 0.1,
+      "min": 0,
+      "max": 1
+    },
+    {
+      "id": "shadowEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Shadow",
+        "zh-Hans": "阴影"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": false
+    },
+    {
+      "id": "shadowOpacity",
+      "type": "number",
+      "label": {
+        "en": "Shadow Opacity",
+        "zh-Hans": "阴影不透明度"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 0.28,
+      "min": 0,
+      "max": 1
+    },
+    {
+      "id": "shadowRadius",
+      "type": "number",
+      "label": {
+        "en": "Shadow Radius",
+        "zh-Hans": "阴影半径"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 18,
+      "min": 0,
+      "max": 120
+    },
+    {
+      "id": "glowEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Glow",
+        "zh-Hans": "发光"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": false
+    },
+    {
+      "id": "glowOpacity",
+      "type": "number",
+      "label": {
+        "en": "Glow Opacity",
+        "zh-Hans": "发光不透明度"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 0.25,
+      "min": 0,
+      "max": 1
+    },
+    {
+      "id": "fontFamily",
+      "type": "string",
+      "label": {
+        "en": "fontFamily",
+        "zh-Hans": "fontFamily"
+      },
+      "default": "Helvetica Neue",
+      "maxLength": 128,
+      "advanced": true
+    },
+    {
+      "id": "foregroundColor",
+      "type": "color",
+      "label": {
+        "en": "foregroundColor",
+        "zh-Hans": "foregroundColor"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "valueFontSize",
+      "type": "number",
+      "label": {
+        "en": "valueFontSize",
+        "zh-Hans": "valueFontSize"
+      },
+      "default": 28,
+      "min": 8,
+      "max": 120,
+      "advanced": true
+    },
+    {
+      "id": "chartWidth",
+      "type": "number",
+      "label": {
+        "en": "chartWidth",
+        "zh-Hans": "chartWidth"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": 420,
+      "min": 8,
+      "max": 8192
+    },
+    {
+      "id": "chartHeight",
+      "type": "number",
+      "label": {
+        "en": "chartHeight",
+        "zh-Hans": "chartHeight"
+      },
+      "section": {
+        "en": "Elevation Chart",
+        "zh-Hans": "Elevation Chart"
+      },
+      "default": 178,
+      "min": 8,
+      "max": 8192
+    }
+  ],
+  "nodes": [
+    {
+      "type": "elevationChart",
+      "frame": [
+        "=0",
+        "=0",
+        "=chartWidth",
+        "=chartHeight"
+      ],
+      "chartStyle": "=chartStyle",
+      "smoothingEnabled": "=smoothingEnabled ? 1 : 0",
+      "smoothingAmount": "=smoothingAmount",
+      "progressMode": "=progressMode",
+      "chartPaddingX": "=chartPaddingX",
+      "chartPaddingY": "=chartPaddingY",
+      "lineColor": "=lineColor",
+      "lineWidth": "=lineWidth",
+      "lineOpacity": "=lineOpacity",
+      "fillEnabled": "=fillEnabled ? 1 : 0",
+      "fillStartColor": "=fillStartColor",
+      "fillEndColor": "=fillEndColor",
+      "fillOpacity": "=fillOpacity",
+      "dualAreaEnabled": "=dualAreaEnabled ? 1 : 0",
+      "upperFillColor": "=upperFillColor",
+      "lowerFillColor": "=lowerFillColor",
+      "currentMarkerEnabled": "=currentMarkerEnabled ? 1 : 0",
+      "markerColor": "=markerColor",
+      "markerSizeMultiplier": "=markerSizeMultiplier",
+      "markerPlayheadLineEnabled": "=markerPlayheadLineEnabled ? 1 : 0",
+      "markerLabelEnabled": "=markerLabelEnabled ? 1 : 0",
+      "gridEnabled": "=gridEnabled ? 1 : 0",
+      "axisLineEnabled": "=axisLineEnabled ? 1 : 0",
+      "axisLabelsEnabled": "=axisLabelsEnabled ? 1 : 0",
+      "bigNumbersEnabled": "=bigNumbersEnabled ? 1 : 0",
+      "bigNumberMetric": "=bigNumberMetric",
+      "bigNumberFontSize": "=bigNumberFontSize",
+      "bigNumberFontFamily": "=bigNumberFontFamily",
+      "bigNumberFontWeight": "=bigNumberFontWeight",
+      "backgroundEnabled": "=backgroundEnabled ? 1 : 0",
+      "backgroundColor": "=backgroundColor",
+      "backgroundOpacity": "=backgroundOpacity",
+      "cornerRadius": "=backgroundRadius",
+      "borderEnabled": "=borderEnabled ? 1 : 0",
+      "borderOpacity": "=borderOpacity",
+      "shadowEnabled": "=shadowEnabled ? 1 : 0",
+      "shadowOpacity": "=shadowOpacity",
+      "shadowRadius": "=shadowRadius",
+      "glowEnabled": "=glowEnabled ? 1 : 0",
+      "glowOpacity": "=glowOpacity",
+      "fontFamily": "=fontFamily",
+      "foregroundColor": "=foregroundColor",
+      "valueFontSize": "=valueFontSize",
+      "width": "=chartWidth",
+      "height": "=chartHeight"
+    }
+  ],
+  "bindings": {},
+  "padding": [
+    0,
+    0
+  ]
+}

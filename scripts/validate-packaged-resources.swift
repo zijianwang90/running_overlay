@@ -21,6 +21,7 @@ do {
     ]
     let resources = templates.map { ($0, "rotemplate") }
         + [("symbols", "json")]
+        + [("authoring-skill", "md"), ("authoring-guide", "md"), ("authoring-spec", "md"), ("authoring-schema", "json")]
         + icons.map { ($0, "png") }
     for (name, fileExtension) in resources {
         guard let url = bundle.url(forResource: name, withExtension: fileExtension) else {

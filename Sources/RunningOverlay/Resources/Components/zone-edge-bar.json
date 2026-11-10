@@ -1,0 +1,595 @@
+{
+  "spec": "ros.component/0.1",
+  "id": "studio.zone-edge-bar",
+  "version": "1.0.0",
+  "name": {
+    "en": "Zone Edge Bar",
+    "zh-Hans": "分区边缘条"
+  },
+  "description": {
+    "en": "Heart-rate or pace zone bar with current-zone and threshold markers.",
+    "zh-Hans": "带当前分区与阈值标记的心率或配速分区条。"
+  },
+  "author": "Running Overlay Studio",
+  "license": "MIT",
+  "size": "content",
+  "padding": [
+    0,
+    0
+  ],
+  "minSize": [
+    40,
+    20
+  ],
+  "params": [
+    {
+      "id": "metric",
+      "type": "enum",
+      "label": {
+        "en": "Metric",
+        "zh-Hans": "指标"
+      },
+      "section": {
+        "en": "Data",
+        "zh-Hans": "数据"
+      },
+      "default": "heartRate",
+      "options": [
+        {
+          "value": "heartRate",
+          "label": "Heart Rate"
+        },
+        {
+          "value": "pace",
+          "label": "Pace"
+        }
+      ]
+    },
+    {
+      "id": "orientation",
+      "type": "enum",
+      "label": {
+        "en": "Orientation",
+        "zh-Hans": "方向"
+      },
+      "section": {
+        "en": "Layout",
+        "zh-Hans": "布局"
+      },
+      "default": "horizontal",
+      "options": [
+        {
+          "value": "horizontal",
+          "label": "Horizontal"
+        },
+        {
+          "value": "vertical",
+          "label": "Vertical"
+        }
+      ]
+    },
+    {
+      "id": "markerSide",
+      "type": "enum",
+      "label": {
+        "en": "Marker Side",
+        "zh-Hans": "标记位置"
+      },
+      "section": {
+        "en": "Layout",
+        "zh-Hans": "布局"
+      },
+      "default": "above",
+      "options": [
+        {
+          "value": "above",
+          "label": "Above / Start"
+        },
+        {
+          "value": "below",
+          "label": "Below / End"
+        },
+        {
+          "value": "leading",
+          "label": "Leading / Start"
+        },
+        {
+          "value": "trailing",
+          "label": "Trailing / End"
+        }
+      ]
+    },
+    {
+      "id": "length",
+      "type": "number",
+      "label": {
+        "en": "Length",
+        "zh-Hans": "长度"
+      },
+      "section": {
+        "en": "Layout",
+        "zh-Hans": "布局"
+      },
+      "default": 780,
+      "min": 40,
+      "max": 4000,
+      "step": 1
+    },
+    {
+      "id": "thickness",
+      "type": "number",
+      "label": {
+        "en": "Thickness",
+        "zh-Hans": "粗细"
+      },
+      "section": {
+        "en": "Layout",
+        "zh-Hans": "布局"
+      },
+      "default": 10,
+      "min": 2,
+      "max": 200,
+      "step": 1
+    },
+    {
+      "id": "activeZoneWidthShare",
+      "type": "number",
+      "label": {
+        "en": "Active Zone Width",
+        "zh-Hans": "活动区间宽度"
+      },
+      "section": {
+        "en": "Zones",
+        "zh-Hans": "分区"
+      },
+      "default": 0,
+      "min": 0,
+      "max": 0.5,
+      "step": 0.01
+    },
+    {
+      "id": "activeZoneHeightScale",
+      "type": "number",
+      "label": {
+        "en": "Active Zone Thickness",
+        "zh-Hans": "活动区间粗细"
+      },
+      "section": {
+        "en": "Zones",
+        "zh-Hans": "分区"
+      },
+      "default": 1,
+      "min": 1,
+      "max": 3,
+      "step": 0.05
+    },
+    {
+      "id": "zoneSegmentGap",
+      "type": "number",
+      "label": {
+        "en": "Segment Gap",
+        "zh-Hans": "分段间距"
+      },
+      "default": 2,
+      "min": 0,
+      "max": 40,
+      "step": 1,
+      "advanced": true
+    },
+    {
+      "id": "cornerRadius",
+      "type": "number",
+      "label": {
+        "en": "Corner Radius",
+        "zh-Hans": "圆角"
+      },
+      "section": {
+        "en": "Zones",
+        "zh-Hans": "分区"
+      },
+      "default": 5,
+      "min": 0,
+      "max": 40,
+      "step": 1
+    },
+    {
+      "id": "inactiveZoneOpacity",
+      "type": "number",
+      "label": {
+        "en": "Inactive Opacity",
+        "zh-Hans": "非活动区间不透明度"
+      },
+      "section": {
+        "en": "Zones",
+        "zh-Hans": "分区"
+      },
+      "default": 0.55,
+      "min": 0,
+      "max": 1,
+      "step": 0.05
+    },
+    {
+      "id": "borderEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Border",
+        "zh-Hans": "边框"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": true
+    },
+    {
+      "id": "borderColor",
+      "type": "color",
+      "label": {
+        "en": "Border Color",
+        "zh-Hans": "边框颜色"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "borderOpacity",
+      "type": "number",
+      "label": {
+        "en": "Border Opacity",
+        "zh-Hans": "边框不透明度"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 0.12,
+      "min": 0,
+      "max": 1,
+      "step": 0.02
+    },
+    {
+      "id": "borderWidth",
+      "type": "number",
+      "label": {
+        "en": "Border Width",
+        "zh-Hans": "边框粗细"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 1,
+      "min": 0,
+      "max": 20,
+      "step": 0.5
+    },
+    {
+      "id": "glowEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Glow",
+        "zh-Hans": "发光"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": false
+    },
+    {
+      "id": "glowIntensity",
+      "type": "number",
+      "label": {
+        "en": "Glow Intensity",
+        "zh-Hans": "发光强度"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 0.45,
+      "min": 0,
+      "max": 1,
+      "step": 0.05
+    },
+    {
+      "id": "markerEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Current Marker",
+        "zh-Hans": "当前位置标记"
+      },
+      "section": {
+        "en": "Markers",
+        "zh-Hans": "标记"
+      },
+      "default": true
+    },
+    {
+      "id": "markerShowsValue",
+      "type": "bool",
+      "label": {
+        "en": "Marker Shows Value",
+        "zh-Hans": "标记显示数值"
+      },
+      "section": {
+        "en": "Markers",
+        "zh-Hans": "标记"
+      },
+      "default": true
+    },
+    {
+      "id": "markerSizeScale",
+      "type": "number",
+      "label": {
+        "en": "Marker Size",
+        "zh-Hans": "标记大小"
+      },
+      "section": {
+        "en": "Markers",
+        "zh-Hans": "标记"
+      },
+      "default": 1,
+      "min": 0.1,
+      "max": 4,
+      "step": 0.05
+    },
+    {
+      "id": "thresholdMarkerEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Threshold Marker",
+        "zh-Hans": "阈值标记"
+      },
+      "section": {
+        "en": "Markers",
+        "zh-Hans": "标记"
+      },
+      "default": true
+    },
+    {
+      "id": "thresholdMarkerSizeScale",
+      "type": "number",
+      "label": {
+        "en": "Threshold Size",
+        "zh-Hans": "阈值标记大小"
+      },
+      "section": {
+        "en": "Markers",
+        "zh-Hans": "标记"
+      },
+      "default": 1,
+      "min": 0.1,
+      "max": 4,
+      "step": 0.05
+    },
+    {
+      "id": "fontFamily",
+      "type": "font",
+      "label": {
+        "en": "Font",
+        "zh-Hans": "字体"
+      },
+      "default": "SF Pro",
+      "advanced": true
+    },
+    {
+      "id": "fontSize",
+      "type": "number",
+      "label": {
+        "en": "Font Size",
+        "zh-Hans": "字号"
+      },
+      "default": 12,
+      "min": 6,
+      "max": 48,
+      "step": 1,
+      "advanced": true
+    },
+    {
+      "id": "fontWeight",
+      "type": "enum",
+      "label": {
+        "en": "Font Weight",
+        "zh-Hans": "字重"
+      },
+      "default": "semibold",
+      "options": [
+        {
+          "value": "regular",
+          "label": "Regular"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semibold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        }
+      ],
+      "advanced": true
+    }
+  ],
+  "bindings": {
+    "hrZone": {
+      "signal": "zone.heartRate"
+    },
+    "paceZone": {
+      "signal": "zone.pace"
+    },
+    "hrThreshold": {
+      "signal": "zone.heartRateThreshold"
+    },
+    "paceThreshold": {
+      "signal": "zone.paceThreshold"
+    },
+    "hrZones": {
+      "list": "zone.heartRateZones"
+    },
+    "paceZones": {
+      "list": "zone.paceZones"
+    },
+    "S": {
+      "value": "=signal(\"host.scale\")"
+    },
+    "isHR": {
+      "value": "=metric == \"heartRate\""
+    },
+    "isHorizontal": {
+      "value": "=orientation == \"horizontal\""
+    },
+    "zones": {
+      "value": "=isHR ? hrZones : paceZones"
+    },
+    "activeIndex": {
+      "value": "=isHR ? field(hrZone, \"index\") : field(paceZone, \"index\")"
+    },
+    "currentFraction": {
+      "value": "=isHR ? field(hrZone, \"fraction\") : field(paceZone, \"fraction\")"
+    },
+    "currentText": {
+      "value": "=isHR ? field(hrZone, \"valueText\") : field(paceZone, \"valueText\")"
+    },
+    "currentColor": {
+      "value": "=isHR ? field(hrZone, \"color\") : field(paceZone, \"color\")"
+    },
+    "thresholdIndex": {
+      "value": "=isHR ? field(hrThreshold, \"index\") : field(paceThreshold, \"index\")"
+    },
+    "thresholdFraction": {
+      "value": "=isHR ? field(hrThreshold, \"fraction\") : field(paceThreshold, \"fraction\")"
+    },
+    "thresholdColor": {
+      "value": "=isHR ? field(hrThreshold, \"color\") : field(paceThreshold, \"color\")"
+    },
+    "markerScale": {
+      "value": "=clamp(markerSizeScale, 0.1, 4)"
+    },
+    "thresholdScale": {
+      "value": "=clamp(thresholdMarkerSizeScale, 0.1, 4)"
+    },
+    "currentPad": {
+      "value": "=max(thickness * 0.9, 8 / S) * markerScale + (markerShowsValue ? (max(fontSize * S, 9) + 6) / S : 0) + (markerShowsValue ? 5 / S : 3 / S)"
+    },
+    "thresholdPad": {
+      "value": "=max(thickness * 1.35, 10 / S) * thresholdScale + max(fontSize * S * 0.72, 7) * thresholdScale / S + 6 / S"
+    },
+    "markerPad": {
+      "value": "=((markerEnabled || thresholdMarkerEnabled) ? max(currentPad, thresholdPad) : 0)"
+    },
+    "inkMargin": {
+      "value": "=64"
+    },
+    "sizeW": {
+      "value": "=isHorizontal ? length : thickness + markerPad"
+    },
+    "sizeH": {
+      "value": "=isHorizontal ? thickness + markerPad : length"
+    },
+    "frameW": {
+      "value": "=sizeW + inkMargin * 2"
+    },
+    "frameH": {
+      "value": "=sizeH + inkMargin * 2"
+    },
+    "barW": {
+      "value": "=isHorizontal ? length : thickness"
+    },
+    "barH": {
+      "value": "=isHorizontal ? thickness : length"
+    },
+    "barX": {
+      "value": "=inkMargin + (isHorizontal ? 0 : (markerSide == \"leading\" ? sizeW - thickness : 0))"
+    },
+    "barY": {
+      "value": "=inkMargin + (isHorizontal ? (markerSide == \"above\" ? sizeH - thickness : 0) : 0)"
+    },
+    "barRadius": {
+      "value": "=min(max(cornerRadius, 0), thickness / 2)"
+    },
+    "glowSigma": {
+      "value": "=thickness * 0.8"
+    }
+  },
+  "nodes": [
+    {
+      "type": "rect",
+      "frame": [
+        0,
+        0,
+        "=frameW",
+        "=frameH"
+      ],
+      "fill": "#00000000"
+    },
+    {
+      "type": "segmentedBar",
+      "frame": [
+        "=barX",
+        "=barY",
+        "=barW",
+        "=barH"
+      ],
+      "orientation": "=orientation",
+      "segments": "=zones",
+      "activeIndex": "=activeIndex",
+      "activeWidthShare": "=activeZoneWidthShare",
+      "activeThicknessScale": "=activeZoneHeightScale",
+      "gap": "=zoneSegmentGap",
+      "radius": "=barRadius",
+      "inactiveOpacity": "=inactiveZoneOpacity",
+      "glow": {
+        "opacity": "=glowEnabled ? glowIntensity : 0",
+        "sigma": "=glowSigma"
+      },
+      "border": {
+        "color": "=borderColor",
+        "opacity": "=borderEnabled ? borderOpacity : 0",
+        "width": "=max(borderWidth, 0.5 / S)"
+      },
+      "markers": [
+        {
+          "role": "current",
+          "layout": "outside",
+          "if": "=markerEnabled && ((isHR && exists(hrZone)) || (!isHR && exists(paceZone)))",
+          "index": "=activeIndex",
+          "fraction": "=currentFraction",
+          "text": "=currentText",
+          "color": "=currentColor",
+          "position": "=markerSide",
+          "showsValue": "=markerShowsValue ? 1 : 0",
+          "scale": "=markerSizeScale",
+          "font": {
+            "family": "=fontFamily",
+            "size": "=fontSize",
+            "weight": "=fontWeight"
+          }
+        },
+        {
+          "role": "threshold",
+          "layout": "outside",
+          "if": "=thresholdMarkerEnabled && ((isHR && exists(hrThreshold)) || (!isHR && exists(paceThreshold)))",
+          "index": "=thresholdIndex",
+          "fraction": "=thresholdFraction",
+          "text": "T",
+          "color": "=thresholdColor",
+          "position": "=markerSide",
+          "scale": "=thresholdMarkerSizeScale",
+          "font": {
+            "family": "=fontFamily",
+            "size": "=fontSize",
+            "weight": "=fontWeight"
+          }
+        }
+      ]
+    }
+  ]
+}

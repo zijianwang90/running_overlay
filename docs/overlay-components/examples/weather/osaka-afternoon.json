@@ -1,0 +1,10 @@
+{
+  "condition": "partlyCloudy",
+  "temperatureC": 18.4,
+  "humidity": 52,
+  "highC": 21,
+  "lowC": 12,
+  "windKph": 14,
+  "feelsLikeC": 17.2,
+  "location": "Osaka, Japan"
+}

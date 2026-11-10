@@ -9,7 +9,7 @@ import Foundation
 enum SkiaChartsModule {
     static func supports(_ element: OverlayElement) -> Bool {
         switch element.type {
-        case .distanceTimeline, .runningGauge, .elevationChart:
+        case .distanceTimeline, .elevationChart:
             true
         default:
             false
@@ -50,16 +50,6 @@ enum SkiaChartsModule {
                 element: element,
                 layout: elementLayout
             )
-        case .runningGauge:
-            let elementLayout = OverlayRenderModel.runningGaugeLayout(
-                for: element,
-                in: renderContext
-            )
-            SkiaRunningGaugeRenderer.draw(
-                canvas: canvas,
-                element: element,
-                layout: elementLayout
-            )
         case .elevationChart:
             let elementLayout = OverlayRenderModel.elevationChartLayout(
                 for: element,
@@ -76,8 +66,8 @@ enum SkiaChartsModule {
     }
 }
 
-/// CPU Skia renderer for the first chart modules: distance timeline, running
-/// gauge, and elevation chart. This type is the golden-frame candidate
+/// CPU Skia renderer for the first chart modules: distance timeline and
+/// elevation chart. This type is the golden-frame candidate
 /// renderer; preview/export hosts draw through `SkiaChartsModule`.
 final class SkiaChartsRenderer {
     let size: CGSize

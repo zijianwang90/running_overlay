@@ -377,29 +377,25 @@ Current implementation status:
 - Inspector width is preserved across outer/detail/editing hierarchy states so internal selection changes do not resize the right panel or truncate tile labels.
 - The Inspector outer state shows added overlays as live-value rows and does not duplicate Overlay Pool add tiles.
 - Inspector segmented controls use native macOS segmented pickers for keyboard/focus and accessibility behavior.
-- This includes segmented controls in Overlay Pool and dense detail inspectors (Numeric Overlay, Running Gauge, and Route Map).
+- This includes segmented controls in Overlay Pool and generated component Inspectors.
+- Overlay Pool › Components offers **Create with AI…**, a sheet that guides users through authoring a component with Claude Code, Codex, Claude Desktop (local MCP server `RunningOverlay --mcp`) or any chat app (copied prompt, pasted JSON). AI previews use only synthetic activity and weather data; user projects and activities are never shared (ADR 0016).
+- Components saved as drafts by an AI client appear under Overlay Pool › Components › **Drafts** without a restart. Clicking a draft adds it; saving the same draft again updates placed instances in place as one undoable change. Invalid drafts show their validation errors.
 - Clicking an add tile creates the overlay and opens its detail editor.
 - Selected overlay elements expose current value, normalized position, scale, preset, font family, font weight, font size, foreground color, background opacity, shadow opacity, and shadow radius controls in the Inspector detail state.
-- Numeric overlays (heart rate, pace, calories, elapsed time, real time, date, distance, elevation, cadence, power, advanced running metrics, and Custom Numeric) use the dense `NumericOverlayDetailView` Inspector with Content, Layout, Typography (value), Label, Unit, Color, Background, and Effects sections matching `docs/design/overlays/numeric/numeric-overlay-ui.md`. Shared Layout uses Position/Scale/Width/Height/Opacity (no Rotation).
-- The Date numeric overlay uses the activity timestamp at the current playhead and offers common year-month-day and month-day formats: `YYYY-MM-DD`, `YYYY/MM/DD`, `MM/DD/YYYY`, `MM-DD`, `MM/DD`, and abbreviated `Month D`.
-- The Temperature numeric overlay reads imported activity temperature by default when available. If the activity has no temperature samples, or the user disables activity temperature for that overlay, the Inspector allows a manual Celsius value that Preview and export use as the temperature fallback.
-- Numeric overlay defaults now standardize to `Minimal Clean` for all numeric types.
-- Numeric overlay style supports per-overlay unit option, Custom Numeric value/format/decimal/unit controls, label/unit visibility toggles, custom label text, independent label/unit positions (`top/bottom/left/right`), independent label/unit typography (`font`, `size`, `weight`), rotation, accent color, background enable/color/radius/padding plus fade-out + gaussian blur controls, and shadow enable/offset controls. New fields decode with safe defaults so existing projects and templates remain compatible.
-- Numeric overlay unit text stays on one line; inline units grow the natural text frame instead of wrapping. Layout exposes optional minimum width and height controls so text overlays can reserve extra space without shrinking content below its measured size.
+- Numeric overlays (heart rate, HR zone, pace, average and lap pace, calories, elapsed and real time, date, distance, elevation and elevation gain, cadence, power, running dynamics, temperature, grade) are presets of the bundled `studio.numeric` component (ADR 0014). Its generated Inspector offers the metric and its display unit or format; value font, size and color; unit visibility, position (left/right/below), alignment, font, size, weight, color and spacing; label visibility, custom text, position (top/bottom/left/right), font, size, weight, color and spacing; SF Symbol icon visibility, symbol, position, alignment, size, color and spacing; heart-rate-zone coloring per role for HR metrics; background visibility, color, corner radius and padding; and minimum width and height.
+- The Date metric uses the activity timestamp at the current playhead and offers `YYYY-MM-DD`, `YYYY/MM/DD`, `MM/DD/YYYY`, `MM-DD`, `MM/DD`, and abbreviated `Month D`. Real Time offers 24-hour and 12-hour clocks.
+- The Temperature metric reads imported activity temperature; there is no manual fallback.
+- Numeric text stays on one line and the component grows with its content; minimum width and height reserve extra space without shrinking content below its measured size.
+- Native numeric overlays were removed without migration: opening an older project drops its numeric overlays and reports how many were removed. Custom Numeric, background fade-out/blur, border and separate value/label/unit opacity are not available for numeric overlays.
+- The remaining native visual overlays (distance timeline, elevation chart, interval HUD bar, interval timeline, zone edge bar, route map, weather widget) were removed without migration in the same way (ADR 0015). Each is now a bundled `studio.*` component edited through its generated Inspector; opening an older project or importing an older template drops those elements and reports how many were removed. The native Skia modules remain as the drawing capability those components call.
 - Added-overlay rows now support per-element visibility and lock toggles with persistent model fields.
 - Visibility off hides the element in both Preview and exported overlay frames.
 - Lock on keeps the element visible but prevents Preview-canvas selection and dragging.
 - Added-overlay rows and Preview overlays share one context menu: `Duplicate`, `Copy Properties`, `Paste Properties`, `Hide`/`Show`, `Lock`/`Unlock`, and `Delete`.
 - `Duplicate` (also Edit > Duplicate Overlay, Command-D, for the selected overlay) inserts a visible, unlocked copy with the same type, scale, opacity, and style, offset 24 output pixels down and right, stacked directly above the original, and selects it. It registers one undo point.
-- Property paste is limited to the same overlay category (for example, numeric -> numeric only).
-- Selected text overlays expose a built-in style picker as the first Inspector control, with Minimal, Pill Badge, Metric Card, Big Number, Sport Watch, Split Label, Inline Ghost, Accent Bar, Sport Neon, and Serif Editorial presets.
-- Numeric overlay presets carry recommended typography tokens (value font family/weight/size, label/unit visibility, label/unit defaults, background, accent color); selecting a preset snaps those fields so the overlay matches the design intent without further tuning.
-- Selected Running Gauge overlays use the dense `RunningGaugeOverlayDetailView` Inspector with eleven sections that share the exact tokens, row heights, controls, and section disclosure behavior of `NumericOverlayDetailView`: Style Preset, Position & Scale, Data Layout, Region Settings, Dial, Ring, Ticks, Dividers, Typography, Color, Effects. Running Gauge does not expose shared Background/Border modules because its renderer consumes the Dial background controls instead of the generic overlay background fields.
-  - Style Preset offers Minimal Sport, High Contrast Sport, Road Run, Trail Adventure, Future Tech, Retro Digital, and Premium Glass; selecting a preset reseeds the gauge sub-style without touching the user's data layout / region bindings.
-  - Data Layout offers seven layout presets (Top / Bottom, Top / Middle / Bottom, Three Zones, Top + Two Middle + Bottom, Top + Three Middle + Bottom, Four Zones, Five Zones); choosing a layout regenerates the recommended per-region metric defaults.
-  - Region Settings lists every visible region with an inline metric picker (Distance, Pace, Elapsed Time, Real Time, Heart Rate, Power, Cadence, Elevation, Calories) and an expandable per-region drawer for Custom Label, Show Label / Show Unit, Value Size, Value Weight, and Value Color.
-  - Dial / Ring / Ticks / Dividers / Effects sections expose every renderer-consumed parameter (dial color + opacity + glass; outer ring + progress ring + progress mode + caps; tick count + major-every + opacities; divider color/opacity/width; shadow + glow). Conditional sub-rows show only when the parent toggle is on.
-  - Typography offers Font, Monospaced Digits, and primary/secondary Weight; Color offers Primary Text, Secondary, and Accent swatch strips.
+- Property paste is limited to the same overlay category (for example, distance timeline -> distance timeline only, or component -> component only).
+- Running Gauge is the bundled `studio.running-gauge` component (ADR 0015); the native `runningGauge` element type and its Inspector were removed without migration. The generated component Inspector exposes the same renderer parameters as editable component parameters: layout preset, per-region metric bindings, dial, ring, ticks, dividers, typography, and colors. Preview and export share the component renderer, which draws through the native `RunningGaugeLayoutEngine` region-frame and divider-segment helpers.
+- Selecting a running gauge component can still change its data layout through the `layoutPreset` parameter; region parameters are generated per layout. There is no longer a named style preset stored on the overlay element.
 - Space starts/stops playhead playback, and the overlay values update as playhead time changes.
 - Left and right arrows move the timeline playhead by exactly one project frame for fine timing checks when no unlocked overlay is selected.
 - With an unlocked overlay selected, all four arrow keys nudge it by one output pixel at the project resolution (ten with Shift); deselect the overlay to return arrows to frame stepping.
@@ -408,16 +404,15 @@ Current implementation status:
 - A muted red playhead with a small downward-pointing triangle inside the ruler band is shown on timeline tracks. The vertical line starts from inside the ruler and extends down through the visible tracks; neither the line nor the triangle is allowed to extend above the ruler.
 - The Distance Timeline overlay renders a configurable compact progress module with minimal, dense, sport, splits, glass, neon, lower-third, and route presets.
 - Distance Timeline Value can show either `current / total unit` or only `current unit`; existing projects default to showing total distance.
-- Distance Timeline Stats Bars must remain outside progress, axis-label, and marker-label content in every placement. Inside mode groups the bar with the timeline background/border without overlaying that content.
-- Activity metric dropdowns for composite overlays must use the shared activity metric catalog so new numeric activity metrics can surface consistently in Distance Timeline custom values, Stats Bar slots, Running Gauge regions, and Interval HUD Bar metric rows.
+- Metrics for a free-standing strip are provided by the bundled `studio.stats-bar` component; Distance Timeline, Elevation Chart and Route Map must not draw attached stats bars.
+- Activity metric dropdowns for composite overlays must use the shared activity metric catalog so new numeric activity metrics can surface consistently in Distance Timeline custom values, Running Gauge regions, and Interval HUD Bar metric rows.
 - Distance Timeline presets can control value/label/percent content, background, border, padding, track height, ticks, current marker, glow, fade amount, media slot for applicable presets, route elevation underlay, and GPS sampled route geometry for the route preset.
 - Distance Timeline media slots support system icons plus embedded static or animated SVG assets. Embedded SVG assets must persist through overlay templates and render deterministically in preview and export.
 - The live elevation chart overlay renders as a compact line chart with a playhead marker.
-- The Running Gauge overlay renders a circular dashboard with a configurable dial background, optional outer ring, optional tick marks (count + major-every), optional progress ring (with mode: distance target / elapsed time / HR zone / power zone / pace intensity / custom), optional divider lines, and per-region data text. The active layout preset (one of seven) determines which regions are rendered, and each region independently binds a metric (Distance / Pace / Elapsed Time / Real Time / Heart Rate / Power / Cadence / Elevation / Calories), label visibility, unit visibility, value font scale/weight, and value color. Preview and export share the same `RunningGaugeLayoutEngine` region-frame and divider-segment helpers.
+- The Running Gauge component renders a circular dashboard with a configurable dial background, optional outer ring, optional tick marks (count + major-every), optional progress ring (with mode: distance target / elapsed time / HR zone / power zone / pace intensity / custom), optional divider lines, and per-region data text. The active layout preset (one of seven) determines which regions are rendered, and each region independently binds a metric (Distance / Pace / Elapsed Time / Real Time / Heart Rate / Power / Cadence / Elevation / Calories), label visibility, unit visibility, value font scale/weight, and value color. Preview and export share the same `RunningGaugeLayoutEngine` region-frame and divider-segment helpers.
 - The Zone Edge Bar overlay renders a thin HR/pace zone strip using Project Settings heart-rate/pace zones and threshold values. It supports Top/Bottom/Left/Right edge placement with signed edge-position adjustment, or free horizontal/vertical placement, active-zone emphasis, current-value marker, optional marker value, threshold `T` marker, bar-local border, bar-local glow, and shared Effects shadow. Vertical bars render Z1 at the bottom and the highest visible zone at the top.
 - Overlay preview and export share the same render layout model for sampled values, normalized positions, base element dimensions, font sizes, padding, progress, and chart samples.
-- Text presets are stored with overlay style data and render consistently in preview, calibration PNGs, and transparent video export.
-- Gauge presets are stored with overlay style data and render consistently in preview, calibration PNGs, and transparent video export.
+- Running gauge parameters are stored on the component instance and render consistently in preview, calibration PNGs, and transparent video export.
 - Preview overlay placement and drag behavior are based on the actual fitted project canvas inside the preview panel, avoiding offset drift when split panes resize the preview area.
 - A small Preview header switch can show or hide preview safety guides, including 90%/80% safe frames and center crosshairs.
 - Selected overlays show a subtle blue selection border and small corner handles.
@@ -451,7 +446,6 @@ Template contents:
   - Scale.
   - Visibility.
   - Lock state.
-  - Built-in text preset when present.
   - Built-in gauge preset when present.
   - Font family, size, weight.
   - Foreground color.
@@ -541,14 +535,12 @@ Current implementation status:
   `trkpt` latitude/longitude into the same activity records.
 - FIT timer pause spans should be represented as non-destructive activity annotations on the Activity layer. Paused spans use a muted gray color and a hover tooltip labeled `Timer Paused`, while keeping the underlying timeline based on real elapsed time so video alignment is not shifted. Interval lap phase spans also expose English hover tooltips with lap kind, lap number, elapsed range, and duration.
 - `ActivityTimeline` exposes route points and interpolated current route point lookup.
-- Route Map can be added from the overlay library.
-- Inspector exposes Route Line color mode and Glow controls.
+- Route Map is the bundled `studio.route-map` component (ADR 0015); the native element type and its Inspector were removed without migration. The generated component Inspector exposes route line color mode, glow, border, edge fade, zoom, points of interest, typography controls, drawn by the native Skia route module.
 - Preview and export render route path, start marker, finish marker, and current-position marker.
 - MapKit is the first provider abstraction and the preview attempts `MKMapSnapshotter` when the map background is enabled.
 - When MapKit snapshot loading is unavailable, Route Map falls back to a local dark grid background.
-- Route Map and Distance Timeline share one Stats Bar inspector component and one full control set; Enabled is in the section header, and all row controls are aligned between modules.
-- Route Map Stats Bar inside mode reserves map content padding for the bar lane (route geometry does not render underneath the bar).
-- Route Map Stats Bar on left/right edges renders as top-to-bottom stack, and `Item Gap` is applied as vertical spacing.
+- The component renderer expands route-map nodes into the same snapshot requests and preloaded assets as the native route element, so component maps participate in map caching, preview and export.
+- Attached Stats Bar requirements are retired (2026-11-09). The component resolver always hides the native preset bars, and users add the standalone `studio.stats-bar` component wherever they want metric strips.
 
 Remaining:
 
@@ -623,10 +615,10 @@ Export behavior:
 - `--benchmark-output <directory>` overrides the automated benchmark output directory.
 - Test clip/frame sampling time must use the same playhead-to-activity conversion and Layer Data FPS quantization path as preview (`activityElapsed(atProjectTime:)` + quantization).
 - Test frame PNG orientation must match preview/export coordinates (no vertical inversion in the saved image).
-- Text preset accent colors in export must come from each overlay style's accent color instead of system accent defaults.
+- Accent colors in export must come from each overlay style's accent color instead of system accent defaults.
 - Activity data is sampled from the activity timeline for each segment using the configured Layer Data FPS cadence.
 - Adjacent video frames that resolve to the same quantized Layer Data sample may reuse the previous rendered overlay image while still writing one pixel buffer per output frame.
-- Export may cache a static decor layer and render dynamic overlays into a padded union rect when that rect covers less than most of the canvas.
+- Export renders every current overlay type as dynamic, using a padded union rect instead of the full canvas when that rect covers less than most of the canvas.
 - If the dynamic rect reaches the full-frame fallback threshold, export must use a single full-frame render/draw path rather than layered drawing.
 - If the dynamic rect reaches the full-frame threshold but individual dynamic overlay rects remain small enough in aggregate, export may render those overlays separately into padded local images and composite them in one pixel-buffer pass.
 - Per-overlay and dynamic-region export compositing must convert SwiftUI top-left overlay rects into pixel-buffer draw rects so exported overlay positions match the editor preview.
@@ -659,7 +651,6 @@ Future requirements:
   - Frame-level outlier profiling for identifying render/draw stalls inside otherwise normal segments.
   - Per-overlay render composition for full-frame-union layouts whose individual overlay bounds are still small.
   - Static/dynamic Route Map splitting so map background and route strokes are reused while only the current marker updates, gated by visual-alignment tests.
-  - Numeric overlay batching in the per-overlay export path when multiple simple numeric overlays fit in a small padded union rect, reducing `ImageRenderer` calls without changing preview/export visuals.
   - Incremental frame rendering with static-layer caching so unchanged overlay layers are reused across adjacent frames.
   - Per-overlay dirty-region change detection to avoid rerendering overlay bounds whose sampled output did not change.
   - Optional adaptive layer data sampling for slowly changing metrics during long exports.

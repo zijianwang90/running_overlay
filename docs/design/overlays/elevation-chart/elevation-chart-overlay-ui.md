@@ -71,10 +71,10 @@ Those should not appear in the current UI.
 
 ## Implementation Status
 
-Implemented in the Swift app as a dedicated `.elevationChart` overlay path:
+Implemented in the Swift app as the bundled `studio.elevation-chart` component:
 
-- Data model: `ElevationChartStyle` stored under `OverlayStyle.elevationChart`.
-- Inspector: `ElevationChartOverlayDetailView`.
+- Data model: `ElevationChartStyle` stored under `OverlayStyle.elevationChart` (render seed).
+- Inspector: generated `OverlayComponentDetailView` over the component's `elevationChart` node parameters (the native `ElevationChartOverlayDetailView` was removed, ADR 0015).
 - Shared Layout: `CollapsibleLayoutInspectorSection` + `OverlayLayoutInspectorRows`.
 - Shared Stats Bar: `CollapsibleStatsBarInspectorSection` + `OverlayStatsBarInspectorRows`, backed by `DistanceTimelineStatsBarConfig`.
 - Preview renderer: `PreviewCanvasView.ElevationChartOverlayView`.

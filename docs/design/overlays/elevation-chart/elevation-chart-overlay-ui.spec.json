@@ -37,7 +37,7 @@
   "implementation": {
     "status": "implemented-first-version",
     "swiftModel": "OverlayStyle.elevationChart: ElevationChartStyle",
-    "inspector": "ElevationChartOverlayDetailView",
+    "inspector": "OverlayComponentDetailView",
     "sharedLayout": ["CollapsibleLayoutInspectorSection", "OverlayLayoutInspectorRows"],
     "sharedStatsBar": ["CollapsibleStatsBarInspectorSection", "OverlayStatsBarInspectorRows", "DistanceTimelineStatsBarConfig"],
     "previewRenderer": "PreviewCanvasView.ElevationChartOverlayView",

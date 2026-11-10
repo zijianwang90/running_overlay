@@ -1,0 +1,107 @@
+{
+  "spec": "ros.component/0.1",
+  "id": "examples.weather-card",
+  "version": "1.0.0",
+  "name": {
+    "en": "Weather Card",
+    "zh-Hans": "天气卡片"
+  },
+  "description": "A host-drawn weather card. The host fetches the snapshot for the activity location; the component only renders it. Use --component-weather to reproduce it offline.",
+  "license": "MIT",
+  "size": "content",
+  "padding": [
+    0,
+    0
+  ],
+  "params": [
+    {
+      "id": "dataSource",
+      "type": "enum",
+      "label": "Data Source",
+      "default": "openMeteo",
+      "section": "Weather Data",
+      "options": [
+        {
+          "value": "manual",
+          "label": "Manual"
+        },
+        {
+          "value": "openMeteo",
+          "label": "Open-Meteo API"
+        },
+        {
+          "value": "openWeather",
+          "label": "OpenWeather API"
+        }
+      ]
+    },
+    {
+      "id": "locationText",
+      "type": "string",
+      "label": "Location",
+      "maxLength": 80,
+      "default": ""
+    },
+    {
+      "id": "temperatureUnit",
+      "type": "enum",
+      "label": "Unit",
+      "default": "celsius",
+      "options": [
+        {
+          "value": "celsius",
+          "label": "Celsius"
+        },
+        {
+          "value": "fahrenheit",
+          "label": "Fahrenheit"
+        }
+      ]
+    },
+    {
+      "id": "backgroundOpacity",
+      "type": "number",
+      "label": "Card Opacity",
+      "default": 0.92,
+      "min": 0,
+      "max": 1,
+      "step": 0.01
+    },
+    {
+      "id": "showHumidity",
+      "type": "bool",
+      "label": "Show Humidity",
+      "default": true
+    },
+    {
+      "id": "showHighLow",
+      "type": "bool",
+      "label": "Show High / Low",
+      "default": true
+    },
+    {
+      "id": "showWind",
+      "type": "bool",
+      "label": "Show Wind",
+      "default": false
+    }
+  ],
+  "nodes": [
+    {
+      "type": "weatherWidget",
+      "frame": [
+        0,
+        0,
+        300,
+        110
+      ],
+      "dataSource": "=dataSource",
+      "locationText": "=locationText",
+      "temperatureUnit": "=temperatureUnit",
+      "cardBackgroundOpacity": "=backgroundOpacity",
+      "showHumidity": "=showHumidity ? 1 : 0",
+      "showHighLow": "=showHighLow ? 1 : 0",
+      "showWind": "=showWind ? 1 : 0"
+    }
+  ]
+}

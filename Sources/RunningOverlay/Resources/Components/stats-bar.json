@@ -1,0 +1,1126 @@
+{
+  "spec": "ros.component/0.1",
+  "id": "studio.stats-bar",
+  "version": "1.0.0",
+  "name": {
+    "en": "Stats Bar",
+    "zh-Hans": "数据条"
+  },
+  "description": {
+    "en": "A free-standing strip of up to four activity metrics with labels.",
+    "zh-Hans": "可自由摆放的活动数据条，最多四个带标签的指标。"
+  },
+  "author": "Running Overlay Studio",
+  "license": "MIT",
+  "size": "content",
+  "padding": [
+    0,
+    0
+  ],
+  "minSize": [
+    80,
+    24
+  ],
+  "params": [
+    {
+      "id": "slot1Metric",
+      "type": "enum",
+      "label": {
+        "en": "Metric 1",
+        "zh-Hans": "指标 1"
+      },
+      "section": {
+        "en": "Slots",
+        "zh-Hans": "槽位"
+      },
+      "default": "distance",
+      "options": [
+        {
+          "value": "heartRate",
+          "label": "Heart Rate"
+        },
+        {
+          "value": "pace",
+          "label": "Pace"
+        },
+        {
+          "value": "avgPace",
+          "label": "Avg Pace"
+        },
+        {
+          "value": "lapPace",
+          "label": "Lap Pace"
+        },
+        {
+          "value": "calories",
+          "label": "Calories"
+        },
+        {
+          "value": "elapsedTime",
+          "label": "Elapsed Time"
+        },
+        {
+          "value": "realTime",
+          "label": "Real Time"
+        },
+        {
+          "value": "distance",
+          "label": "Distance"
+        },
+        {
+          "value": "elevation",
+          "label": "Elevation"
+        },
+        {
+          "value": "cadence",
+          "label": "Cadence"
+        },
+        {
+          "value": "power",
+          "label": "Power"
+        },
+        {
+          "value": "verticalOscillation",
+          "label": "Vertical Oscillation"
+        },
+        {
+          "value": "groundContactTime",
+          "label": "Ground Contact Time"
+        },
+        {
+          "value": "strideLength",
+          "label": "Stride Length"
+        },
+        {
+          "value": "verticalRatio",
+          "label": "Vertical Ratio"
+        },
+        {
+          "value": "groundContactBalance",
+          "label": "GCT Balance"
+        },
+        {
+          "value": "temperature",
+          "label": "Temperature"
+        },
+        {
+          "value": "grade",
+          "label": "Grade"
+        },
+        {
+          "value": "none",
+          "label": "None"
+        }
+      ],
+      "description": {
+        "en": "Host-formatted activity metric shown in this slot. None hides the slot.",
+        "zh-Hans": "该槽位显示的活动指标（由宿主格式化）。选择 None 隐藏该槽位。"
+      }
+    },
+    {
+      "id": "slot1Label",
+      "type": "string",
+      "label": {
+        "en": "Label 1",
+        "zh-Hans": "标签 1"
+      },
+      "section": {
+        "en": "Slots",
+        "zh-Hans": "槽位"
+      },
+      "maxLength": 24,
+      "default": "",
+      "description": {
+        "en": "Optional label override; empty uses the metric's short label.",
+        "zh-Hans": "可选标签覆盖；留空使用指标的短标签。"
+      }
+    },
+    {
+      "id": "slot2Metric",
+      "type": "enum",
+      "label": {
+        "en": "Metric 2",
+        "zh-Hans": "指标 2"
+      },
+      "section": {
+        "en": "Slots",
+        "zh-Hans": "槽位"
+      },
+      "default": "pace",
+      "options": [
+        {
+          "value": "heartRate",
+          "label": "Heart Rate"
+        },
+        {
+          "value": "pace",
+          "label": "Pace"
+        },
+        {
+          "value": "avgPace",
+          "label": "Avg Pace"
+        },
+        {
+          "value": "lapPace",
+          "label": "Lap Pace"
+        },
+        {
+          "value": "calories",
+          "label": "Calories"
+        },
+        {
+          "value": "elapsedTime",
+          "label": "Elapsed Time"
+        },
+        {
+          "value": "realTime",
+          "label": "Real Time"
+        },
+        {
+          "value": "distance",
+          "label": "Distance"
+        },
+        {
+          "value": "elevation",
+          "label": "Elevation"
+        },
+        {
+          "value": "cadence",
+          "label": "Cadence"
+        },
+        {
+          "value": "power",
+          "label": "Power"
+        },
+        {
+          "value": "verticalOscillation",
+          "label": "Vertical Oscillation"
+        },
+        {
+          "value": "groundContactTime",
+          "label": "Ground Contact Time"
+        },
+        {
+          "value": "strideLength",
+          "label": "Stride Length"
+        },
+        {
+          "value": "verticalRatio",
+          "label": "Vertical Ratio"
+        },
+        {
+          "value": "groundContactBalance",
+          "label": "GCT Balance"
+        },
+        {
+          "value": "temperature",
+          "label": "Temperature"
+        },
+        {
+          "value": "grade",
+          "label": "Grade"
+        },
+        {
+          "value": "none",
+          "label": "None"
+        }
+      ],
+      "description": {
+        "en": "Host-formatted activity metric shown in this slot. None hides the slot.",
+        "zh-Hans": "该槽位显示的活动指标（由宿主格式化）。选择 None 隐藏该槽位。"
+      }
+    },
+    {
+      "id": "slot2Label",
+      "type": "string",
+      "label": {
+        "en": "Label 2",
+        "zh-Hans": "标签 2"
+      },
+      "section": {
+        "en": "Slots",
+        "zh-Hans": "槽位"
+      },
+      "maxLength": 24,
+      "default": "",
+      "description": {
+        "en": "Optional label override; empty uses the metric's short label.",
+        "zh-Hans": "可选标签覆盖；留空使用指标的短标签。"
+      }
+    },
+    {
+      "id": "slot3Metric",
+      "type": "enum",
+      "label": {
+        "en": "Metric 3",
+        "zh-Hans": "指标 3"
+      },
+      "section": {
+        "en": "Slots",
+        "zh-Hans": "槽位"
+      },
+      "default": "elapsedTime",
+      "options": [
+        {
+          "value": "heartRate",
+          "label": "Heart Rate"
+        },
+        {
+          "value": "pace",
+          "label": "Pace"
+        },
+        {
+          "value": "avgPace",
+          "label": "Avg Pace"
+        },
+        {
+          "value": "lapPace",
+          "label": "Lap Pace"
+        },
+        {
+          "value": "calories",
+          "label": "Calories"
+        },
+        {
+          "value": "elapsedTime",
+          "label": "Elapsed Time"
+        },
+        {
+          "value": "realTime",
+          "label": "Real Time"
+        },
+        {
+          "value": "distance",
+          "label": "Distance"
+        },
+        {
+          "value": "elevation",
+          "label": "Elevation"
+        },
+        {
+          "value": "cadence",
+          "label": "Cadence"
+        },
+        {
+          "value": "power",
+          "label": "Power"
+        },
+        {
+          "value": "verticalOscillation",
+          "label": "Vertical Oscillation"
+        },
+        {
+          "value": "groundContactTime",
+          "label": "Ground Contact Time"
+        },
+        {
+          "value": "strideLength",
+          "label": "Stride Length"
+        },
+        {
+          "value": "verticalRatio",
+          "label": "Vertical Ratio"
+        },
+        {
+          "value": "groundContactBalance",
+          "label": "GCT Balance"
+        },
+        {
+          "value": "temperature",
+          "label": "Temperature"
+        },
+        {
+          "value": "grade",
+          "label": "Grade"
+        },
+        {
+          "value": "none",
+          "label": "None"
+        }
+      ],
+      "description": {
+        "en": "Host-formatted activity metric shown in this slot. None hides the slot.",
+        "zh-Hans": "该槽位显示的活动指标（由宿主格式化）。选择 None 隐藏该槽位。"
+      }
+    },
+    {
+      "id": "slot3Label",
+      "type": "string",
+      "label": {
+        "en": "Label 3",
+        "zh-Hans": "标签 3"
+      },
+      "section": {
+        "en": "Slots",
+        "zh-Hans": "槽位"
+      },
+      "maxLength": 24,
+      "default": "",
+      "description": {
+        "en": "Optional label override; empty uses the metric's short label.",
+        "zh-Hans": "可选标签覆盖；留空使用指标的短标签。"
+      }
+    },
+    {
+      "id": "slot4Metric",
+      "type": "enum",
+      "label": {
+        "en": "Metric 4",
+        "zh-Hans": "指标 4"
+      },
+      "section": {
+        "en": "Slots",
+        "zh-Hans": "槽位"
+      },
+      "default": "none",
+      "options": [
+        {
+          "value": "heartRate",
+          "label": "Heart Rate"
+        },
+        {
+          "value": "pace",
+          "label": "Pace"
+        },
+        {
+          "value": "avgPace",
+          "label": "Avg Pace"
+        },
+        {
+          "value": "lapPace",
+          "label": "Lap Pace"
+        },
+        {
+          "value": "calories",
+          "label": "Calories"
+        },
+        {
+          "value": "elapsedTime",
+          "label": "Elapsed Time"
+        },
+        {
+          "value": "realTime",
+          "label": "Real Time"
+        },
+        {
+          "value": "distance",
+          "label": "Distance"
+        },
+        {
+          "value": "elevation",
+          "label": "Elevation"
+        },
+        {
+          "value": "cadence",
+          "label": "Cadence"
+        },
+        {
+          "value": "power",
+          "label": "Power"
+        },
+        {
+          "value": "verticalOscillation",
+          "label": "Vertical Oscillation"
+        },
+        {
+          "value": "groundContactTime",
+          "label": "Ground Contact Time"
+        },
+        {
+          "value": "strideLength",
+          "label": "Stride Length"
+        },
+        {
+          "value": "verticalRatio",
+          "label": "Vertical Ratio"
+        },
+        {
+          "value": "groundContactBalance",
+          "label": "GCT Balance"
+        },
+        {
+          "value": "temperature",
+          "label": "Temperature"
+        },
+        {
+          "value": "grade",
+          "label": "Grade"
+        },
+        {
+          "value": "none",
+          "label": "None"
+        }
+      ],
+      "description": {
+        "en": "Host-formatted activity metric shown in this slot. None hides the slot.",
+        "zh-Hans": "该槽位显示的活动指标（由宿主格式化）。选择 None 隐藏该槽位。"
+      }
+    },
+    {
+      "id": "slot4Label",
+      "type": "string",
+      "label": {
+        "en": "Label 4",
+        "zh-Hans": "标签 4"
+      },
+      "section": {
+        "en": "Slots",
+        "zh-Hans": "槽位"
+      },
+      "maxLength": 24,
+      "default": "",
+      "description": {
+        "en": "Optional label override; empty uses the metric's short label.",
+        "zh-Hans": "可选标签覆盖；留空使用指标的短标签。"
+      }
+    },
+    {
+      "id": "unitSystem",
+      "type": "enum",
+      "label": {
+        "en": "Units",
+        "zh-Hans": "单位"
+      },
+      "section": {
+        "en": "Slots",
+        "zh-Hans": "槽位"
+      },
+      "default": "metric",
+      "options": [
+        {
+          "value": "metric",
+          "label": "Metric (km, min/km, m, °C)"
+        },
+        {
+          "value": "imperial",
+          "label": "Imperial (mi, min/mi, ft, °F)"
+        }
+      ],
+      "description": {
+        "en": "Display unit family for pace, distance, elevation and temperature slots.",
+        "zh-Hans": "配速、距离、海拔和温度槽位使用的单位制。"
+      }
+    },
+    {
+      "id": "valueFontFamily",
+      "type": "font",
+      "label": {
+        "en": "Value Font",
+        "zh-Hans": "数值字体"
+      },
+      "default": "system",
+      "advanced": true
+    },
+    {
+      "id": "valueFontSize",
+      "type": "number",
+      "label": {
+        "en": "Value Size",
+        "zh-Hans": "数值字号"
+      },
+      "min": 6,
+      "max": 200,
+      "step": 1,
+      "default": 22,
+      "advanced": true
+    },
+    {
+      "id": "valueFontWeight",
+      "type": "enum",
+      "label": {
+        "en": "Value Weight",
+        "zh-Hans": "数值字重"
+      },
+      "default": "semibold",
+      "options": [
+        {
+          "value": "regular",
+          "label": "Regular"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semibold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        }
+      ],
+      "advanced": true
+    },
+    {
+      "id": "valueColor",
+      "type": "color",
+      "label": {
+        "en": "Value Color",
+        "zh-Hans": "数值颜色"
+      },
+      "section": {
+        "en": "Typography",
+        "zh-Hans": "文字"
+      },
+      "default": "#FFFFFFFF"
+    },
+    {
+      "id": "labelFontFamily",
+      "type": "font",
+      "label": {
+        "en": "Label Font",
+        "zh-Hans": "标签字体"
+      },
+      "default": "system",
+      "advanced": true
+    },
+    {
+      "id": "labelFontSize",
+      "type": "number",
+      "label": {
+        "en": "Label Size",
+        "zh-Hans": "标签字号"
+      },
+      "min": 6,
+      "max": 120,
+      "step": 1,
+      "default": 10,
+      "advanced": true
+    },
+    {
+      "id": "labelFontWeight",
+      "type": "enum",
+      "label": {
+        "en": "Label Weight",
+        "zh-Hans": "标签字重"
+      },
+      "default": "medium",
+      "options": [
+        {
+          "value": "regular",
+          "label": "Regular"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semibold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        }
+      ],
+      "advanced": true
+    },
+    {
+      "id": "labelColor",
+      "type": "color",
+      "label": {
+        "en": "Label Color",
+        "zh-Hans": "标签颜色"
+      },
+      "section": {
+        "en": "Typography",
+        "zh-Hans": "文字"
+      },
+      "default": "#FFFFFFFF"
+    },
+    {
+      "id": "labelOpacity",
+      "type": "number",
+      "label": {
+        "en": "Label Opacity",
+        "zh-Hans": "标签不透明度"
+      },
+      "section": {
+        "en": "Typography",
+        "zh-Hans": "文字"
+      },
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.66
+    },
+    {
+      "id": "valueLabelSpacing",
+      "type": "number",
+      "label": {
+        "en": "Value / Label Spacing",
+        "zh-Hans": "数值与标签间距"
+      },
+      "min": 0,
+      "max": 40,
+      "step": 1,
+      "default": 2,
+      "advanced": true
+    },
+    {
+      "id": "unitScale",
+      "type": "number",
+      "label": {
+        "en": "Unit Scale",
+        "zh-Hans": "单位缩放"
+      },
+      "section": {
+        "en": "Typography",
+        "zh-Hans": "文字"
+      },
+      "min": 0.2,
+      "max": 1,
+      "step": 0.05,
+      "default": 0.52,
+      "description": {
+        "en": "Unit text size relative to the value size.",
+        "zh-Hans": "单位文字相对数值字号的缩放。"
+      }
+    },
+    {
+      "id": "backgroundEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Background",
+        "zh-Hans": "背景"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": true
+    },
+    {
+      "id": "backgroundColor",
+      "type": "color",
+      "label": {
+        "en": "Background Color",
+        "zh-Hans": "背景颜色"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": "#000000"
+    },
+    {
+      "id": "backgroundOpacity",
+      "type": "number",
+      "label": {
+        "en": "Background Opacity",
+        "zh-Hans": "背景不透明度"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.62
+    },
+    {
+      "id": "backgroundRadius",
+      "type": "number",
+      "label": {
+        "en": "Corner Radius",
+        "zh-Hans": "圆角"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "min": 0,
+      "max": 200,
+      "step": 1,
+      "default": 12
+    },
+    {
+      "id": "dividerEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Dividers",
+        "zh-Hans": "分隔线"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": true
+    },
+    {
+      "id": "dividerThickness",
+      "type": "number",
+      "label": {
+        "en": "Divider Thickness",
+        "zh-Hans": "分隔线粗细"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "min": 0,
+      "max": 20,
+      "step": 1,
+      "default": 1
+    },
+    {
+      "id": "dividerHeight",
+      "type": "number",
+      "label": {
+        "en": "Divider Height",
+        "zh-Hans": "分隔线高度"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "min": 0,
+      "max": 400,
+      "step": 1,
+      "default": 24
+    },
+    {
+      "id": "dividerOpacity",
+      "type": "number",
+      "label": {
+        "en": "Divider Opacity",
+        "zh-Hans": "分隔线不透明度"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "default": 0.14
+    },
+    {
+      "id": "paddingX",
+      "type": "number",
+      "label": {
+        "en": "Side Padding",
+        "zh-Hans": "水平内边距"
+      },
+      "min": 0,
+      "max": 120,
+      "step": 1,
+      "default": 14,
+      "advanced": true
+    },
+    {
+      "id": "barWidth",
+      "type": "number",
+      "label": {
+        "en": "Bar Width",
+        "zh-Hans": "信息条宽度"
+      },
+      "section": {
+        "en": "Layout",
+        "zh-Hans": "布局"
+      },
+      "min": 80,
+      "max": 4096,
+      "step": 1,
+      "default": 420
+    },
+    {
+      "id": "barHeight",
+      "type": "number",
+      "label": {
+        "en": "Bar Height",
+        "zh-Hans": "信息条高度"
+      },
+      "section": {
+        "en": "Layout",
+        "zh-Hans": "布局"
+      },
+      "min": 24,
+      "max": 400,
+      "step": 1,
+      "default": 64
+    }
+  ],
+  "bindings": {
+    "paceUnit": {
+      "value": "=unitSystem == \"imperial\" ? \"paceImperial\" : \"paceMetric\""
+    },
+    "distanceUnit": {
+      "value": "=unitSystem == \"imperial\" ? \"distanceMiles\" : \"distanceKilometers\""
+    },
+    "elevationUnit": {
+      "value": "=unitSystem == \"imperial\" ? \"elevationFeet\" : \"elevationMeters\""
+    },
+    "temperatureUnit": {
+      "value": "=unitSystem == \"imperial\" ? \"temperatureFahrenheit\" : \"temperatureCelsius\""
+    },
+    "visibleCount": {
+      "value": "=(slot1Metric != \"none\" ? 1 : 0) + (slot2Metric != \"none\" ? 1 : 0) + (slot3Metric != \"none\" ? 1 : 0) + (slot4Metric != \"none\" ? 1 : 0)"
+    },
+    "dividerW": {
+      "value": "=dividerEnabled && visibleCount > 1 ? dividerThickness : 0"
+    },
+    "innerWidth": {
+      "value": "=barWidth - 2 * paddingX"
+    },
+    "cellWidth": {
+      "value": "=max((innerWidth - dividerW * max(visibleCount - 1, 0)) / max(visibleCount, 1), 1)"
+    }
+  },
+  "nodes": [
+    {
+      "type": "rect",
+      "frame": [
+        0,
+        0,
+        "=barWidth",
+        "=barHeight"
+      ],
+      "radius": "=backgroundRadius",
+      "fill": "=backgroundColor",
+      "opacity": "=backgroundEnabled ? backgroundOpacity : 0"
+    },
+    {
+      "type": "stack",
+      "frame": [
+        "=paddingX",
+        0,
+        "=innerWidth",
+        "=barHeight"
+      ],
+      "direction": "vertical",
+      "crossAlign": "center",
+      "spacing": 0,
+      "children": [
+        {
+          "type": "spacer"
+        },
+        {
+          "type": "columns",
+          "width": "=innerWidth",
+          "divider": {
+            "width": "=dividerW",
+            "color": "=labelColor",
+            "opacity": "=dividerOpacity",
+            "height": "=dividerHeight"
+          },
+          "children": [
+            {
+              "type": "textRows",
+              "if": "=slot1Metric != \"none\"",
+              "maxWidth": "=cellWidth",
+              "spacing": "=valueLabelSpacing",
+              "rows": [
+                {
+                  "alignment": "firstTextBaseline",
+                  "spacing": 3,
+                  "runs": [
+                    {
+                      "text": "=field(metric(slot1Metric, paceUnit, distanceUnit, elevationUnit, temperatureUnit), \"value\")",
+                      "font": {
+                        "family": "=valueFontFamily",
+                        "size": "=valueFontSize",
+                        "weight": "=valueFontWeight"
+                      },
+                      "color": "=valueColor",
+                      "minimumScaleFactor": 0.45,
+                      "monospacedDigits": true
+                    },
+                    {
+                      "text": "=field(metric(slot1Metric, paceUnit, distanceUnit, elevationUnit, temperatureUnit), \"unit\")",
+                      "if": "=field(metric(slot1Metric, paceUnit, distanceUnit, elevationUnit, temperatureUnit), \"unit\") != \"\"",
+                      "font": {
+                        "family": "=valueFontFamily",
+                        "size": "=valueFontSize * unitScale",
+                        "weight": "=valueFontWeight"
+                      },
+                      "color": "=valueColor",
+                      "opacity": 0.76,
+                      "minimumScaleFactor": 0.7
+                    }
+                  ]
+                },
+                {
+                  "runs": [
+                    {
+                      "text": "=slot1Label != \"\" ? upper(slot1Label) : upper(field(metric(slot1Metric, paceUnit, distanceUnit, elevationUnit, temperatureUnit), \"shortLabel\"))",
+                      "font": {
+                        "family": "=labelFontFamily",
+                        "size": "=labelFontSize",
+                        "weight": "=labelFontWeight"
+                      },
+                      "color": "=labelColor",
+                      "opacity": "=labelOpacity",
+                      "minimumScaleFactor": 0.7
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "textRows",
+              "if": "=slot2Metric != \"none\"",
+              "maxWidth": "=cellWidth",
+              "spacing": "=valueLabelSpacing",
+              "rows": [
+                {
+                  "alignment": "firstTextBaseline",
+                  "spacing": 3,
+                  "runs": [
+                    {
+                      "text": "=field(metric(slot2Metric, paceUnit, distanceUnit, elevationUnit, temperatureUnit), \"value\")",
+                      "font": {
+                        "family": "=valueFontFamily",
+                        "size": "=valueFontSize",
+                        "weight": "=valueFontWeight"
+                      },
+                      "color": "=valueColor",
+                      "minimumScaleFactor": 0.45,
+                      "monospacedDigits": true
+                    },
+                    {
+                      "text": "=field(metric(slot2Metric, paceUnit, distanceUnit, elevationUnit, temperatureUnit), \"unit\")",
+                      "if": "=field(metric(slot2Metric, paceUnit, distanceUnit, elevationUnit, temperatureUnit), \"unit\") != \"\"",
+                      "font": {
+                        "family": "=valueFontFamily",
+                        "size": "=valueFontSize * unitScale",
+                        "weight": "=valueFontWeight"
+                      },
+                      "color": "=valueColor",
+                      "opacity": 0.76,
+                      "minimumScaleFactor": 0.7
+                    }
+                  ]
+                },
+                {
+                  "runs": [
+                    {
+                      "text": "=slot2Label != \"\" ? upper(slot2Label) : upper(field(metric(slot2Metric, paceUnit, distanceUnit, elevationUnit, temperatureUnit), \"shortLabel\"))",
+                      "font": {
+                        "family": "=labelFontFamily",
+                        "size": "=labelFontSize",
+                        "weight": "=labelFontWeight"
+                      },
+                      "color": "=labelColor",
+                      "opacity": "=labelOpacity",
+                      "minimumScaleFactor": 0.7
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "textRows",
+              "if": "=slot3Metric != \"none\"",
+              "maxWidth": "=cellWidth",
+              "spacing": "=valueLabelSpacing",
+              "rows": [
+                {
+                  "alignment": "firstTextBaseline",
+                  "spacing": 3,
+                  "runs": [
+                    {
+                      "text": "=field(metric(slot3Metric, paceUnit, distanceUnit, elevationUnit, temperatureUnit), \"value\")",
+                      "font": {
+                        "family": "=valueFontFamily",
+                        "size": "=valueFontSize",
+                        "weight": "=valueFontWeight"
+                      },
+                      "color": "=valueColor",
+                      "minimumScaleFactor": 0.45,
+                      "monospacedDigits": true
+                    },
+                    {
+                      "text": "=field(metric(slot3Metric, paceUnit, distanceUnit, elevationUnit, temperatureUnit), \"unit\")",
+                      "if": "=field(metric(slot3Metric, paceUnit, distanceUnit, elevationUnit, temperatureUnit), \"unit\") != \"\"",
+                      "font": {
+                        "family": "=valueFontFamily",
+                        "size": "=valueFontSize * unitScale",
+                        "weight": "=valueFontWeight"
+                      },
+                      "color": "=valueColor",
+                      "opacity": 0.76,
+                      "minimumScaleFactor": 0.7
+                    }
+                  ]
+                },
+                {
+                  "runs": [
+                    {
+                      "text": "=slot3Label != \"\" ? upper(slot3Label) : upper(field(metric(slot3Metric, paceUnit, distanceUnit, elevationUnit, temperatureUnit), \"shortLabel\"))",
+                      "font": {
+                        "family": "=labelFontFamily",
+                        "size": "=labelFontSize",
+                        "weight": "=labelFontWeight"
+                      },
+                      "color": "=labelColor",
+                      "opacity": "=labelOpacity",
+                      "minimumScaleFactor": 0.7
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "textRows",
+              "if": "=slot4Metric != \"none\"",
+              "maxWidth": "=cellWidth",
+              "spacing": "=valueLabelSpacing",
+              "rows": [
+                {
+                  "alignment": "firstTextBaseline",
+                  "spacing": 3,
+                  "runs": [
+                    {
+                      "text": "=field(metric(slot4Metric, paceUnit, distanceUnit, elevationUnit, temperatureUnit), \"value\")",
+                      "font": {
+                        "family": "=valueFontFamily",
+                        "size": "=valueFontSize",
+                        "weight": "=valueFontWeight"
+                      },
+                      "color": "=valueColor",
+                      "minimumScaleFactor": 0.45,
+                      "monospacedDigits": true
+                    },
+                    {
+                      "text": "=field(metric(slot4Metric, paceUnit, distanceUnit, elevationUnit, temperatureUnit), \"unit\")",
+                      "if": "=field(metric(slot4Metric, paceUnit, distanceUnit, elevationUnit, temperatureUnit), \"unit\") != \"\"",
+                      "font": {
+                        "family": "=valueFontFamily",
+                        "size": "=valueFontSize * unitScale",
+                        "weight": "=valueFontWeight"
+                      },
+                      "color": "=valueColor",
+                      "opacity": 0.76,
+                      "minimumScaleFactor": 0.7
+                    }
+                  ]
+                },
+                {
+                  "runs": [
+                    {
+                      "text": "=slot4Label != \"\" ? upper(slot4Label) : upper(field(metric(slot4Metric, paceUnit, distanceUnit, elevationUnit, temperatureUnit), \"shortLabel\"))",
+                      "font": {
+                        "family": "=labelFontFamily",
+                        "size": "=labelFontSize",
+                        "weight": "=labelFontWeight"
+                      },
+                      "color": "=labelColor",
+                      "opacity": "=labelOpacity",
+                      "minimumScaleFactor": 0.7
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "spacer"
+        }
+      ]
+    }
+  ]
+}

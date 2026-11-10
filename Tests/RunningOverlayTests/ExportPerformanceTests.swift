@@ -69,8 +69,18 @@ struct ExportPerformanceTests {
             playhead: 3,
             fitStartTime: 1
         )
+        let numeric = try #require(
+            OverlayComponentLibraryItem.all.first { $0.id == "studio.numeric#pace" }
+        )
+        let numericReference = try OverlayComponentLibrary.reference(for: numeric)
         source.overlayLayout = OverlayLayout(elements: [
-            OverlayElement(type: .heartRate, position: CGPoint(x: 0.4, y: 0.6), scale: 1.2, style: .default)
+            OverlayElement(
+                type: .component,
+                position: CGPoint(x: 0.4, y: 0.6),
+                scale: 1.2,
+                style: .default,
+                component: OverlayComponentInstance(reference: numericReference)
+            )
         ])
         source.userAssets = [
             UserAsset(id: UUID(), kind: .svg, originalName: "icon.svg", sha256: "abc123", fileExtension: "svg")
@@ -79,7 +89,7 @@ struct ExportPerformanceTests {
         source.saveProjectSnapshot(to: snapshotURL)
 
         let restored = ProjectDocument()
-        restored.addOverlayElement(.pace)
+        restored.addOverlayElement(.distanceTimeline)
         restored.selection = .overlayElement(restored.overlayLayout.elements[0].id)
         restored.isPlaying = true
         restored.playbackRate = 2
@@ -104,7 +114,7 @@ struct ExportPerformanceTests {
         #expect(restored.mediaFolders.first?.name == "Race")
         #expect(restored.timeline.tracks.first?.clips.first?.title == "camera.mov")
         #expect(restored.timeline.playhead == 3)
-        #expect(restored.overlayLayout.elements.first?.type == .heartRate)
+        #expect(restored.overlayLayout.elements.first?.type == .component)
         #expect(restored.userAssets.first?.originalName == "icon.svg")
         #expect(restored.fitSourceName == "activity.fit")
         #expect(restored.selection == .none)
@@ -177,7 +187,7 @@ struct ExportPerformanceTests {
             overlayProfiles: [
                 OverlayExportOverlayProfile(
                     overlayID: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
-                    overlayType: .heartRate,
+                    overlayType: .distanceTimeline,
                     renderRectX: 100,
                     renderRectY: 200,
                     renderRectWidth: 300,
@@ -190,7 +200,7 @@ struct ExportPerformanceTests {
                 ),
                 OverlayExportOverlayProfile(
                     overlayID: UUID(uuidString: "00000000-0000-0000-0000-000000000002")!,
-                    overlayType: .pace,
+                    overlayType: .distanceTimeline,
                     renderRectX: 420,
                     renderRectY: 200,
                     renderRectWidth: 300,
@@ -256,7 +266,7 @@ struct ExportPerformanceTests {
         #expect(decoded.overlayDrawCount == 180)
         #expect(decoded.segments.first?.slowFrames.first?.frameIndex == 12)
         #expect(decoded.segments.first?.overlayProfiles.count == 2)
-        #expect(decoded.segments.first?.overlayProfiles.first?.overlayType == .heartRate)
+        #expect(decoded.segments.first?.overlayProfiles.first?.overlayType == .distanceTimeline)
         #expect(decoded.segments.first?.segmentName == "camera.mov")
 
         let csv = profile.csvString()
@@ -362,7 +372,7 @@ struct ExportPerformanceTests {
             settings: settings,
             activity: sampleRouteActivity(),
             overlayLayout: OverlayLayout(elements: [
-                OverlayElement(type: .heartRate, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: .default)
+                OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 0.5, style: .default)
             ]),
             segments: [OverlayExportSegment(startTime: 2, duration: 1, sourceFileName: "clip.mov")]
         )
@@ -405,7 +415,7 @@ struct ExportPerformanceTests {
             settings: settings,
             activity: sampleRouteActivity(),
             overlayLayout: OverlayLayout(elements: [
-                OverlayElement(type: .heartRate, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: .default)
+                OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 0.5, style: .default)
             ]),
             segments: [OverlayExportSegment(startTime: 2, duration: 0.2, sourceFileName: "clip.mov")]
         )
@@ -491,13 +501,13 @@ struct ExportPerformanceTests {
             overlays = [OverlayElement(type: .routeMap, position: CGPoint(x: 0.5, y: 0.5), scale: 2.0, style: style)]
         case .perOverlay:
             overlays = [
-                OverlayElement(type: .heartRate, position: CGPoint(x: 0.1, y: 0.1), scale: 1, style: .default),
-                OverlayElement(type: .pace, position: CGPoint(x: 0.9, y: 0.9), scale: 1, style: .default)
+                OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.1, y: 0.15), scale: 0.4, style: .default),
+                OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.9, y: 0.85), scale: 0.4, style: .default)
             ]
         case .layeredRegion:
             overlays = [
-                OverlayElement(type: .decorSolidColor, position: CGPoint(x: 0.2, y: 0.2), scale: 1, style: .default),
-                OverlayElement(type: .heartRate, position: CGPoint(x: 0.7, y: 0.7), scale: 1, style: .default)
+                OverlayElement(type: .zoneEdgeBar, position: CGPoint(x: 0.2, y: 0.2), scale: 1, style: .default),
+                OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.7, y: 0.7), scale: 0.5, style: .default)
             ]
         }
         let plan = ExportRenderPlan(overlays: overlays, canvasSize: canvasSize, activity: sampleRouteActivity())
@@ -570,8 +580,8 @@ struct ExportPerformanceTests {
             settings: settings,
             activity: sampleRouteActivity(),
             overlayLayout: OverlayLayout(elements: [
-                OverlayElement(type: .heartRate, position: CGPoint(x: 0.15, y: 0.15), scale: 1, style: .default),
-                OverlayElement(type: .pace, position: CGPoint(x: 0.85, y: 0.85), scale: 1, style: .default)
+                OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.15, y: 0.2), scale: 0.4, style: .default),
+                OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.85, y: 0.8), scale: 0.4, style: .default)
             ]),
             segments: [OverlayExportSegment(startTime: 2, duration: 1, sourceFileName: "clip.mov")],
             writesProfile: true,
@@ -598,19 +608,18 @@ struct ExportPerformanceTests {
         }
     }
 
-    @Test func renderPlanSeparatesStaticAndDynamicOverlays() {
+    @Test func renderPlanTreatsEveryOverlayAsDynamic() {
         let activity = ActivityTimeline.empty
-        let staticOverlay = OverlayElement(type: .decorSolidColor, position: CGPoint(x: 0.2, y: 0.2), scale: 1, style: .default)
-        let dynamicOverlay = OverlayElement(type: .heartRate, position: CGPoint(x: 0.7, y: 0.7), scale: 1, style: .default)
+        let overlay = OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.7, y: 0.7), scale: 0.5, style: .default)
 
         let plan = ExportRenderPlan(
-            overlays: [staticOverlay, dynamicOverlay],
+            overlays: [overlay],
             canvasSize: CGSize(width: 1920, height: 1080),
             activity: activity
         )
 
-        #expect(plan.staticOverlays.map(\.type) == [.decorSolidColor])
-        #expect(plan.dynamicOverlays.map(\.type) == [.heartRate])
+        #expect(plan.staticOverlays.isEmpty)
+        #expect(plan.dynamicOverlays.map(\.type) == [.distanceTimeline])
         #expect(plan.dynamicRenderRect.width > 0)
         #expect(plan.dynamicRenderRect.height > 0)
         #expect(plan.dynamicRenderAreaRatio < 0.85)
@@ -620,7 +629,7 @@ struct ExportPerformanceTests {
 
     @Test func renderPlanDynamicUnionIncludesSafePadding() throws {
         let activity = ActivityTimeline.empty
-        let element = OverlayElement(type: .runningGauge, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: .default)
+        let element = OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: .default)
         let canvasSize = CGSize(width: 1920, height: 1080)
         let context = OverlayRenderContext(canvasSize: canvasSize, activity: activity, elapsedTime: 0)
         let rawRect = try #require(ExportRenderPlan.renderRect(for: element, context: context))
@@ -651,8 +660,8 @@ struct ExportPerformanceTests {
     }
 
     @Test func renderPlanUsesPerOverlayPathWhenFullFrameUnionHasSmallIndividualAreas() {
-        let first = OverlayElement(type: .heartRate, position: CGPoint(x: 0.05, y: 0.1), scale: 1, style: .default)
-        let second = OverlayElement(type: .pace, position: CGPoint(x: 0.95, y: 0.9), scale: 1, style: .default)
+        let first = OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.08, y: 0.13), scale: 0.4, style: .default)
+        let second = OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.92, y: 0.87), scale: 0.4, style: .default)
         let canvasSize = CGSize(width: 1280, height: 720)
 
         let plan = ExportRenderPlan(overlays: [first, second], canvasSize: canvasSize, activity: .empty)
@@ -664,67 +673,6 @@ struct ExportPerformanceTests {
         #expect(plan.dynamicRenderAreaRatio == 1)
         #expect(plan.overlayRenderItems.count == 2)
         #expect(plan.overlayRenderAreaRatio < ExportRenderPlan.perOverlayAreaThreshold)
-    }
-
-    @Test func renderPlanBatchesNearbyNumericOverlays() throws {
-        let overlays = [
-            OverlayElement(type: .heartRate, position: CGPoint(x: 0.12, y: 0.86), scale: 1, style: .default),
-            OverlayElement(type: .pace, position: CGPoint(x: 0.24, y: 0.86), scale: 1, style: .default),
-            OverlayElement(type: .cadence, position: CGPoint(x: 0.36, y: 0.86), scale: 1, style: .default),
-            OverlayElement(type: .routeMap, position: CGPoint(x: 0.82, y: 0.18), scale: 1, style: .default)
-        ]
-
-        let plan = ExportRenderPlan(overlays: overlays, canvasSize: CGSize(width: 1280, height: 720), activity: sampleRouteActivity())
-        let batch = try #require(plan.overlayRenderItems.first { $0.elements.count == 3 })
-
-        #expect(batch.elements.map(\.type) == [.heartRate, .pace, .cadence])
-        #expect(plan.overlayRenderItems.count < plan.dynamicOverlays.count)
-        #expect(plan.overlayRenderAreaRatio < ExportRenderPlan.perOverlayAreaThreshold)
-    }
-
-    @Test func renderPlanPreservesLayoutOrderWhenNumericOverlaysAreSplit() {
-        let overlays = [
-            OverlayElement(type: .heartRate, position: CGPoint(x: 0.12, y: 0.86), scale: 1, style: .default),
-            OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.3), scale: 1, style: .default),
-            OverlayElement(type: .pace, position: CGPoint(x: 0.24, y: 0.86), scale: 1, style: .default),
-            OverlayElement(type: .cadence, position: CGPoint(x: 0.36, y: 0.86), scale: 1, style: .default)
-        ]
-
-        let plan = ExportRenderPlan(overlays: overlays, canvasSize: CGSize(width: 1280, height: 720), activity: sampleRouteActivity())
-
-        // A numeric overlay before the chart and two after it must stay on
-        // their own sides of the chart. Batching across the chart would move
-        // the first numeric overlay above it.
-        #expect(plan.overlayRenderItems.map { $0.elements.map(\.type) } == [
-            [.heartRate],
-            [.distanceTimeline],
-            [.pace, .cadence]
-        ])
-    }
-
-    @Test func renderPlanDoesNotBatchNumericOverlaysWhenUnionIsTooLarge() {
-        let overlays = [
-            OverlayElement(type: .heartRate, position: CGPoint(x: 0.05, y: 0.08), scale: 1, style: .default),
-            OverlayElement(type: .pace, position: CGPoint(x: 0.95, y: 0.92), scale: 1, style: .default)
-        ]
-
-        let plan = ExportRenderPlan(overlays: overlays, canvasSize: CGSize(width: 1280, height: 720), activity: .empty)
-
-        #expect(plan.overlayRenderItems.count == 2)
-        #expect(plan.overlayRenderItems.allSatisfy { $0.elements.count == 1 })
-    }
-
-    @Test func renderPlanDoesNotBatchComplexOverlaysWithNumericOverlays() {
-        let overlays = [
-            OverlayElement(type: .heartRate, position: CGPoint(x: 0.12, y: 0.86), scale: 1, style: .default),
-            OverlayElement(type: .pace, position: CGPoint(x: 0.24, y: 0.86), scale: 1, style: .default),
-            OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.2), scale: 1, style: .default)
-        ]
-
-        let plan = ExportRenderPlan(overlays: overlays, canvasSize: CGSize(width: 1280, height: 720), activity: sampleRouteActivity())
-
-        #expect(plan.overlayRenderItems.contains { $0.elements.map(\.type) == [.heartRate, .pace] })
-        #expect(plan.overlayRenderItems.contains { $0.elements.map(\.type) == [.distanceTimeline] })
     }
 
     @Test func renderPlanEnablesRouteMapStaticCacheOnlyWithoutStatsBar() {
@@ -1128,15 +1076,16 @@ struct ExportPerformanceTests {
         chartStyle.elevationChart.statsBar.visible = false
         chartStyle.glowEnabled = false
 
-        return [
-            OverlayElement(type: .pace, position: CGPoint(x: 0.031, y: 0.739), scale: 0.75, style: .default),
-            OverlayElement(type: .heartRate, position: CGPoint(x: 0.031, y: 0.792), scale: 0.75, style: .default),
-            OverlayElement(type: .cadence, position: CGPoint(x: 0.030, y: 0.847), scale: 0.75, style: .default),
+        // Small dynamic stand-ins where the template's numeric readings sit;
+        // numeric readings are components, which this SwiftUI-path plan
+        // cannot size (ADR 0014), and the plan cost counts items.
+        let readouts = [
+            CGPoint(x: 0.031, y: 0.739), CGPoint(x: 0.031, y: 0.792), CGPoint(x: 0.030, y: 0.847),
+            CGPoint(x: 0.856, y: 0.844), CGPoint(x: 0.856, y: 0.901), CGPoint(x: 0.029, y: 0.905)
+        ].map { OverlayElement(type: .distanceTimeline, position: $0, scale: 0.25, style: .default) }
+        return readouts + [
             OverlayElement(type: .routeMap, position: CGPoint(x: 0.879, y: 0.195), scale: 0.75, style: .default),
             OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.069), scale: 1, style: .default),
-            OverlayElement(type: .elapsedTime, position: CGPoint(x: 0.856, y: 0.844), scale: 1, style: .default),
-            OverlayElement(type: .realTime, position: CGPoint(x: 0.856, y: 0.901), scale: 1, style: .default),
-            OverlayElement(type: .power, position: CGPoint(x: 0.029, y: 0.905), scale: 0.75, style: .default),
             OverlayElement(type: .weatherWidget, position: CGPoint(x: 0.895, y: 0.756), scale: 0.75, style: .default),
             OverlayElement(type: .zoneEdgeBar, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: .default),
             OverlayElement(type: .elevationChart, position: CGPoint(x: 0.5, y: 0.911), scale: 1, style: chartStyle),

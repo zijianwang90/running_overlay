@@ -5,7 +5,8 @@ import UniformTypeIdentifiers
 enum ProjectFileFormat {
     static let fileExtension = "roproj"
     static let typeIdentifier = "io.github.zijianwang90.runningoverlay.project"
-    static let currentSchemaVersion = 1
+    /// Version 2 adds the declarative `component` overlay element kind.
+    static let currentSchemaVersion = 2
     static let untitledName = "Untitled"
 
     /// Declared in the app bundle's Info.plist. Unbundled `swift run` builds

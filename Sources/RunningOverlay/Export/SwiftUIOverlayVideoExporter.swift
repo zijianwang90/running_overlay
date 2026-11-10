@@ -73,8 +73,10 @@ struct ExportRenderPlan: Equatable {
     init(overlays: [OverlayElement], canvasSize: CGSize, activity: ActivityTimeline) {
         self.canvasSize = canvasSize
         allOverlays = overlays
-        staticOverlays = overlays.filter(Self.isStaticOverlay)
-        dynamicOverlays = overlays.filter { !Self.isStaticOverlay($0) }
+        // Every remaining element type samples activity, so all overlays are
+        // dynamic; the static split is kept for the per-overlay render planner.
+        staticOverlays = []
+        dynamicOverlays = overlays
 
         let canvasRect = CGRect(origin: .zero, size: canvasSize)
         let context = OverlayRenderContext(canvasSize: canvasSize, activity: activity, elapsedTime: 0)
@@ -115,10 +117,7 @@ struct ExportRenderPlan: Equatable {
                 usesElevationChartStaticFillCache: Self.canUseElevationChartStaticFillCache(for: element, context: context)
             )
         }
-        let overlayItems = Self.overlayItemsByBatchingNumericOverlays(
-            individualOverlayItems,
-            canvasRect: canvasRect
-        )
+        let overlayItems = individualOverlayItems
         overlayRenderItems = overlayItems
         let canvasArea = canvasRect.width * canvasRect.height
         overlayRenderAreaRatio = canvasArea > 0
@@ -144,15 +143,6 @@ struct ExportRenderPlan: Equatable {
             && individualOverlayItems.count == dynamicOverlays.count
             && overlayItems.map(\.elements.count).reduce(0, +) == dynamicOverlays.count
             && (overlayRenderAreaRatio < Self.perOverlayAreaThreshold || qualifiesForDispersedPerOverlay)
-    }
-
-    static func isStaticOverlay(_ element: OverlayElement) -> Bool {
-        switch element.type {
-        case .decorSolidColor, .decorIcon, .decorText:
-            true
-        default:
-            false
-        }
     }
 
     static func canUseRouteMapStaticCache(for element: OverlayElement, context: OverlayRenderContext) -> Bool {
@@ -200,15 +190,6 @@ struct ExportRenderPlan: Equatable {
         return true
     }
 
-    static func isNumericBatchCandidate(_ element: OverlayElement) -> Bool {
-        switch element.type {
-        case .heartRate, .heartRateZone, .pace, .avgPace, .lapPace, .calories, .elapsedTime, .realTime, .date, .distance, .elevation, .cadence, .power, .verticalOscillation, .groundContactTime, .strideLength, .verticalRatio, .groundContactBalance, .temperature, .grade:
-            true
-        default:
-            false
-        }
-    }
-
     static func renderRect(for element: OverlayElement, context: OverlayRenderContext) -> CGRect? {
         switch element.type {
         case .distanceTimeline:
@@ -217,28 +198,17 @@ struct ExportRenderPlan: Equatable {
             return OverlayRenderModel.routeMapLayout(for: element, in: context).rect
         case .elevationChart:
             return OverlayRenderModel.elevationChartLayout(for: element, in: context).rect
-        case .runningGauge:
-            return OverlayRenderModel.runningGaugeLayout(for: element, in: context).rect
         case .intervalHUDBar:
             return OverlayRenderModel.intervalHUDBarLayout(for: element, in: context).rect
         case .intervalTimeline:
             return OverlayRenderModel.intervalTimelineLayout(for: element, in: context).rect
-        case .intervalCountdown:
-            return OverlayRenderModel.intervalCountdownLayout(for: element, in: context).rect
-        case .intervalWorkSummary:
-            return OverlayRenderModel.intervalWorkSummaryLayout(for: element, in: context).rect
         case .zoneEdgeBar:
             return OverlayRenderModel.zoneEdgeBarLayout(for: element, in: context).rect
         case .weatherWidget:
             return OverlayRenderModel.weatherWidgetLayout(for: element, in: context).rect
-        case .decorSolidColor:
-            return centeredRect(for: element, size: OverlayRenderModel.decorSolidColorLayout(for: element, in: context).size, canvasSize: context.canvasSize)
-        case .decorIcon:
-            return centeredRect(for: element, size: OverlayRenderModel.decorIconLayout(for: element, in: context).size, canvasSize: context.canvasSize)
-        case .decorText:
-            return centeredRect(for: element, size: OverlayRenderModel.decorTextLayout(for: element, in: context).size, canvasSize: context.canvasSize)
-        default:
-            return estimatedTextRect(for: element, context: context)
+        case .component:
+            // The SwiftUI comparison renderer cannot draw components.
+            return nil
         }
     }
 
@@ -251,111 +221,6 @@ struct ExportRenderPlan: Equatable {
         )
     }
 
-    private static func topLeadingRect(for element: OverlayElement, size: CGSize, canvasSize: CGSize) -> CGRect {
-        CGRect(
-            x: canvasSize.width * element.position.x,
-            y: canvasSize.height * element.position.y,
-            width: size.width,
-            height: size.height
-        )
-    }
-
-    private static func estimatedTextRect(for element: OverlayElement, context: OverlayRenderContext) -> CGRect {
-        let layout = OverlayRenderModel.textLayout(for: element, in: context)
-        let valueWidth = max(CGFloat(layout.value.count) * layout.fontSize * 0.62, layout.fontSize * 2)
-        let labelWidth = max(CGFloat(layout.components.label.count) * layout.labelFontSize * 0.52, 0)
-        let unitWidth = max(CGFloat(layout.components.unit.count) * layout.unitFontSize * 0.52, 0)
-        var width = valueWidth + labelWidth + unitWidth + layout.horizontalPadding * 2 + layout.labelSpacing + layout.unitSpacing
-        var height = max(layout.fontSize, layout.labelFontSize + layout.unitFontSize) + layout.verticalPadding * 2
-        if layout.iconEnabled {
-            switch layout.iconPosition {
-            case .leading, .trailing:
-                width += layout.iconSize + layout.iconSpacing
-                height = max(height, layout.iconSize + layout.verticalPadding * 2)
-            case .top, .bottom:
-                width = max(width, layout.iconSize + layout.horizontalPadding * 2)
-                height += layout.iconSize + layout.iconSpacing
-            }
-        }
-        let size = CGSize(width: width, height: height)
-        if element.type.isNumericOverlay {
-            return topLeadingRect(for: element, size: size, canvasSize: context.canvasSize)
-        }
-        return centeredRect(for: element, size: size, canvasSize: context.canvasSize)
-    }
-
-    /// Batches only *contiguous* numeric items so the batched plan keeps the
-    /// layout's z-order. Batched elements are rendered into one layer, so a
-    /// non-numeric element interleaved between numeric ones must split the
-    /// batch instead of being moved beneath or above it.
-    static func overlayItemsByBatchingNumericOverlays(
-        _ items: [ExportOverlayRenderItem],
-        canvasRect: CGRect
-    ) -> [ExportOverlayRenderItem] {
-        let numericItems = items.filter { item in
-            item.elements.count == 1
-                && !item.usesRouteMapStaticCache
-                && item.elements.first.map(isNumericBatchCandidate) == true
-        }
-        guard numericItems.count >= 2, canvasRect.width > 0, canvasRect.height > 0 else {
-            return items
-        }
-
-        let numericUnion = numericItems
-            .map(\.renderRect)
-            .reduce(CGRect.null) { $0.union($1) }
-            .intersection(canvasRect)
-            .integral
-        guard !numericUnion.isNull, numericUnion.width > 0, numericUnion.height > 0 else {
-            return items
-        }
-
-        let canvasArea = canvasRect.width * canvasRect.height
-        let unionArea = numericUnion.width * numericUnion.height
-        let individualArea = numericItems
-            .map { $0.renderRect.width * $0.renderRect.height }
-            .reduce(0, +)
-        guard Double(unionArea / canvasArea) < Self.numericBatchAreaThreshold,
-              unionArea < individualArea else {
-            return items
-        }
-
-        let numericIDs = Set(numericItems.map(\.id))
-        var result: [ExportOverlayRenderItem] = []
-        var run: [ExportOverlayRenderItem] = []
-
-        func flushRun() {
-            guard !run.isEmpty else { return }
-            if run.count == 1 {
-                result.append(contentsOf: run)
-            } else {
-                let elements = run.flatMap(\.elements)
-                let rect = run
-                    .map(\.renderRect)
-                    .reduce(CGRect.null) { $0.union($1) }
-                    .intersection(canvasRect)
-                    .integral
-                result.append(ExportOverlayRenderItem(
-                    id: elements[0].id,
-                    elements: elements,
-                    renderRect: rect,
-                    usesRouteMapStaticCache: false
-                ))
-            }
-            run.removeAll()
-        }
-
-        for item in items {
-            if numericIDs.contains(item.id) {
-                run.append(item)
-            } else {
-                flushRun()
-                result.append(item)
-            }
-        }
-        flushRun()
-        return result
-    }
 }
 
 struct ExportOverlayRenderItem: Equatable {
@@ -472,31 +337,19 @@ enum ExportRenderModelProbe {
                 withExtendedLifetime(RouteMapSnapshotRequestBuilder.request(for: element, layout: layout)) {}
             case .elevationChart:
                 withExtendedLifetime(OverlayRenderModel.elevationChartLayout(for: element, in: context)) {}
-            case .runningGauge:
-                withExtendedLifetime(OverlayRenderModel.runningGaugeLayout(for: element, in: context)) {}
             case .intervalHUDBar:
                 withExtendedLifetime(OverlayRenderModel.intervalHUDBarLayout(for: element, in: context)) {}
             case .intervalTimeline:
                 withExtendedLifetime(OverlayRenderModel.intervalTimelineLayout(for: element, in: context)) {}
-            case .intervalCountdown:
-                withExtendedLifetime(OverlayRenderModel.intervalCountdownLayout(for: element, in: context)) {}
-            case .intervalWorkSummary:
-                withExtendedLifetime(OverlayRenderModel.intervalWorkSummaryLayout(for: element, in: context)) {}
             case .zoneEdgeBar:
                 // The export view evaluates this layout twice: once for the
                 // view and once for its position.
                 withExtendedLifetime(OverlayRenderModel.zoneEdgeBarLayout(for: element, in: context)) {}
                 withExtendedLifetime(OverlayRenderModel.zoneEdgeBarLayout(for: element, in: context)) {}
-            case .decorSolidColor:
-                withExtendedLifetime(OverlayRenderModel.decorSolidColorLayout(for: element, in: context)) {}
-            case .decorIcon:
-                withExtendedLifetime(OverlayRenderModel.decorIconLayout(for: element, in: context)) {}
-            case .decorText:
-                withExtendedLifetime(OverlayRenderModel.decorTextLayout(for: element, in: context)) {}
             case .weatherWidget:
                 withExtendedLifetime(OverlayRenderModel.weatherWidgetLayout(for: element, in: context)) {}
-            default:
-                withExtendedLifetime(OverlayRenderModel.textLayout(for: element, in: context)) {}
+            case .component:
+                break
             }
         }
     }
@@ -590,7 +443,8 @@ struct SwiftUIOverlayVideoExporter {
             size: CGSize(width: job.settings.resolution.width, height: job.settings.resolution.height),
             layout: job.overlayLayout,
             activity: job.activity,
-            mapSnapshots: routeMapSnapshots.snapshots
+            mapSnapshots: routeMapSnapshots.snapshots,
+            weatherPayload: job.weatherPayload
         )
         let profileStartedAt = Date()
         let renderPlan = ExportRenderPlan(
@@ -742,7 +596,8 @@ struct SwiftUIOverlayVideoExporter {
         elapsedTime: TimeInterval,
         size: CGSize,
         outputURL: URL,
-        backend: OverlayRendererBackendKind = .selected
+        backend: OverlayRendererBackendKind = .selected,
+        weatherPayload: WeatherPayload? = nil
     ) async throws {
         let cgImage: CGImage
         if backend == .skia {
@@ -754,7 +609,8 @@ struct SwiftUIOverlayVideoExporter {
             )
             let renderer = try await OverlayExportRendererFactory.make(
                 backend: backend, size: size, layout: overlayLayout,
-                activity: activity, mapSnapshots: snapshots.snapshots
+                activity: activity, mapSnapshots: snapshots.snapshots,
+                weatherPayload: weatherPayload
             )
             var buffer: CVPixelBuffer?
             let attributes: [String: Any] = [
@@ -1269,12 +1125,20 @@ struct SwiftUIOverlayVideoExporter {
         activity: ActivityTimeline,
         size: CGSize
     ) async -> RouteMapSnapshotCache {
+        #if canImport(CSkiaBridge)
+        let requests = SkiaRouteMapModule.snapshotRequests(
+            elements: overlays,
+            activity: activity,
+            canvasSize: size
+        )
+        #else
         let context = OverlayRenderContext(canvasSize: size, activity: activity, elapsedTime: 0)
         let requests = Set(overlays.compactMap { element -> MapSnapshotRequest? in
             guard element.type == .routeMap else { return nil }
             let layout = OverlayRenderModel.routeMapLayout(for: element, in: context)
             return RouteMapSnapshotRequestBuilder.request(for: element, layout: layout)
         })
+        #endif
         guard !requests.isEmpty else {
             return RouteMapSnapshotCache()
         }
@@ -2019,12 +1883,6 @@ private struct SwiftUIOverlayFrameView: View {
                             element: element,
                             layout: OverlayRenderModel.elevationChartLayout(for: element, in: context)
                         )
-                    case .runningGauge:
-                        OverlaySharedRunningGaugeView(
-                            element: element,
-                            layout: OverlayRenderModel.runningGaugeLayout(for: element, in: context),
-                            isInteractive: false
-                        )
                     case .intervalHUDBar:
                         OverlaySharedIntervalHUDBarView(
                             element: element,
@@ -2035,47 +1893,19 @@ private struct SwiftUIOverlayFrameView: View {
                             element: element,
                             layout: OverlayRenderModel.intervalTimelineLayout(for: element, in: context)
                         )
-                    case .intervalCountdown:
-                        OverlaySharedIntervalCountdownView(
-                            element: element,
-                            layout: OverlayRenderModel.intervalCountdownLayout(for: element, in: context)
-                        )
-                    case .intervalWorkSummary:
-                        OverlaySharedIntervalWorkSummaryView(
-                            element: element,
-                            layout: OverlayRenderModel.intervalWorkSummaryLayout(for: element, in: context)
-                        )
                     case .zoneEdgeBar:
                         OverlaySharedZoneEdgeBarView(
                             element: element,
                             layout: OverlayRenderModel.zoneEdgeBarLayout(for: element, in: context)
-                        )
-                    case .decorSolidColor:
-                        OverlaySharedDecorSolidColorView(
-                            element: element,
-                            layout: OverlayRenderModel.decorSolidColorLayout(for: element, in: context)
-                        )
-                    case .decorIcon:
-                        OverlaySharedDecorIconView(
-                            element: element,
-                            layout: OverlayRenderModel.decorIconLayout(for: element, in: context)
-                        )
-                    case .decorText:
-                        OverlaySharedDecorTextView(
-                            element: element,
-                            layout: OverlayRenderModel.decorTextLayout(for: element, in: context)
                         )
                     case .weatherWidget:
                         OverlaySharedWeatherWidgetView(
                             element: element,
                             layout: OverlayRenderModel.weatherWidgetLayout(for: element, in: context)
                         )
-                    default:
-                        OverlaySharedTextPresetView(
-                            element: element,
-                            layout: OverlayRenderModel.textLayout(for: element, in: context),
-                            isInteractive: false
-                        )
+                    case .component:
+                        // The SwiftUI comparison renderer cannot draw components.
+                        EmptyView()
                     }
                 }
                 .exportOverlayPosition(for: element, in: context, canvasSize: size)
@@ -2089,18 +1919,8 @@ private struct SwiftUIOverlayFrameView: View {
 private extension View {
     @ViewBuilder
     func exportOverlayPosition(for element: OverlayElement, in context: OverlayRenderContext, canvasSize: CGSize) -> some View {
-        if element.type.isNumericOverlay {
-            self
-                .alignmentGuide(HorizontalAlignment.center) { _ in
-                    canvasSize.width * (0.5 - element.position.x)
-                }
-                .alignmentGuide(VerticalAlignment.center) { _ in
-                    canvasSize.height * (0.5 - element.position.y)
-                }
-        } else {
-            self
-                .position(resolvedExportOverlayPosition(for: element, in: context, canvasSize: canvasSize))
-        }
+        self
+            .position(resolvedExportOverlayPosition(for: element, in: context, canvasSize: canvasSize))
     }
 
     private func resolvedExportOverlayPosition(for element: OverlayElement, in context: OverlayRenderContext, canvasSize: CGSize) -> CGPoint {

@@ -6,10 +6,14 @@ import Foundation
 
 /// Skia port of `RunningGaugeOverlayView`.
 enum SkiaRunningGaugeRenderer {
+    /// `opacity` and `effects` come from the host element; the declarative
+    /// component renderer applies its own glow and shadow around the whole
+    /// component and passes an effect-free style here.
     static func draw(
         canvas: SkiaChartsCanvas,
-        element: OverlayElement,
-        layout: OverlayRunningGaugeRenderLayout
+        layout: OverlayRunningGaugeRenderLayout,
+        opacity: Double,
+        effects: OverlayStyle
     ) {
         let style = layout.style
         let rect = layout.rect
@@ -23,13 +27,13 @@ enum SkiaRunningGaugeRenderer {
         )
 
         var restores = 0
-        let alpha = min(max(element.opacity, 0), 1)
+        let alpha = min(max(opacity, 0), 1)
         if alpha < 0.999 {
             canvas.beginOpacityLayer(alpha: alpha, bounds: effectBounds)
             restores += 1
         }
         restores += canvas.beginElementEffects(
-            style: element.style,
+            style: effects,
             bounds: effectBounds
         )
         defer {

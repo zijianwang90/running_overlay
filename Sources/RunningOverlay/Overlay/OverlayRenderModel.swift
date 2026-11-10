@@ -4,6 +4,15 @@ struct OverlayRenderContext {
     var canvasSize: CGSize
     var activity: ActivityTimeline
     var elapsedTime: TimeInterval
+    #if canImport(CSkiaBridge)
+    /// Host-preloaded images for the Skia module renderers. Component chart
+    /// nodes reuse the same store so a route map or weather widget draws the
+    /// same host snapshot as the native element at this playhead.
+    var renderAssets: SkiaRenderAssets?
+    #endif
+    /// Weather the host resolved for the project's activity location. Host-drawn
+    /// weather components read this snapshot; components never fetch weather.
+    var weatherPayload: WeatherPayload? = nil
 
     var canvasScale: Double {
         min(canvasSize.width / Self.referenceCanvasSize.width, canvasSize.height / Self.referenceCanvasSize.height)
@@ -17,81 +26,6 @@ struct OverlayRenderContext {
 }
 
 enum OverlayRenderModel {
-    static func textLayout(for element: OverlayElement, in context: OverlayRenderContext) -> OverlayTextRenderLayout {
-        let fontSize = context.scaled(element.style.fontSize * element.scale)
-        let preset: OverlayTextPreset = element.type.isNumericOverlay ? .minimal : element.style.textPreset
-        let metrics = textMetrics(for: preset, fontSize: fontSize, scale: element.scale, context: context, element: element)
-        let components = OverlayValueFormatter.components(for: element, activity: context.activity, elapsedTime: context.elapsedTime)
-        let dynamicHeartRateZoneColor = resolvedHeartRateZoneBaseColor(for: element, in: context)
-        return OverlayTextRenderLayout(
-            value: OverlayValueFormatter.value(for: element, activity: context.activity, elapsedTime: context.elapsedTime),
-            components: components,
-            preset: preset,
-            fontSize: fontSize,
-            labelFontSize: context.scaled(element.style.labelFontSize * element.scale),
-            unitFontSize: context.scaled(element.style.unitFontSize * element.scale),
-            labelFontName: element.style.labelFontName,
-            unitFontName: element.style.unitFontName,
-            labelFontWeight: element.style.labelFontWeight,
-            unitFontWeight: element.style.unitFontWeight,
-            labelPosition: element.style.labelPosition,
-            unitPosition: element.style.unitPosition,
-            labelSpacing: context.scaled(element.style.labelSpacing * element.scale),
-            unitSpacing: context.scaled(element.style.unitSpacing * element.scale),
-            iconEnabled: element.type.isNumericOverlay && element.style.iconEnabled,
-            iconSystemName: element.style.iconSystemName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                ? element.type.defaultNumericIconSystemName
-                : element.style.iconSystemName,
-            iconPosition: element.style.iconPosition,
-            iconTextAlignment: element.style.iconTextAlignment,
-            iconSize: context.scaled(element.style.iconSize * element.scale),
-            iconColor: element.style.iconColor,
-            iconOpacity: element.style.iconOpacity,
-            iconSpacing: context.scaled(element.style.iconSpacing * element.scale),
-            iconColorsFollowHeartRateZones: element.style.iconColorsFollowHeartRateZones,
-            valueColorsFollowHeartRateZones: element.style.valueColorsFollowHeartRateZones,
-            labelColorsFollowHeartRateZones: element.style.labelColorsFollowHeartRateZones,
-            unitColorsFollowHeartRateZones: element.style.unitColorsFollowHeartRateZones,
-            horizontalPadding: metrics.horizontalPadding,
-            verticalPadding: metrics.verticalPadding,
-            minimumWidth: context.scaled(element.style.numericMinWidth * element.scale),
-            minimumHeight: context.scaled(element.style.numericMinHeight * element.scale),
-            cornerRadius: metrics.cornerRadius,
-            backgroundFadeOutEnabled: element.style.backgroundFadeOutEnabled,
-            backgroundFadeOutAmount: element.style.backgroundFadeOutAmount,
-            backgroundBlurRadius: context.scaled(element.style.backgroundBlurRadius),
-            shadowRadius: context.scaled(element.style.shadowRadius),
-            shadowOffsetY: context.scaled(element.style.shadowOffsetY),
-            labelTextAlignment: element.type.isNumericOverlay ? .leading : element.style.labelTextAlignment,
-            valueTextAlignment: element.type.isNumericOverlay ? .leading : element.style.textAlignment,
-            unitTextAlignment: element.style.unitTextAlignment,
-            dividerEnabled: element.type.isNumericOverlay ? false : element.style.dividerEnabled,
-            dividerColor: element.style.dividerColor,
-            dividerThickness: context.scaled(element.style.dividerThickness * element.scale),
-            dividerOpacity: element.style.dividerOpacity,
-            dynamicHeartRateZoneColor: dynamicHeartRateZoneColor
-        )
-    }
-
-    private static func resolvedHeartRateZoneBaseColor(
-        for element: OverlayElement,
-        in context: OverlayRenderContext
-    ) -> OverlayColor? {
-        guard element.type == .heartRate || element.type == .heartRateZone else { return nil }
-        guard element.style.textColorsFollowHeartRateZones
-            || element.style.iconColorsFollowHeartRateZones
-            || element.style.valueColorsFollowHeartRateZones
-            || element.style.labelColorsFollowHeartRateZones
-            || element.style.unitColorsFollowHeartRateZones
-        else { return nil }
-        let snapshot = HeartRateZonePreferences.currentSnapshot()
-        let visibleZones = Array(snapshot.zones.prefix(snapshot.zoneCount))
-        guard let heartRate = context.activity.heartRate(at: context.elapsedTime),
-              let zoneIndex = resolvedHeartRateZoneIndex(heartRate: heartRate, zones: visibleZones)
-        else { return nil }
-        return HRZonePalette.overlayColor(forIndex: zoneIndex)
-    }
-
     static func distanceTimelineLayout(for element: OverlayElement, in context: OverlayRenderContext) -> OverlayDistanceTimelineRenderLayout {
         let style = element.style.distanceTimeline
         let width = context.scaled(style.width * element.scale)
@@ -244,7 +178,7 @@ enum OverlayRenderModel {
                     unit: ""
                 )
             }
-            let components = OverlayValueFormatter.components(for: slot.metric.elementType, activity: activity, elapsedTime: elapsedTime)
+            let components = OverlayValueFormatter.components(for: slot.metric.overlayMetric, activity: activity, elapsedTime: elapsedTime)
             return OverlayDistanceTimelineStatsBarItemLayout(
                 label: slot.customLabel.isEmpty ? components.shortLabel : slot.customLabel,
                 value: components.value,
@@ -265,7 +199,7 @@ enum OverlayRenderModel {
             if slot.metric == .progress {
                 return DistanceTimelineCustomValue(visible: true, metric: slot.metric, value: "\(Int((progress * 100).rounded()))%")
             }
-            let components = OverlayValueFormatter.components(for: slot.metric.elementType, activity: activity, elapsedTime: elapsedTime)
+            let components = OverlayValueFormatter.components(for: slot.metric.overlayMetric, activity: activity, elapsedTime: elapsedTime)
             let text = components.unit.isEmpty ? components.value : "\(components.value) \(components.unit)"
             return DistanceTimelineCustomValue(visible: true, metric: slot.metric, value: text)
         }
@@ -420,7 +354,7 @@ enum OverlayRenderModel {
                     unit: ""
                 )
             }
-            let components = OverlayValueFormatter.components(for: slot.metric.elementType, activity: activity, elapsedTime: elapsedTime)
+            let components = OverlayValueFormatter.components(for: slot.metric.overlayMetric, activity: activity, elapsedTime: elapsedTime)
             return OverlayDistanceTimelineStatsBarItemLayout(
                 label: slot.customLabel.isEmpty ? components.shortLabel : slot.customLabel,
                 value: components.value,
@@ -437,7 +371,7 @@ enum OverlayRenderModel {
         let elevations = activity.records.compactMap(\.elevationMeters)
         switch style.bigNumberMetric {
         case .currentElevation:
-            return OverlayValueFormatter.components(for: .elevation, activity: activity, elapsedTime: elapsedTime)
+            return OverlayValueFormatter.components(for: OverlayMetric.elevation, activity: activity, elapsedTime: elapsedTime)
         case .elevationGain:
             let gain = zip(elevations, elevations.dropFirst()).reduce(0) { total, pair in
                 total + max(pair.1 - pair.0, 0)
@@ -448,61 +382,6 @@ enum OverlayRenderModel {
         case .minElevation:
             return OverlayValueComponents(label: "Min Elevation", shortLabel: "MIN", value: "\(Int((elevations.min() ?? 0).rounded()))", unit: "m")
         }
-    }
-
-    static func runningGaugeLayout(for element: OverlayElement, in context: OverlayRenderContext) -> OverlayRunningGaugeRenderLayout {
-        let style = element.style.gauge
-        let diameter = context.scaled(300 * element.scale)
-        let rect = centeredRect(for: element, size: CGSize(width: diameter, height: diameter), canvasSize: context.canvasSize)
-        let progress = computeGaugeProgress(style: style, context: context)
-
-        let regionFrames = RunningGaugeLayoutEngine.regionFrames(
-            for: style.layoutPreset,
-            in: CGSize(width: diameter, height: diameter)
-        )
-        let baseValueSize = diameter * 0.145
-        let baseLabelSize = diameter * 0.038
-        let baseUnitSize = diameter * 0.045
-        let regions: [OverlayRunningGaugeRegionLayout] = regionFrames.compactMap { frame in
-            guard let config = style.regions.first(where: { $0.region == frame.region }) else {
-                return nil
-            }
-            let canvasRect = CGRect(
-                x: rect.minX + frame.rect.minX,
-                y: rect.minY + frame.rect.minY,
-                width: frame.rect.width,
-                height: frame.rect.height
-            )
-            let valueSize = max(baseValueSize * config.valueFontScale, 8)
-            let labelSize = max(baseLabelSize * (config.labelFontScale / 0.32), 7)
-            let unitSize = max(baseUnitSize * (config.unitFontScale / 0.42), 7)
-            let components = OverlayValueFormatter.components(
-                for: config.metric.elementType,
-                activity: context.activity,
-                elapsedTime: context.elapsedTime
-            )
-            return OverlayRunningGaugeRegionLayout(
-                config: config,
-                rect: canvasRect,
-                components: components,
-                valueFontSize: valueSize,
-                labelFontSize: labelSize,
-                unitFontSize: unitSize
-            )
-        }
-
-        return OverlayRunningGaugeRenderLayout(
-            style: style,
-            rect: rect,
-            diameter: diameter,
-            progress: clampedProgress(progress),
-            regions: regions,
-            outerRingWidth: max(diameter * style.outerRingWidthScale, 1.5),
-            progressRingWidth: max(diameter * style.progressRingWidthScale, 1.5),
-            tickLength: diameter * 0.025,
-            majorTickLength: diameter * 0.040,
-            safeRadius: diameter * 0.40
-        )
     }
 
     static func intervalHUDBarLayout(for element: OverlayElement, in context: OverlayRenderContext) -> IntervalHUDBarRenderLayout {
@@ -595,165 +474,6 @@ enum OverlayRenderModel {
             ),
             bottomBarBorderWidth: max(context.scaled(style.bottomBarBorderWidth * element.scale), 0),
             dividerThickness: max(context.scaled(element.style.dividerThickness * element.scale), 0.5)
-        )
-    }
-
-    static func intervalCountdownLayout(for element: OverlayElement, in context: OverlayRenderContext) -> IntervalCountdownRenderLayout {
-        let style = element.style.intervalCountdown
-        let size = context.scaled(style.size * element.scale)
-        let rect = centeredRect(for: element, size: CGSize(width: size, height: size), canvasSize: context.canvasSize)
-        let t = min(max(context.elapsedTime, 0), context.activity.duration)
-        let lap = context.activity.currentLap(at: t)
-        let kind = lap?.kind ?? .unknown
-        let groupColor = intervalCountdownGroupColor(for: kind)
-        let ringColor = style.fillColorMode == .followGroupColor ? groupColor : style.fillCustomColor
-        let lapEnd = lap?.endElapsedTime ?? max(context.activity.duration, 1)
-        let remainingTime = max(lapEnd - t, 0)
-        let elapsedTime = max(t - (lap?.startElapsedTime ?? 0), 0)
-        let elapsedTimeProgress = context.activity.lapProgress(at: t, byDistance: false)
-        let remainingTimeProgress = 1 - clampedProgress(elapsedTimeProgress)
-        let ringProgress = style.resolvedRingDirection == .clockwise
-            ? remainingTimeProgress
-            : elapsedTimeProgress
-        let totalDistance = lap?.totalDistanceMeters ?? context.activity.distanceMeters
-        let elapsedDistance = min(
-            max(context.activity.distance(at: t) - (lap?.startDistanceMeters ?? 0), 0),
-            totalDistance
-        )
-        let remainingDistance = max(totalDistance - elapsedDistance, 0)
-        let centerValue = intervalCountdownCenterValue(
-            metric: style.resolvedCenterMetric,
-            direction: style.resolvedCenterValueDirection,
-            elapsedTime: elapsedTime,
-            remainingTime: remainingTime,
-            elapsedDistance: elapsedDistance,
-            remainingDistance: remainingDistance
-        )
-        let caption = intervalCountdownCaption(
-            metric: style.resolvedCenterMetric,
-            direction: style.resolvedCenterValueDirection
-        )
-        let phase = phaseLabel(kind)
-        let rep = repText(activity: context.activity, lap: lap)
-        let ringWidth = max(context.scaled(style.ringWidth * element.scale), 1)
-        let innerDiameter = max(size - ringWidth * 3.6, 1)
-
-        func resolvedTextItem(
-            role: IntervalCountdownTextRole,
-            text: String?,
-            style textStyle: IntervalCountdownTextStyle
-        ) -> IntervalCountdownRenderLayout.TextItem? {
-            guard role == .countdown || textStyle.isVisible else { return nil }
-            guard let text, !text.isEmpty else { return nil }
-            let color = textStyle.colorMode == .followGroupColor ? groupColor : textStyle.customColor
-            return IntervalCountdownRenderLayout.TextItem(
-                role: role,
-                text: text,
-                style: textStyle,
-                color: color,
-                fontSize: context.scaled(textStyle.fontSize * element.scale)
-            )
-        }
-
-        let textItems = [
-            resolvedTextItem(role: .helper, text: "CURRENT SET", style: style.helperText),
-            resolvedTextItem(role: .phase, text: phase, style: style.phaseText),
-            resolvedTextItem(role: .rep, text: rep, style: style.repText),
-            resolvedTextItem(role: .countdown, text: centerValue, style: style.countdownText),
-            resolvedTextItem(role: .caption, text: caption, style: style.captionText),
-        ].compactMap { $0 }
-
-        return IntervalCountdownRenderLayout(
-            style: style,
-            rect: rect,
-            progress: clampedProgress(ringProgress),
-            ringColor: ringColor,
-            lapKind: kind,
-            countdownText: centerValue,
-            phaseText: phase,
-            repText: rep,
-            textItems: textItems,
-            ringWidth: ringWidth,
-            innerDiameter: innerDiameter,
-            backgroundPaddingX: context.scaled(element.style.backgroundPaddingX * element.scale),
-            backgroundPaddingY: context.scaled(element.style.backgroundPaddingY * element.scale),
-            backgroundRadius: context.scaled(element.style.backgroundRadius * element.scale),
-            borderWidth: max(context.scaled(element.style.borderWidth * element.scale), 0.5),
-            shadowRadius: context.scaled(element.style.shadowRadius),
-            shadowOffsetX: context.scaled(element.style.shadowOffsetX),
-            shadowOffsetY: context.scaled(element.style.shadowOffsetY)
-        )
-    }
-
-    static func intervalWorkSummaryLayout(for element: OverlayElement, in context: OverlayRenderContext) -> IntervalWorkSummaryRenderLayout {
-        let style = element.style.intervalWorkSummary
-        let width = context.scaled(style.width * element.scale)
-        let height = context.scaled(style.height * element.scale)
-        let rect = centeredRect(for: element, size: CGSize(width: width, height: height), canvasSize: context.canvasSize)
-        let t = min(max(context.elapsedTime, 0), context.activity.duration)
-        let completedLap = context.activity.lastActiveLap(at: t)
-        let isInDisplayWindow = completedLap.map { lap in
-            let age = t - lap.endElapsedTime
-            return age >= 0 && age <= max(style.displayDuration, 0)
-        } ?? false
-        let groupColor = intervalCountdownGroupColor(for: .active)
-        let accentColor = style.accentColorMode == .followGroupColor ? groupColor : style.accentCustomColor
-        let primary = intervalWorkSummaryMetricItem(
-            metric: style.primaryMetric,
-            lap: completedLap,
-            unitSystem: style.unitSystem,
-            customLabel: "",
-            labelVisible: style.primaryLabelVisible
-        )
-        let secondaryItems = style.normalizedSecondarySlots
-            .prefix(3)
-            .filter(\.isVisible)
-            .map { slot in
-                intervalWorkSummaryMetricItem(
-                    metric: slot.metric,
-                    lap: completedLap,
-                    unitSystem: style.unitSystem,
-                    customLabel: slot.customLabel,
-                    labelVisible: slot.labelVisible
-                )
-            }
-
-        func textItem(_ role: IntervalWorkSummaryTextRole) -> IntervalWorkSummaryRenderLayout.TextItem? {
-            let textStyle = style.textStyle(for: role)
-            guard !role.isHideable || textStyle.isVisible else { return nil }
-            let color = textStyle.colorMode == .followGroupColor ? accentColor : textStyle.customColor
-            return IntervalWorkSummaryRenderLayout.TextItem(
-                role: role,
-                style: textStyle,
-                color: color,
-                fontSize: context.scaled(textStyle.fontSize * element.scale)
-            )
-        }
-
-        let textItems = Dictionary(
-            uniqueKeysWithValues: IntervalWorkSummaryTextRole.allCases.compactMap { role in
-                textItem(role).map { (role, $0) }
-            }
-        )
-
-        return IntervalWorkSummaryRenderLayout(
-            style: style,
-            rect: rect,
-            isVisible: isInDisplayWindow,
-            completedLap: completedLap,
-            groupColor: groupColor,
-            accentColor: accentColor,
-            componentLabel: style.componentLabel,
-            primary: primary,
-            secondaryItems: secondaryItems,
-            textItems: textItems,
-            backgroundPaddingX: context.scaled(element.style.backgroundPaddingX * element.scale),
-            backgroundPaddingY: context.scaled(element.style.backgroundPaddingY * element.scale),
-            backgroundRadius: context.scaled(element.style.backgroundRadius * element.scale),
-            borderWidth: max(context.scaled(element.style.borderWidth * element.scale), 0.5),
-            shadowRadius: context.scaled(element.style.shadowRadius),
-            shadowOffsetX: context.scaled(element.style.shadowOffsetX),
-            shadowOffsetY: context.scaled(element.style.shadowOffsetY)
         )
     }
 
@@ -1007,62 +727,17 @@ enum OverlayRenderModel {
         minWidth: Double,
         centered: Bool
     ) -> [Double] {
-        guard !laps.isEmpty else { return [] }
-        let totalGap = gap * Double(max(laps.count - 1, 0))
-        let usableWidth = max(availableWidth - totalGap, 1)
-        if centered {
-            let fraction = min(max(style.currentSegmentWidthFraction, 0.1), 0.6)
-            if let currentOffset, laps.indices.contains(currentOffset), laps.count > 1 {
-                var currentWidth = max(minWidth, usableWidth * fraction)
-                var othersWidth = max(minWidth, (usableWidth - currentWidth) / Double(laps.count - 1))
-                let total = currentWidth + othersWidth * Double(laps.count - 1)
-                if total > usableWidth {
-                    let scale = usableWidth / total
-                    currentWidth *= scale
-                    othersWidth *= scale
-                }
-                return laps.indices.map { $0 == currentOffset ? currentWidth : othersWidth }
-            }
-            var base = max(minWidth, usableWidth / Double(laps.count))
-            let total = base * Double(laps.count)
-            if total > usableWidth {
-                base = usableWidth / Double(laps.count)
-            }
-            return Array(repeating: base, count: laps.count)
-        }
-
-        if style.fullSegmentLayoutMode == .equal {
-            var base = max(minWidth, usableWidth / Double(laps.count))
-            let total = base * Double(laps.count)
-            if total > usableWidth {
-                base = usableWidth / Double(laps.count)
-            }
-            if let currentOffset, laps.indices.contains(currentOffset), laps.count > 1 {
-                let fraction = min(max(style.fullEqualCurrentSegmentWidthFraction, 0), 0.65)
-                guard fraction > 0 else {
-                    return Array(repeating: base, count: laps.count)
-                }
-                var currentWidth = max(base, usableWidth * fraction)
-                var othersWidth = max(minWidth, (usableWidth - currentWidth) / Double(laps.count - 1))
-                let total = currentWidth + othersWidth * Double(laps.count - 1)
-                if total > usableWidth {
-                    let scale = usableWidth / total
-                    currentWidth *= scale
-                    othersWidth *= scale
-                }
-                return laps.indices.map { $0 == currentOffset ? currentWidth : othersWidth }
-            }
-            return Array(repeating: base, count: laps.count)
-        }
-
-        let totalDuration = max(laps.map(\.totalElapsedTime).reduce(0, +), 1)
-        var widths = laps.map { max(minWidth, usableWidth * ($0.totalElapsedTime / totalDuration)) }
-        let sum = widths.reduce(0, +)
-        if sum > usableWidth {
-            let factor = usableWidth / sum
-            widths = widths.map { $0 * factor }
-        }
-        return widths
+        OverlayComponentStripLayout.widths(
+            weights: laps.map(\.totalElapsedTime),
+            mode: centered ? .emphasized : (style.fullSegmentLayoutMode == .equal ? .equal : .weighted),
+            currentIndex: currentOffset,
+            emphasisFraction: centered
+                ? min(max(style.currentSegmentWidthFraction, 0.1), 0.6)
+                : min(max(style.fullEqualCurrentSegmentWidthFraction, 0), 0.65),
+            availableWidth: availableWidth,
+            gap: gap,
+            minimumWidth: minWidth
+        )
     }
 
     private static func intervalTimelineLabelLines(
@@ -1199,9 +874,9 @@ enum OverlayRenderModel {
             case .heartRateZone, .hrDrop:
                 return nil
             case .heartRate, .pace, .avgPace, .lapPace, .calories, .elapsedTime, .realTime, .distance, .elevation, .cadence, .power, .verticalOscillation, .groundContactTime, .strideLength, .verticalRatio, .groundContactBalance, .temperature, .grade:
-                guard let elementType = slot.metric.elementType else { return nil }
+                guard let metric = slot.metric.overlayMetric else { return nil }
                 let components = OverlayValueFormatter.components(
-                    for: elementType,
+                    for: metric,
                     unit: slot.unitOption,
                     activity: activity,
                     elapsedTime: elapsedTime
@@ -1691,13 +1366,6 @@ enum OverlayRenderModel {
         return OverlayColor(red: 0.25, green: 0.82, blue: 0.38, alpha: 1)
     }
 
-    private static func intervalCountdownGroupColor(for kind: LapKind) -> OverlayColor {
-        if let color = IntervalKindColorPreferences.currentSnapshot().color(for: kind) {
-            return color
-        }
-        return OverlayColor(red: 0.25, green: 0.82, blue: 0.38, alpha: 1)
-    }
-
     private static func formatDuration(_ duration: TimeInterval) -> String {
         let total = max(Int(duration.rounded()), 0)
         let hours = total / 3600
@@ -1709,142 +1377,11 @@ enum OverlayRenderModel {
         return String(format: "%d:%02d", minutes, seconds)
     }
 
-    private static func intervalWorkSummaryMetricItem(
-        metric: IntervalWorkSummaryMetric,
-        lap: LapRecord?,
-        unitSystem: IntervalWorkSummaryUnitSystem,
-        customLabel: String,
-        labelVisible: Bool
-    ) -> IntervalWorkSummaryMetricItem {
-        let valueAndUnit = intervalWorkSummaryValue(metric: metric, lap: lap, unitSystem: unitSystem)
-        let label = customLabel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            ? metric.shortLabel
-            : customLabel.trimmingCharacters(in: .whitespacesAndNewlines)
-        return IntervalWorkSummaryMetricItem(
-            metric: metric,
-            value: valueAndUnit.value,
-            unit: valueAndUnit.unit,
-            label: label,
-            labelVisible: labelVisible
-        )
-    }
-
-    private static func intervalWorkSummaryValue(
-        metric: IntervalWorkSummaryMetric,
-        lap: LapRecord?,
-        unitSystem: IntervalWorkSummaryUnitSystem
-    ) -> (value: String, unit: String) {
-        guard let lap else {
-            switch metric {
-            case .lapTime:
-                return ("--:--", "")
-            case .lapPace:
-                return ("--:--", unitSystem == .imperial ? "/mi" : "/km")
-            case .lapDistance:
-                return ("--", unitSystem == .imperial ? "mi" : "m")
-            case .avgHeartRate, .maxHeartRate:
-                return ("--", "bpm")
-            case .avgPower:
-                return ("--", "W")
-            case .avgCadence:
-                return ("--", "spm")
-            }
-        }
-
-        switch metric {
-        case .lapTime:
-            return (formatDuration(lap.totalElapsedTime), "")
-        case .lapPace:
-            let paceSecondsPerKm = lap.avgPaceSecondsPerKm ?? {
-                guard lap.totalDistanceMeters > 0 else { return nil }
-                return lap.totalElapsedTime / (lap.totalDistanceMeters / 1000)
-            }()
-            guard let paceSecondsPerKm, paceSecondsPerKm > 0 else {
-                return ("--:--", unitSystem == .imperial ? "/mi" : "/km")
-            }
-            let paceUnit: PaceUnit = unitSystem == .imperial ? .minPerMile : .minPerKm
-            return (PaceConversion.format(secondsPerKm: Int(paceSecondsPerKm.rounded()), unit: paceUnit), paceUnit.label)
-        case .lapDistance:
-            switch unitSystem {
-            case .metric:
-                if lap.totalDistanceMeters >= 1000 {
-                    return (String(format: "%.2f", lap.totalDistanceMeters / 1000), "km")
-                }
-                return ("\(Int(lap.totalDistanceMeters.rounded()))", "m")
-            case .imperial:
-                return (String(format: "%.2f", lap.totalDistanceMeters / 1609.344), "mi")
-            }
-        case .avgHeartRate:
-            return (lap.avgHeartRate.map(String.init) ?? "--", "bpm")
-        case .maxHeartRate:
-            return (lap.maxHeartRate.map(String.init) ?? "--", "bpm")
-        case .avgPower:
-            return (lap.avgPowerWatts.map(String.init) ?? "--", "W")
-        case .avgCadence:
-            return (lap.avgCadenceSPM.map(String.init) ?? "--", "spm")
-        }
-    }
-
     private static func formatDistanceMeters(_ meters: Double) -> String {
         if meters >= 1000 {
             return String(format: "%.2f km", meters / 1000)
         }
         return "\(Int(meters.rounded())) m"
-    }
-
-    private static func intervalCountdownCenterValue(
-        metric: IntervalCountdownCenterMetric,
-        direction: IntervalCountdownValueDirection,
-        elapsedTime: TimeInterval,
-        remainingTime: TimeInterval,
-        elapsedDistance: Double,
-        remainingDistance: Double
-    ) -> String {
-        switch (metric, direction) {
-        case (.time, .remaining):
-            formatDuration(remainingTime)
-        case (.time, .elapsed):
-            formatDuration(elapsedTime)
-        case (.distance, .remaining):
-            formatDistanceMeters(remainingDistance)
-        case (.distance, .elapsed):
-            formatDistanceMeters(elapsedDistance)
-        }
-    }
-
-    private static func intervalCountdownCaption(
-        metric: IntervalCountdownCenterMetric,
-        direction: IntervalCountdownValueDirection
-    ) -> String {
-        switch (metric, direction) {
-        case (.time, .remaining): "remaining"
-        case (.time, .elapsed): "elapsed"
-        case (.distance, .remaining): "distance left"
-        case (.distance, .elapsed): "distance"
-        }
-    }
-
-    private static func computeGaugeProgress(style: RunningGaugeStyle, context: OverlayRenderContext) -> Double {
-        switch style.progressMode {
-        case .none:
-            return 0
-        case .distanceTarget:
-            return context.activity.distanceMeters > 0
-                ? context.activity.distance(at: context.elapsedTime) / context.activity.distanceMeters
-                : 0
-        case .elapsedTimeTarget:
-            return context.activity.duration > 0
-                ? context.elapsedTime / context.activity.duration
-                : 0
-        case .heartRateZone, .powerZone, .paceIntensity:
-            // Zone modes: fall back to elapsed-time progression until the
-            // user wires a custom max into the project model.
-            return context.activity.duration > 0
-                ? context.elapsedTime / context.activity.duration
-                : 0
-        case .customPercentage:
-            return 0.5
-        }
     }
 
     static func routeMapLayout(for element: OverlayElement, in context: OverlayRenderContext) -> OverlayRouteMapRenderLayout {
@@ -2016,7 +1553,7 @@ enum OverlayRenderModel {
                     return OverlayRouteMapStatsBarItemLayout(value: "\(Int((clampedProgress(progress) * 100).rounded()))%", unit: "", label: label)
                 }
                 let comps = OverlayValueFormatter.components(
-                    for: slot.metric.elementType,
+                    for: slot.metric.overlayMetric,
                     activity: context.activity,
                     elapsedTime: context.elapsedTime
                 )
@@ -2108,49 +1645,11 @@ enum OverlayRenderModel {
     }
 
     private static func elevationSamples(from activity: ActivityTimeline) -> [Double] {
-        let records = activity.records.compactMap(\.elevationMeters)
-        if !records.isEmpty {
-            return records
-        }
-        return (0..<40).map { index in
-            activity.elevation(at: activity.duration * Double(index) / 39) ?? 0
-        }
+        OverlayComponentPlotData.elevationSamples(from: activity)
     }
 
     static func smoothedElevationChartSamples(_ samples: [Double], amount: Double = 0.85) -> [Double] {
-        let clampedAmount = min(max(amount, 0), 1)
-        guard samples.count > 2, clampedAmount > 0 else { return samples }
-
-        let maxRadius = min(28, max(2, (samples.count - 1) / 2))
-        let radius = min(maxRadius, max(2, Int((2 + clampedAmount * 18).rounded())))
-        let sigma = max(1, Double(radius) * 0.45)
-        let weights = (-radius...radius).map { offset in
-            exp(-pow(Double(offset), 2) / (2 * pow(sigma, 2)))
-        }
-        let passCount = max(1, Int((1 + clampedAmount * 5).rounded()))
-        var filtered = samples
-
-        // Wide repeated Gaussian passes smooth integer-meter FIT stair steps.
-        // Endpoints stay fixed so current-value markers and progress tips do
-        // not drift away from the activity sample range.
-        for _ in 0..<passCount {
-            let source = filtered
-            for index in source.indices.dropFirst().dropLast() {
-                var weightedSum = 0.0
-                var weightSum = 0.0
-                for offset in -radius...radius {
-                    let neighbor = min(max(index + offset, source.startIndex), source.index(before: source.endIndex))
-                    let weight = weights[offset + radius]
-                    weightedSum += source[neighbor] * weight
-                    weightSum += weight
-                }
-                filtered[index] = weightedSum / weightSum
-            }
-        }
-
-        return zip(samples, filtered).map { original, smoothed in
-            original + (smoothed - original) * clampedAmount
-        }
+        OverlayComponentPlotData.smoothed(samples, amount: amount)
     }
 
     private static func clampedProgress(_ progress: Double) -> Double {
@@ -2188,218 +1687,6 @@ enum OverlayRenderModel {
         let radians = clampedLatitude * .pi / 180
         return (1 - log(tan(radians) + 1 / cos(radians)) / .pi) / 2
     }
-
-    private static func textMetrics(
-        for preset: OverlayTextPreset,
-        fontSize: Double,
-        scale: Double,
-        context: OverlayRenderContext,
-        element: OverlayElement
-    ) -> (labelFontSize: Double, unitFontSize: Double, horizontalPadding: Double, verticalPadding: Double, cornerRadius: Double) {
-        switch preset {
-        case .minimal:
-            // Minimal preset adopts model-backed padding/radius from the numeric overlay style.
-            return (
-                fontSize * 0.72,
-                fontSize * 0.58,
-                context.scaled(element.style.backgroundPaddingX),
-                context.scaled(element.style.backgroundPaddingY),
-                context.scaled(element.style.backgroundRadius)
-            )
-        case .pillBadge:
-            return (fontSize * 0.42, fontSize * 0.58, context.scaled(18 * scale), context.scaled(10 * scale), context.scaled(28 * scale))
-        case .metricCard:
-            return (fontSize * 0.58, fontSize * 0.58, context.scaled(18 * scale), context.scaled(14 * scale), context.scaled(10 * scale))
-        case .bigNumber:
-            return (fontSize * 0.56, fontSize * 0.42, context.scaled(6), context.scaled(4), context.scaled(0))
-        case .sportWatch:
-            return (fontSize * 0.46, fontSize * 0.46, context.scaled(18 * scale), context.scaled(14 * scale), context.scaled(18 * scale))
-        case .splitLabel:
-            return (fontSize * 0.34, fontSize * 0.50, context.scaled(0), context.scaled(0), context.scaled(0))
-        case .minimalLabel:
-            return (fontSize * 0.34, fontSize * 0.55, context.scaled(0), context.scaled(0), context.scaled(0))
-        case .neonGlow:
-            return (fontSize * 0.34, fontSize * 0.55, context.scaled(0), context.scaled(0), context.scaled(0))
-        case .racingStripe:
-            return (
-                fontSize * 0.34,
-                fontSize * 0.50,
-                context.scaled(element.style.backgroundPaddingX > 0 ? element.style.backgroundPaddingX : 18),
-                context.scaled(element.style.backgroundPaddingY > 0 ? element.style.backgroundPaddingY : 12),
-                context.scaled(element.style.backgroundRadius)
-            )
-        case .editorial:
-            return (fontSize * 0.34, fontSize * 0.42, context.scaled(0), context.scaled(0), context.scaled(0))
-        case .digitalWatch:
-            return (
-                fontSize * 0.32,
-                fontSize * 0.48,
-                context.scaled(element.style.backgroundPaddingX > 0 ? element.style.backgroundPaddingX : 18),
-                context.scaled(element.style.backgroundPaddingY > 0 ? element.style.backgroundPaddingY : 12),
-                context.scaled(element.style.backgroundRadius)
-            )
-        case .inlineGhost:
-            return (fontSize * 0.44, fontSize * 0.44, context.scaled(0), context.scaled(0), context.scaled(0))
-        case .accentBar:
-            return (fontSize * 0.27, fontSize * 0.33, context.scaled(0), context.scaled(0), context.scaled(0))
-        case .sportNeon:
-            return (fontSize * 0.22, fontSize * 0.25, context.scaled(0), context.scaled(0), context.scaled(0))
-        case .serifEditorial:
-            return (fontSize * 0.22, fontSize * 0.25, context.scaled(0), context.scaled(0), context.scaled(0))
-        }
-    }
-
-    /// Resolve final pixel dimensions for a Decor Solid Color element.
-    /// Width and height come from `DecorStyle`; `element.scale` plus the
-    /// canvas DPR (`context.scaled`) bring design units into pixel space.
-    /// Circle collapses both edges to the shorter side so a non-square
-    /// bounding box still renders as a circle until the user resizes.
-    static func decorSolidColorLayout(
-        for element: OverlayElement,
-        in context: OverlayRenderContext
-    ) -> DecorSolidColorRenderLayout {
-        let s = element.style.decor
-        let w = context.scaled(s.width * element.scale)
-        let h = context.scaled(s.height * element.scale)
-        let size: CGSize
-        switch s.shape {
-        case .circle:
-            let side = min(w, h)
-            size = CGSize(width: side, height: side)
-        default:
-            size = CGSize(width: w, height: h)
-        }
-        return DecorSolidColorRenderLayout(
-            shape: s.shape,
-            size: size,
-            fillColor: s.fillColor,
-            cornerRadius: context.scaled(s.cornerRadius * element.scale)
-        )
-    }
-
-    static func decorIconLayout(
-        for element: OverlayElement,
-        in context: OverlayRenderContext
-    ) -> DecorIconRenderLayout {
-        let s = element.style.decor
-        let r = DecorIconResolved(from: s)
-        let w = context.scaled(s.width * element.scale)
-        let h = context.scaled(s.height * element.scale)
-        return DecorIconRenderLayout(
-            size: CGSize(width: w, height: h),
-            iconAsset: r.asset,
-            iconTint: r.tint,
-            iconPreserveSVGColors: r.preserveSVGColors,
-            iconContentMode: r.contentMode
-        )
-    }
-
-    static func decorTextLayout(
-        for element: OverlayElement,
-        in context: OverlayRenderContext
-    ) -> DecorTextRenderLayout {
-        let s = element.style.decor
-        let r = DecorTextResolved(from: s)
-        let w = context.scaled(s.width * element.scale)
-        let h = context.scaled(s.height * element.scale)
-        let fs = context.scaled(r.size * element.scale)
-        return DecorTextRenderLayout(
-            size: CGSize(width: w, height: h),
-            content: r.content,
-            font: r.font,
-            fontSize: fs,
-            alignment: r.alignment,
-            lineHeight: r.lineHeight,
-            letterSpacing: context.scaled(r.letterSpacing * element.scale),
-            fillMode: r.fillMode,
-            strokeWidth: context.scaled(r.strokeWidth * element.scale),
-            strokeColor: r.strokeColor,
-            autoFit: r.autoFit
-        )
-    }
-}
-
-/// Pixel-space layout for a Decor Solid Color element. Returned by
-/// `OverlayRenderModel.decorSolidColorLayout(for:in:)` and consumed by both
-/// the live preview view and the SwiftUI export pipeline.
-struct DecorSolidColorRenderLayout {
-    var shape: DecorShape
-    var size: CGSize
-    var fillColor: OverlayColor
-    var cornerRadius: Double
-}
-
-/// Pixel-space layout for a Decor Icon element.
-struct DecorIconRenderLayout {
-    var size: CGSize
-    var iconAsset: IconAsset
-    var iconTint: OverlayColor
-    var iconPreserveSVGColors: Bool
-    var iconContentMode: IconContentMode
-}
-
-/// Pixel-space layout for a Decor Text element.
-struct DecorTextRenderLayout {
-    var size: CGSize
-    var content: String
-    var font: DecorFontRef
-    var fontSize: Double
-    var alignment: DecorTextAlignment
-    var lineHeight: Double
-    var letterSpacing: Double
-    var fillMode: DecorTextFill
-    var strokeWidth: Double
-    var strokeColor: OverlayColor
-    var autoFit: Bool
-}
-
-struct OverlayTextRenderLayout {
-    var value: String
-    var components: OverlayValueComponents
-    var preset: OverlayTextPreset
-    var fontSize: Double
-    var labelFontSize: Double
-    var unitFontSize: Double
-    var labelFontName: String
-    var unitFontName: String
-    var labelFontWeight: OverlayFontWeight
-    var unitFontWeight: OverlayFontWeight
-    var labelPosition: OverlayTextAttachmentPosition
-    var unitPosition: OverlayTextAttachmentPosition
-    var labelSpacing: Double
-    var unitSpacing: Double
-    var iconEnabled: Bool
-    var iconSystemName: String
-    var iconPosition: OverlayTextAttachmentPosition
-    var iconTextAlignment: OverlayTextAlignment
-    var iconSize: Double
-    var iconColor: OverlayColor
-    var iconOpacity: Double
-    var iconSpacing: Double
-    var iconColorsFollowHeartRateZones: Bool
-    var valueColorsFollowHeartRateZones: Bool
-    var labelColorsFollowHeartRateZones: Bool
-    var unitColorsFollowHeartRateZones: Bool
-    var horizontalPadding: Double
-    var verticalPadding: Double
-    var minimumWidth: Double
-    var minimumHeight: Double
-    var cornerRadius: Double
-    var backgroundFadeOutEnabled: Bool
-    var backgroundFadeOutAmount: Double
-    var backgroundBlurRadius: Double
-    var shadowRadius: Double
-    var shadowOffsetY: Double
-    var labelTextAlignment: OverlayTextAlignment
-    var valueTextAlignment: OverlayTextAlignment
-    var unitTextAlignment: OverlayTextAlignment
-    var dividerEnabled: Bool
-    var dividerColor: OverlayColor
-    var dividerThickness: Double
-    var dividerOpacity: Double
-    /// When non-nil, heart-rate-derived icon tint can use this RGB while
-    /// keeping `iconOpacity` from the static style.
-    var dynamicHeartRateZoneColor: OverlayColor?
 }
 
 struct OverlayDistanceTimelineRenderLayout {

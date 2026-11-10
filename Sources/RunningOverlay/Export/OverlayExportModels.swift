@@ -13,6 +13,9 @@ struct OverlayExportJob {
     var overlayLayout: OverlayLayout
     var fitStartTime: TimeInterval = 0
     var segments: [OverlayExportSegment]
+    /// Host-resolved weather for host-drawn weather components. `nil` leaves
+    /// such components on their manual node values.
+    var weatherPayload: WeatherPayload? = nil
     var renderGuides = false
     /// Writes JSON/CSV profiling files even in release builds. Benchmarks set
     /// this so release-build timings can be captured.

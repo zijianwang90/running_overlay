@@ -185,7 +185,7 @@ struct OverlayStatsBarInspectorRows: View {
     private func typographyRows(for title: String, config: TypographyConfig) -> some View {
         InspectorDenseRow(label: "\(title) Font") {
             Menu {
-                ForEach(NumericOverlayDetailView.fontPresets, id: \.self) { name in
+                ForEach(InspectorPresets.fontPresets, id: \.self) { name in
                     Button {
                         config.onSetFontName(name)
                     } label: {
@@ -223,7 +223,7 @@ struct OverlayStatsBarInspectorRows: View {
         .disabled(!isOn)
 
         InspectorDenseRow(label: "\(title) Color") {
-            InspectorDenseSwatchStrip(presets: NumericOverlayDetailView.colorPresets, selected: config.color) { color in
+            InspectorDenseSwatchStrip(presets: InspectorPresets.colorPresets, selected: config.color) { color in
                 config.onSetColor(color)
             }
         }

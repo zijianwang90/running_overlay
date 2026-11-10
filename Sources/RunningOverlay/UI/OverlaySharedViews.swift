@@ -1,20 +1,6 @@
 import AppKit
 import SwiftUI
 
-struct OverlaySharedTextPresetView: View {
-    let element: OverlayElement
-    let layout: OverlayTextRenderLayout
-    let isInteractive: Bool
-
-    var body: some View {
-        TextPresetOverlayView(
-            element: element,
-            layout: layout,
-            isSelected: isInteractive
-        )
-    }
-}
-
 struct OverlaySharedDistanceTimelineView: View {
     let element: OverlayElement
     let layout: OverlayDistanceTimelineRenderLayout
@@ -99,20 +85,6 @@ struct OverlaySharedElevationChartView: View {
     }
 }
 
-struct OverlaySharedRunningGaugeView: View {
-    let element: OverlayElement
-    let layout: OverlayRunningGaugeRenderLayout
-    let isInteractive: Bool
-
-    var body: some View {
-        RunningGaugeOverlayView(
-            element: element,
-            layout: layout,
-            isSelected: isInteractive
-        )
-    }
-}
-
 struct OverlaySharedIntervalHUDBarView: View {
     let element: OverlayElement
     let layout: IntervalHUDBarRenderLayout
@@ -131,30 +103,6 @@ struct OverlaySharedIntervalTimelineView: View {
 
     var body: some View {
         IntervalTimelineOverlayView(
-            element: element,
-            layout: layout
-        )
-    }
-}
-
-struct OverlaySharedIntervalCountdownView: View {
-    let element: OverlayElement
-    let layout: IntervalCountdownRenderLayout
-
-    var body: some View {
-        IntervalCountdownOverlayView(
-            element: element,
-            layout: layout
-        )
-    }
-}
-
-struct OverlaySharedIntervalWorkSummaryView: View {
-    let element: OverlayElement
-    let layout: IntervalWorkSummaryRenderLayout
-
-    var body: some View {
-        IntervalWorkSummaryOverlayView(
             element: element,
             layout: layout
         )

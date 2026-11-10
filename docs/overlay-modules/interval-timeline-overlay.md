@@ -167,6 +167,27 @@ Shared modules should be reused for Layout, Background, Border, and Effects. Bac
 - Add richer rep-counter labeling such as `RUN 9 / 25`.
 - Add per-kind custom label overrides.
 
+## Declarative Component Port
+
+`studio.interval-timeline` reproduces this module as a bundled component
+(`Sources/RunningOverlay/Resources/Components/interval-timeline.json`). It
+uses the `timelineStrip` capability node: the host supplies lap records
+(`structure.laps`, with index, kind, elapsed and distance fields), while the
+component mirrors the native layout — centered window or full schedule, equal
+or duration widths, minimum segment width and gap clamping, current-segment
+emphasis, per-kind colors, current and neighbor labels, progress overlay,
+overflow ellipses and the live marker with its label.
+
+The definition reads the host's scale and the element style through parameters,
+so width, segment area height, marker fonts and opacities stay author-visible.
+Content size follows `segmentAreaHeight`; place the component so its top-left
+anchor lands on the native rect and enable background/border padding to expand
+the frame.
+
+Known limitations: content sizing measures only positive extents, so the strip
+shifts inside the frame when background padding is enabled instead of growing
+symmetrically; edge auto-placement and canvas-edge pinning stay host work.
+
 ## Acceptance Criteria
 
 - `WU + 6 x 400m/R + CD` is readable as a full horizontal schedule.

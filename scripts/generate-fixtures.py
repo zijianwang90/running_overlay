@@ -21,7 +21,7 @@ def definition(local: int, global_message: int, fields: list[tuple[int, int, int
     return bytes(payload)
 
 
-def generate_fit() -> bytes:
+def generate_fit(*, include_laps: bool = False) -> bytes:
     start_unix = 1_735_689_600  # 2025-01-01T00:00:00Z
     start_fit = start_unix - FIT_EPOCH_UNIX
 
@@ -63,6 +63,23 @@ def generate_fit() -> bytes:
             )
         )
 
+    if include_laps:
+        lap_fields = [
+            (2, 4, 0x86),   # start_time
+            (7, 4, 0x86),   # total_elapsed_time, milliseconds
+            (9, 4, 0x86),   # total_distance, centimeters
+            (13, 2, 0x84),  # average speed, mm/s
+            (15, 1, 0x02),  # average heart rate
+        ]
+        data.extend(definition(2, 19, lap_fields))
+        for seconds, distance_cm, speed, heart_rate in [
+            (0, 6_000, 3_000, 130),
+            (20, 6_500, 3_250, 145),
+            (40, 7_500, 3_750, 155),
+        ]:
+            data.append(2)
+            data.extend(struct.pack("<IIIHB", start_fit + seconds, 20_000, distance_cm, speed, heart_rate))
+
     header = bytearray()
     header.extend((14, 0x10))
     header.extend(struct.pack("<H", 0))
@@ -76,6 +93,9 @@ def main() -> None:
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_bytes(generate_fit())
     print(f"Wrote {OUTPUT.relative_to(ROOT)}")
+    component_output = OUTPUT.with_name("synthetic-component-run.fit")
+    component_output.write_bytes(generate_fit(include_laps=True))
+    print(f"Wrote {component_output.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

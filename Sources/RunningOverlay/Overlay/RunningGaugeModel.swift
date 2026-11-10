@@ -74,9 +74,9 @@ enum OverlayGaugeMetric: String, CaseIterable, Identifiable, Codable {
         }
     }
 
-    /// Bridges to the existing OverlayElementType so renderers can reuse the
-    /// shared `OverlayValueFormatter.components(for:activity:elapsedTime:)`.
-    var elementType: OverlayElementType {
+    /// Bridges to `OverlayMetric` so renderers share
+    /// `OverlayValueFormatter.components(for:unit:...)`.
+    var overlayMetric: OverlayMetric {
         switch self {
         case .heartRate: .heartRate
         case .distance: .distance
@@ -125,11 +125,11 @@ enum OverlayGaugeMetric: String, CaseIterable, Identifiable, Codable {
     }
 
     static var selectableCases: [OverlayGaugeMetric] {
-        ActivityMetricCatalog.selectableElementTypes.compactMap(Self.init(elementType:))
+        ActivityMetricCatalog.selectableMetrics.compactMap(Self.init(metric:))
     }
 
-    init?(elementType: OverlayElementType) {
-        switch elementType {
+    init?(metric: OverlayMetric) {
+        switch metric {
         case .heartRate: self = .heartRate
         case .pace: self = .pace
         case .avgPace: self = .avgPace

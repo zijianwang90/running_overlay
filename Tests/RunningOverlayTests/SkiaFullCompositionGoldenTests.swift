@@ -40,32 +40,11 @@ import Testing
         let style = pinnedStyle()
         var elements: [OverlayElement] = []
 
-        // Decor solid is drawn first and deliberately overlaps the text
-        // anchor, so the text background renders over it.
-        var solid = SkiaTextFixtureFactory.solidColorElement()
-        solid.position = CGPoint(x: 0.10, y: 0.11)
-        elements.append(solid)
-
-        var text = SkiaTextFixtureFactory.element(
-            position: CGPoint(x: 0.04, y: 0.05),
-            style: SkiaTextFixtureFactory.style()
-        )
-        text.style.iconEnabled = true
-        elements.append(text)
-
-        var icon = SkiaTextFixtureFactory.iconElement()
-        icon.position = CGPoint(x: 0.44, y: 0.10)
-        elements.append(icon)
-
-        var decorText = SkiaTextFixtureFactory.textElement()
-        decorText.position = CGPoint(x: 0.15, y: 0.22)
-        elements.append(decorText)
-
+        // Numeric readings and decor are components, which the SwiftUI oracle
+        // cannot draw (ADR 0014, ADR 0015), so this scene covers native
+        // modules only.
         elements.append(
             element(.distanceTimeline, at: CGPoint(x: 0.15, y: 0.78), style: style)
-        )
-        elements.append(
-            element(.runningGauge, at: CGPoint(x: 0.62, y: 0.30), style: style)
         )
 
         var routeStyle = style
@@ -82,9 +61,6 @@ import Testing
 
         elements.append(
             element(.intervalTimeline, at: CGPoint(x: 0.50, y: 0.90), style: style)
-        )
-        elements.append(
-            element(.intervalCountdown, at: CGPoint(x: 0.26, y: 0.42), style: style)
         )
         // Edge placement ignores the anchor and pins the bar to the bottom edge.
         elements.append(
@@ -106,23 +82,17 @@ import Testing
         var style = OverlayStyle.default
         style.fontName = "Menlo"
         style.labelFontName = "Menlo"
-        style.unitFontName = "Menlo"
         style.distanceTimeline.labelFontName = "Menlo"
         style.distanceTimeline.axisLabelFontName = "Menlo"
         style.routeMapStatsBar.valueFontName = "Menlo"
         style.routeMapStatsBar.labelFontName = "Menlo"
         style.intervalTimeline.markerFontName = "Menlo"
-        style.intervalCountdown.helperText.fontName = "Menlo"
-        style.intervalCountdown.phaseText.fontName = "Menlo"
-        style.intervalCountdown.repText.fontName = "Menlo"
-        style.intervalCountdown.countdownText.fontName = "Menlo"
-        style.intervalCountdown.captionText.fontName = "Menlo"
         style.zoneEdgeBar.markerText.fontName = "Menlo"
         return style
     }
 
     private static func weatherWidget() -> WeatherWidgetStyle {
-        var widget = WeatherWidgetStyle.preset(.simpleCard)
+        var widget = WeatherWidgetStyle.simpleCard
         widget.dataSource = .openMeteo
         widget.cachedWeather = WeatherPayload(
             condition: .rain,

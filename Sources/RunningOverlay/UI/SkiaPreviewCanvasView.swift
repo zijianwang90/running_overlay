@@ -50,6 +50,7 @@ struct SkiaPreviewCanvasView: NSViewRepresentable {
     var activity: ActivityTimeline
     var elapsedTime: TimeInterval
     var canvasSize: CGSize
+    var weatherPayload: WeatherPayload? = nil
     var isPaused: Bool = false
     var onFrame: ((SkiaPreviewFrameStats) -> Void)? = nil
 
@@ -61,6 +62,7 @@ struct SkiaPreviewCanvasView: NSViewRepresentable {
             activity: activity,
             elapsedTime: elapsedTime,
             canvasSize: canvasSize,
+            weatherPayload: weatherPayload,
             isPaused: isPaused
         )
         return view
@@ -73,6 +75,7 @@ struct SkiaPreviewCanvasView: NSViewRepresentable {
             activity: activity,
             elapsedTime: elapsedTime,
             canvasSize: canvasSize,
+            weatherPayload: weatherPayload,
             isPaused: isPaused
         )
     }
@@ -96,6 +99,7 @@ final class SkiaPreviewMetalView: NSView {
     private var activity: ActivityTimeline?
     private var elapsedTime: TimeInterval = 0
     private var canvasSize = CGSize(width: 1920, height: 1080)
+    private var weatherPayload: WeatherPayload?
     private var isPaused = true
     private var needsRender = true
 
@@ -142,13 +146,16 @@ final class SkiaPreviewMetalView: NSView {
         activity: ActivityTimeline,
         elapsedTime: TimeInterval,
         canvasSize: CGSize,
+        weatherPayload: WeatherPayload? = nil,
         isPaused: Bool
     ) {
         self.overlayLayout = layout
         self.activity = activity
         self.elapsedTime = elapsedTime
         self.canvasSize = canvasSize
+        self.weatherPayload = weatherPayload
         self.isPaused = isPaused
+        renderer?.weatherPayload = weatherPayload
 
         if metalLayer.drawableSize != canvasSize {
             metalLayer.drawableSize = canvasSize
@@ -298,17 +305,12 @@ final class SkiaPreviewMetalView: NSView {
     /// until the route geometry or style changes the request key.
     private func requestMissingMapSnapshotsIfNeeded() {
         guard let activity else { return }
-        let renderContext = OverlayRenderContext(
-            canvasSize: canvasSize,
+        let requests = SkiaRouteMapModule.snapshotRequests(
+            elements: overlayLayout.elements,
             activity: activity,
-            elapsedTime: 0
+            canvasSize: canvasSize
         )
-        for element in overlayLayout.elements where element.isVisible && element.type == .routeMap {
-            let layout = OverlayRenderModel.routeMapLayout(for: element, in: renderContext)
-            guard let request = RouteMapSnapshotRequestBuilder.request(
-                for: element,
-                layout: layout
-            ) else { continue }
+        for request in requests {
             guard mapSnapshots[request] == nil,
                   !pendingSnapshotRequests.contains(request),
                   !failedSnapshotRequests.contains(request) else { continue }
@@ -407,6 +409,8 @@ final class SkiaPreviewMetalView: NSView {
             return nil
         }
         renderer = newRenderer
+        newRenderer.weatherPayload = weatherPayload
+        newRenderer.publishesPreviewFrames = true
         rendererSize = size
         return newRenderer
     }

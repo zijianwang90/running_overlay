@@ -1,0 +1,1500 @@
+{
+  "spec": "ros.component/0.1",
+  "id": "studio.numeric",
+  "version": "1.0.0",
+  "name": {
+    "en": "Numeric",
+    "zh-Hans": "数值"
+  },
+  "description": {
+    "en": "One activity metric with optional unit, label, icon and background, formatted by the host.",
+    "zh-Hans": "显示一个运动指标，可选单位、标签、图标和背景，数值由宿主格式化。"
+  },
+  "author": "Running Overlay Studio",
+  "license": "MIT",
+  "size": "content",
+  "padding": [
+    "=showBackground ? paddingX : 0",
+    "=showBackground ? paddingY : 0"
+  ],
+  "minSize": [
+    "=minWidth",
+    "=minHeight"
+  ],
+  "background": {
+    "color": "=showBackground ? backgroundColor : \"#00000000\"",
+    "radius": "=backgroundRadius"
+  },
+  "params": [
+    {
+      "id": "metricId",
+      "type": "enum",
+      "label": {
+        "en": "Metric",
+        "zh-Hans": "指标"
+      },
+      "section": {
+        "en": "Metric",
+        "zh-Hans": "指标"
+      },
+      "options": [
+        {
+          "value": "heartRate",
+          "label": {
+            "en": "Heart Rate",
+            "zh-Hans": "心率"
+          }
+        },
+        {
+          "value": "heartRateZone",
+          "label": {
+            "en": "HR Zone",
+            "zh-Hans": "心率区间"
+          }
+        },
+        {
+          "value": "pace",
+          "label": {
+            "en": "Pace",
+            "zh-Hans": "配速"
+          }
+        },
+        {
+          "value": "avgPace",
+          "label": {
+            "en": "Avg Pace",
+            "zh-Hans": "平均配速"
+          }
+        },
+        {
+          "value": "lapPace",
+          "label": {
+            "en": "Lap Pace",
+            "zh-Hans": "单圈配速"
+          }
+        },
+        {
+          "value": "distance",
+          "label": {
+            "en": "Distance",
+            "zh-Hans": "距离"
+          }
+        },
+        {
+          "value": "elapsedTime",
+          "label": {
+            "en": "Elapsed Time",
+            "zh-Hans": "用时"
+          }
+        },
+        {
+          "value": "realTime",
+          "label": {
+            "en": "Real Time",
+            "zh-Hans": "实时时间"
+          }
+        },
+        {
+          "value": "date",
+          "label": {
+            "en": "Date",
+            "zh-Hans": "日期"
+          }
+        },
+        {
+          "value": "calories",
+          "label": {
+            "en": "Calories",
+            "zh-Hans": "卡路里"
+          }
+        },
+        {
+          "value": "elevation",
+          "label": {
+            "en": "Elevation",
+            "zh-Hans": "海拔"
+          }
+        },
+        {
+          "value": "elevationGain",
+          "label": {
+            "en": "Elevation Gain",
+            "zh-Hans": "累计爬升"
+          }
+        },
+        {
+          "value": "cadence",
+          "label": {
+            "en": "Cadence",
+            "zh-Hans": "步频"
+          }
+        },
+        {
+          "value": "power",
+          "label": {
+            "en": "Power",
+            "zh-Hans": "功率"
+          }
+        },
+        {
+          "value": "temperature",
+          "label": {
+            "en": "Temperature",
+            "zh-Hans": "温度"
+          }
+        },
+        {
+          "value": "grade",
+          "label": {
+            "en": "Grade",
+            "zh-Hans": "坡度"
+          }
+        },
+        {
+          "value": "verticalOscillation",
+          "label": {
+            "en": "Vertical Oscillation",
+            "zh-Hans": "垂直振幅"
+          }
+        },
+        {
+          "value": "groundContactTime",
+          "label": {
+            "en": "Ground Contact Time",
+            "zh-Hans": "触地时间"
+          }
+        },
+        {
+          "value": "strideLength",
+          "label": {
+            "en": "Stride Length",
+            "zh-Hans": "步幅"
+          }
+        },
+        {
+          "value": "verticalRatio",
+          "label": {
+            "en": "Vertical Ratio",
+            "zh-Hans": "垂直比"
+          }
+        },
+        {
+          "value": "groundContactBalance",
+          "label": {
+            "en": "GCT Balance",
+            "zh-Hans": "触地平衡"
+          }
+        }
+      ],
+      "default": "heartRate"
+    },
+    {
+      "id": "paceUnit",
+      "type": "enum",
+      "label": {
+        "en": "Unit",
+        "zh-Hans": "单位"
+      },
+      "section": {
+        "en": "Metric",
+        "zh-Hans": "指标"
+      },
+      "options": [
+        {
+          "value": "paceMetric",
+          "label": {
+            "en": "min/km",
+            "zh-Hans": "分/公里"
+          }
+        },
+        {
+          "value": "paceImperial",
+          "label": {
+            "en": "min/mi",
+            "zh-Hans": "分/英里"
+          }
+        },
+        {
+          "value": "paceRowing",
+          "label": {
+            "en": "min/500m",
+            "zh-Hans": "分/500米"
+          }
+        }
+      ],
+      "default": "paceMetric",
+      "when": "=metricId == \"pace\" || metricId == \"avgPace\" || metricId == \"lapPace\""
+    },
+    {
+      "id": "distanceUnit",
+      "type": "enum",
+      "label": {
+        "en": "Unit",
+        "zh-Hans": "单位"
+      },
+      "section": {
+        "en": "Metric",
+        "zh-Hans": "指标"
+      },
+      "options": [
+        {
+          "value": "distanceKilometers",
+          "label": {
+            "en": "km",
+            "zh-Hans": "公里"
+          }
+        },
+        {
+          "value": "distanceMiles",
+          "label": {
+            "en": "mi",
+            "zh-Hans": "英里"
+          }
+        },
+        {
+          "value": "distanceMeters",
+          "label": {
+            "en": "m",
+            "zh-Hans": "米"
+          }
+        }
+      ],
+      "default": "distanceKilometers",
+      "when": "=metricId == \"distance\""
+    },
+    {
+      "id": "elevationUnit",
+      "type": "enum",
+      "label": {
+        "en": "Unit",
+        "zh-Hans": "单位"
+      },
+      "section": {
+        "en": "Metric",
+        "zh-Hans": "指标"
+      },
+      "options": [
+        {
+          "value": "elevationMeters",
+          "label": {
+            "en": "m",
+            "zh-Hans": "米"
+          }
+        },
+        {
+          "value": "elevationFeet",
+          "label": {
+            "en": "ft",
+            "zh-Hans": "英尺"
+          }
+        }
+      ],
+      "default": "elevationMeters",
+      "when": "=metricId == \"elevation\" || metricId == \"elevationGain\""
+    },
+    {
+      "id": "durationFormat",
+      "type": "enum",
+      "label": {
+        "en": "Format",
+        "zh-Hans": "格式"
+      },
+      "section": {
+        "en": "Metric",
+        "zh-Hans": "指标"
+      },
+      "options": [
+        {
+          "value": "durationHMS",
+          "label": {
+            "en": "hh:mm:ss",
+            "zh-Hans": "时:分:秒"
+          }
+        },
+        {
+          "value": "durationMS",
+          "label": {
+            "en": "mm:ss",
+            "zh-Hans": "分:秒"
+          }
+        },
+        {
+          "value": "durationSeconds",
+          "label": {
+            "en": "Seconds",
+            "zh-Hans": "秒"
+          }
+        }
+      ],
+      "default": "durationHMS",
+      "when": "=metricId == \"elapsedTime\""
+    },
+    {
+      "id": "clockFormat",
+      "type": "enum",
+      "label": {
+        "en": "Format",
+        "zh-Hans": "格式"
+      },
+      "section": {
+        "en": "Metric",
+        "zh-Hans": "指标"
+      },
+      "options": [
+        {
+          "value": "clock24Hour",
+          "label": {
+            "en": "24-hour",
+            "zh-Hans": "24 小时制"
+          }
+        },
+        {
+          "value": "clock12Hour",
+          "label": {
+            "en": "12-hour",
+            "zh-Hans": "12 小时制"
+          }
+        }
+      ],
+      "default": "clock24Hour",
+      "when": "=metricId == \"realTime\""
+    },
+    {
+      "id": "dateFormat",
+      "type": "enum",
+      "label": {
+        "en": "Format",
+        "zh-Hans": "格式"
+      },
+      "section": {
+        "en": "Metric",
+        "zh-Hans": "指标"
+      },
+      "options": [
+        {
+          "value": "dateYMDHyphen",
+          "label": {
+            "en": "YYYY-MM-DD",
+            "zh-Hans": "YYYY-MM-DD"
+          }
+        },
+        {
+          "value": "dateYMDSlash",
+          "label": {
+            "en": "YYYY/MM/DD",
+            "zh-Hans": "YYYY/MM/DD"
+          }
+        },
+        {
+          "value": "dateMDYSlash",
+          "label": {
+            "en": "MM/DD/YYYY",
+            "zh-Hans": "MM/DD/YYYY"
+          }
+        },
+        {
+          "value": "dateMDHyphen",
+          "label": {
+            "en": "MM-DD",
+            "zh-Hans": "MM-DD"
+          }
+        },
+        {
+          "value": "dateMDSlash",
+          "label": {
+            "en": "MM/DD",
+            "zh-Hans": "MM/DD"
+          }
+        },
+        {
+          "value": "dateMonthDay",
+          "label": {
+            "en": "Month D",
+            "zh-Hans": "月 日"
+          }
+        }
+      ],
+      "default": "dateYMDHyphen",
+      "when": "=metricId == \"date\""
+    },
+    {
+      "id": "oscillationUnit",
+      "type": "enum",
+      "label": {
+        "en": "Unit",
+        "zh-Hans": "单位"
+      },
+      "section": {
+        "en": "Metric",
+        "zh-Hans": "指标"
+      },
+      "options": [
+        {
+          "value": "oscillationCentimeters",
+          "label": {
+            "en": "cm",
+            "zh-Hans": "厘米"
+          }
+        },
+        {
+          "value": "oscillationMillimeters",
+          "label": {
+            "en": "mm",
+            "zh-Hans": "毫米"
+          }
+        }
+      ],
+      "default": "oscillationCentimeters",
+      "when": "=metricId == \"verticalOscillation\""
+    },
+    {
+      "id": "temperatureUnit",
+      "type": "enum",
+      "label": {
+        "en": "Unit",
+        "zh-Hans": "单位"
+      },
+      "section": {
+        "en": "Metric",
+        "zh-Hans": "指标"
+      },
+      "options": [
+        {
+          "value": "temperatureCelsius",
+          "label": {
+            "en": "°C",
+            "zh-Hans": "摄氏度"
+          }
+        },
+        {
+          "value": "temperatureFahrenheit",
+          "label": {
+            "en": "°F",
+            "zh-Hans": "华氏度"
+          }
+        }
+      ],
+      "default": "temperatureCelsius",
+      "when": "=metricId == \"temperature\""
+    },
+    {
+      "id": "valueFont",
+      "type": "font",
+      "label": {
+        "en": "Font",
+        "zh-Hans": "字体"
+      },
+      "default": "system",
+      "advanced": true
+    },
+    {
+      "id": "valueSize",
+      "type": "number",
+      "label": {
+        "en": "Size",
+        "zh-Hans": "字号"
+      },
+      "min": 8,
+      "max": 200,
+      "step": 1,
+      "unit": "pt",
+      "default": 28,
+      "advanced": true
+    },
+    {
+      "id": "valueColor",
+      "type": "color",
+      "label": {
+        "en": "Color",
+        "zh-Hans": "颜色"
+      },
+      "section": {
+        "en": "Value",
+        "zh-Hans": "数值"
+      },
+      "default": "#FFFFFFFF"
+    },
+    {
+      "id": "valueFollowsZone",
+      "type": "bool",
+      "label": {
+        "en": "Follow HR Zone",
+        "zh-Hans": "跟随心率区间"
+      },
+      "section": {
+        "en": "Value",
+        "zh-Hans": "数值"
+      },
+      "default": false,
+      "when": "=metricId == \"heartRate\" || metricId == \"heartRateZone\""
+    },
+    {
+      "id": "showUnit",
+      "type": "bool",
+      "label": {
+        "en": "Show Unit",
+        "zh-Hans": "显示单位"
+      },
+      "section": {
+        "en": "Unit",
+        "zh-Hans": "单位"
+      },
+      "default": true
+    },
+    {
+      "id": "unitPosition",
+      "type": "enum",
+      "label": {
+        "en": "Position",
+        "zh-Hans": "位置"
+      },
+      "options": [
+        {
+          "value": "trailing",
+          "label": {
+            "en": "Trailing",
+            "zh-Hans": "右"
+          }
+        },
+        {
+          "value": "leading",
+          "label": {
+            "en": "Leading",
+            "zh-Hans": "左"
+          }
+        },
+        {
+          "value": "bottom",
+          "label": {
+            "en": "Bottom",
+            "zh-Hans": "下"
+          }
+        }
+      ],
+      "default": "trailing",
+      "when": "=showUnit",
+      "advanced": true
+    },
+    {
+      "id": "unitAlign",
+      "type": "enum",
+      "label": {
+        "en": "Alignment",
+        "zh-Hans": "对齐"
+      },
+      "options": [
+        {
+          "value": "start",
+          "label": {
+            "en": "Start",
+            "zh-Hans": "起始"
+          }
+        },
+        {
+          "value": "center",
+          "label": {
+            "en": "Center",
+            "zh-Hans": "居中"
+          }
+        },
+        {
+          "value": "end",
+          "label": {
+            "en": "End",
+            "zh-Hans": "末尾"
+          }
+        }
+      ],
+      "default": "start",
+      "when": "=showUnit",
+      "advanced": true
+    },
+    {
+      "id": "unitFont",
+      "type": "font",
+      "label": {
+        "en": "Font",
+        "zh-Hans": "字体"
+      },
+      "default": "system",
+      "when": "=showUnit",
+      "advanced": true
+    },
+    {
+      "id": "unitSize",
+      "type": "number",
+      "label": {
+        "en": "Size",
+        "zh-Hans": "字号"
+      },
+      "min": 6,
+      "max": 200,
+      "step": 1,
+      "unit": "pt",
+      "default": 20,
+      "when": "=showUnit",
+      "advanced": true
+    },
+    {
+      "id": "unitWeight",
+      "type": "enum",
+      "label": {
+        "en": "Weight",
+        "zh-Hans": "字重"
+      },
+      "section": {
+        "en": "Unit",
+        "zh-Hans": "单位"
+      },
+      "options": [
+        {
+          "value": "ultraLight",
+          "label": {
+            "en": "UltraLight",
+            "zh-Hans": "极细"
+          }
+        },
+        {
+          "value": "light",
+          "label": {
+            "en": "Light",
+            "zh-Hans": "细"
+          }
+        },
+        {
+          "value": "regular",
+          "label": {
+            "en": "Regular",
+            "zh-Hans": "常规"
+          }
+        },
+        {
+          "value": "medium",
+          "label": {
+            "en": "Medium",
+            "zh-Hans": "中等"
+          }
+        },
+        {
+          "value": "semibold",
+          "label": {
+            "en": "Semibold",
+            "zh-Hans": "半粗"
+          }
+        },
+        {
+          "value": "bold",
+          "label": {
+            "en": "Bold",
+            "zh-Hans": "粗"
+          }
+        },
+        {
+          "value": "heavy",
+          "label": {
+            "en": "Heavy",
+            "zh-Hans": "特粗"
+          }
+        },
+        {
+          "value": "black",
+          "label": {
+            "en": "Black",
+            "zh-Hans": "黑"
+          }
+        }
+      ],
+      "default": "medium",
+      "when": "=showUnit"
+    },
+    {
+      "id": "unitColor",
+      "type": "color",
+      "label": {
+        "en": "Color",
+        "zh-Hans": "颜色"
+      },
+      "section": {
+        "en": "Unit",
+        "zh-Hans": "单位"
+      },
+      "default": "#FFFFFFFF",
+      "when": "=showUnit"
+    },
+    {
+      "id": "unitSpacing",
+      "type": "number",
+      "label": {
+        "en": "Spacing",
+        "zh-Hans": "间距"
+      },
+      "min": 0,
+      "max": 80,
+      "step": 1,
+      "unit": "pt",
+      "default": 8,
+      "when": "=showUnit",
+      "advanced": true
+    },
+    {
+      "id": "unitFollowsZone",
+      "type": "bool",
+      "label": {
+        "en": "Follow HR Zone",
+        "zh-Hans": "跟随心率区间"
+      },
+      "section": {
+        "en": "Unit",
+        "zh-Hans": "单位"
+      },
+      "default": false,
+      "when": "=showUnit && (metricId == \"heartRate\" || metricId == \"heartRateZone\")"
+    },
+    {
+      "id": "showLabel",
+      "type": "bool",
+      "label": {
+        "en": "Show Label",
+        "zh-Hans": "显示标签"
+      },
+      "section": {
+        "en": "Label",
+        "zh-Hans": "标签"
+      },
+      "default": false
+    },
+    {
+      "id": "labelText",
+      "type": "string",
+      "label": {
+        "en": "Text",
+        "zh-Hans": "文字"
+      },
+      "section": {
+        "en": "Label",
+        "zh-Hans": "标签"
+      },
+      "maxLength": 64,
+      "default": "",
+      "when": "=showLabel",
+      "description": {
+        "en": "Leave empty to use the metric name.",
+        "zh-Hans": "留空则使用指标名称。"
+      }
+    },
+    {
+      "id": "labelPosition",
+      "type": "enum",
+      "label": {
+        "en": "Position",
+        "zh-Hans": "位置"
+      },
+      "options": [
+        {
+          "value": "top",
+          "label": {
+            "en": "Top",
+            "zh-Hans": "上"
+          }
+        },
+        {
+          "value": "bottom",
+          "label": {
+            "en": "Bottom",
+            "zh-Hans": "下"
+          }
+        },
+        {
+          "value": "leading",
+          "label": {
+            "en": "Leading",
+            "zh-Hans": "左"
+          }
+        },
+        {
+          "value": "trailing",
+          "label": {
+            "en": "Trailing",
+            "zh-Hans": "右"
+          }
+        }
+      ],
+      "default": "top",
+      "when": "=showLabel",
+      "advanced": true
+    },
+    {
+      "id": "labelFont",
+      "type": "font",
+      "label": {
+        "en": "Font",
+        "zh-Hans": "字体"
+      },
+      "default": "system",
+      "when": "=showLabel",
+      "advanced": true
+    },
+    {
+      "id": "labelSize",
+      "type": "number",
+      "label": {
+        "en": "Size",
+        "zh-Hans": "字号"
+      },
+      "min": 6,
+      "max": 200,
+      "step": 1,
+      "unit": "pt",
+      "default": 16,
+      "when": "=showLabel",
+      "advanced": true
+    },
+    {
+      "id": "labelWeight",
+      "type": "enum",
+      "label": {
+        "en": "Weight",
+        "zh-Hans": "字重"
+      },
+      "section": {
+        "en": "Label",
+        "zh-Hans": "标签"
+      },
+      "options": [
+        {
+          "value": "ultraLight",
+          "label": {
+            "en": "UltraLight",
+            "zh-Hans": "极细"
+          }
+        },
+        {
+          "value": "light",
+          "label": {
+            "en": "Light",
+            "zh-Hans": "细"
+          }
+        },
+        {
+          "value": "regular",
+          "label": {
+            "en": "Regular",
+            "zh-Hans": "常规"
+          }
+        },
+        {
+          "value": "medium",
+          "label": {
+            "en": "Medium",
+            "zh-Hans": "中等"
+          }
+        },
+        {
+          "value": "semibold",
+          "label": {
+            "en": "Semibold",
+            "zh-Hans": "半粗"
+          }
+        },
+        {
+          "value": "bold",
+          "label": {
+            "en": "Bold",
+            "zh-Hans": "粗"
+          }
+        },
+        {
+          "value": "heavy",
+          "label": {
+            "en": "Heavy",
+            "zh-Hans": "特粗"
+          }
+        },
+        {
+          "value": "black",
+          "label": {
+            "en": "Black",
+            "zh-Hans": "黑"
+          }
+        }
+      ],
+      "default": "medium",
+      "when": "=showLabel"
+    },
+    {
+      "id": "labelColor",
+      "type": "color",
+      "label": {
+        "en": "Color",
+        "zh-Hans": "颜色"
+      },
+      "section": {
+        "en": "Label",
+        "zh-Hans": "标签"
+      },
+      "default": "#FFFFFFFF",
+      "when": "=showLabel"
+    },
+    {
+      "id": "labelSpacing",
+      "type": "number",
+      "label": {
+        "en": "Spacing",
+        "zh-Hans": "间距"
+      },
+      "min": 0,
+      "max": 80,
+      "step": 1,
+      "unit": "pt",
+      "default": 8,
+      "when": "=showLabel",
+      "advanced": true
+    },
+    {
+      "id": "labelFollowsZone",
+      "type": "bool",
+      "label": {
+        "en": "Follow HR Zone",
+        "zh-Hans": "跟随心率区间"
+      },
+      "section": {
+        "en": "Label",
+        "zh-Hans": "标签"
+      },
+      "default": false,
+      "when": "=showLabel && (metricId == \"heartRate\" || metricId == \"heartRateZone\")"
+    },
+    {
+      "id": "showIcon",
+      "type": "bool",
+      "label": {
+        "en": "Show Icon",
+        "zh-Hans": "显示图标"
+      },
+      "section": {
+        "en": "Icon",
+        "zh-Hans": "图标"
+      },
+      "default": true
+    },
+    {
+      "id": "iconName",
+      "type": "string",
+      "label": {
+        "en": "SF Symbol",
+        "zh-Hans": "SF Symbol"
+      },
+      "section": {
+        "en": "Icon",
+        "zh-Hans": "图标"
+      },
+      "maxLength": 128,
+      "default": "",
+      "when": "=showIcon",
+      "description": {
+        "en": "Leave empty to use the metric icon.",
+        "zh-Hans": "留空则使用指标默认图标。"
+      }
+    },
+    {
+      "id": "iconPosition",
+      "type": "enum",
+      "label": {
+        "en": "Position",
+        "zh-Hans": "位置"
+      },
+      "options": [
+        {
+          "value": "top",
+          "label": {
+            "en": "Top",
+            "zh-Hans": "上"
+          }
+        },
+        {
+          "value": "bottom",
+          "label": {
+            "en": "Bottom",
+            "zh-Hans": "下"
+          }
+        },
+        {
+          "value": "leading",
+          "label": {
+            "en": "Leading",
+            "zh-Hans": "左"
+          }
+        },
+        {
+          "value": "trailing",
+          "label": {
+            "en": "Trailing",
+            "zh-Hans": "右"
+          }
+        }
+      ],
+      "default": "leading",
+      "when": "=showIcon",
+      "advanced": true
+    },
+    {
+      "id": "iconAlign",
+      "type": "enum",
+      "label": {
+        "en": "Alignment",
+        "zh-Hans": "对齐"
+      },
+      "options": [
+        {
+          "value": "start",
+          "label": {
+            "en": "Start",
+            "zh-Hans": "起始"
+          }
+        },
+        {
+          "value": "center",
+          "label": {
+            "en": "Center",
+            "zh-Hans": "居中"
+          }
+        },
+        {
+          "value": "end",
+          "label": {
+            "en": "End",
+            "zh-Hans": "末尾"
+          }
+        }
+      ],
+      "default": "center",
+      "when": "=showIcon",
+      "advanced": true
+    },
+    {
+      "id": "iconSize",
+      "type": "number",
+      "label": {
+        "en": "Size",
+        "zh-Hans": "尺寸"
+      },
+      "section": {
+        "en": "Icon",
+        "zh-Hans": "图标"
+      },
+      "min": 4,
+      "max": 200,
+      "step": 1,
+      "unit": "pt",
+      "default": 22,
+      "when": "=showIcon"
+    },
+    {
+      "id": "iconColor",
+      "type": "color",
+      "label": {
+        "en": "Color",
+        "zh-Hans": "颜色"
+      },
+      "section": {
+        "en": "Icon",
+        "zh-Hans": "图标"
+      },
+      "default": "#FFFFFFFF",
+      "when": "=showIcon"
+    },
+    {
+      "id": "iconSpacing",
+      "type": "number",
+      "label": {
+        "en": "Spacing",
+        "zh-Hans": "间距"
+      },
+      "min": 0,
+      "max": 80,
+      "step": 1,
+      "unit": "pt",
+      "default": 8,
+      "when": "=showIcon",
+      "advanced": true
+    },
+    {
+      "id": "iconFollowsZone",
+      "type": "bool",
+      "label": {
+        "en": "Follow HR Zone",
+        "zh-Hans": "跟随心率区间"
+      },
+      "section": {
+        "en": "Icon",
+        "zh-Hans": "图标"
+      },
+      "default": false,
+      "when": "=showIcon && (metricId == \"heartRate\" || metricId == \"heartRateZone\")"
+    },
+    {
+      "id": "showBackground",
+      "type": "bool",
+      "label": {
+        "en": "Show Background",
+        "zh-Hans": "显示背景"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": true
+    },
+    {
+      "id": "backgroundColor",
+      "type": "color",
+      "label": {
+        "en": "Background Color",
+        "zh-Hans": "背景颜色"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": "#00000038",
+      "when": "=showBackground"
+    },
+    {
+      "id": "backgroundRadius",
+      "type": "number",
+      "label": {
+        "en": "Corner Radius",
+        "zh-Hans": "圆角"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "pt",
+      "default": 6,
+      "when": "=showBackground"
+    },
+    {
+      "id": "paddingX",
+      "type": "number",
+      "label": {
+        "en": "Horizontal Padding",
+        "zh-Hans": "水平内边距"
+      },
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "pt",
+      "default": 10,
+      "when": "=showBackground",
+      "advanced": true
+    },
+    {
+      "id": "paddingY",
+      "type": "number",
+      "label": {
+        "en": "Vertical Padding",
+        "zh-Hans": "垂直内边距"
+      },
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "pt",
+      "default": 6,
+      "when": "=showBackground",
+      "advanced": true
+    },
+    {
+      "id": "minWidth",
+      "type": "number",
+      "label": {
+        "en": "Min Width",
+        "zh-Hans": "最小宽度"
+      },
+      "section": {
+        "en": "Background",
+        "zh-Hans": "背景"
+      },
+      "min": 0,
+      "max": 2000,
+      "step": 1,
+      "unit": "pt",
+      "default": 0
+    },
+    {
+      "id": "minHeight",
+      "type": "number",
+      "label": {
+        "en": "Min Height",
+        "zh-Hans": "最小高度"
+      },
+      "section": {
+        "en": "Background",
+        "zh-Hans": "背景"
+      },
+      "min": 0,
+      "max": 2000,
+      "step": 1,
+      "unit": "pt",
+      "default": 0
+    }
+  ],
+  "bindings": {
+    "hrZone": {
+      "signal": "zone.heartRate"
+    }
+  },
+  "nodes": [
+    {
+      "type": "stack",
+      "id": "content",
+      "direction": "=(iconPosition == \"top\" || iconPosition == \"bottom\") ? \"vertical\" : \"horizontal\"",
+      "crossAlign": "=(iconPosition == \"top\" || iconPosition == \"bottom\") ? \"start\" : iconAlign",
+      "spacing": "=showIcon ? iconSpacing : 0",
+      "children": [
+        {
+          "type": "symbol",
+          "name": "=iconName != \"\" ? iconName : metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).icon",
+          "frame": [
+            0,
+            0,
+            "=iconSize",
+            "=iconSize"
+          ],
+          "color": "=iconFollowsZone && (metricId == \"heartRate\" || metricId == \"heartRateZone\") ? coalesce(hrZone.color, iconColor) : iconColor",
+          "alignSelf": "=iconAlign",
+          "if": "=showIcon && (iconPosition == \"top\" || iconPosition == \"leading\")"
+        },
+        {
+          "type": "stack",
+          "id": "text",
+          "direction": "vertical",
+          "crossAlign": "start",
+          "children": [
+            {
+              "type": "text",
+              "text": "=(labelText != \"\" ? labelText : metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).label)",
+              "font": {
+                "family": "=labelFont",
+                "size": "=labelSize",
+                "weight": "=labelWeight"
+              },
+              "color": "=labelFollowsZone && (metricId == \"heartRate\" || metricId == \"heartRateZone\") ? coalesce(hrZone.color, labelColor) : labelColor",
+              "tracking": "=labelSize * 0.1",
+              "if": "=showLabel && (labelText != \"\" ? labelText : metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).label) != \"\" && labelPosition == \"top\""
+            },
+            {
+              "type": "spacer",
+              "length": "=labelSpacing",
+              "if": "=showLabel && (labelText != \"\" ? labelText : metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).label) != \"\" && labelPosition == \"top\""
+            },
+            {
+              "type": "stack",
+              "id": "row",
+              "direction": "horizontal",
+              "crossAlign": "=unitAlign",
+              "alignSelf": "stretch",
+              "if": "=!(showLabel && (labelText != \"\" ? labelText : metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).label) != \"\" && (labelPosition == \"leading\" || labelPosition == \"trailing\"))",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "=metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).unit",
+                  "font": {
+                    "family": "=unitFont",
+                    "size": "=unitSize",
+                    "weight": "=unitWeight"
+                  },
+                  "color": "=unitFollowsZone && (metricId == \"heartRate\" || metricId == \"heartRateZone\") ? coalesce(hrZone.color, unitColor) : unitColor",
+                  "if": "=showUnit && metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).unit != \"\" && unitPosition == \"leading\""
+                },
+                {
+                  "type": "spacer",
+                  "length": "=unitSpacing",
+                  "if": "=showUnit && metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).unit != \"\" && unitPosition == \"leading\""
+                },
+                {
+                  "type": "text",
+                  "text": "=metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).value",
+                  "font": {
+                    "family": "=valueFont",
+                    "size": "=valueSize",
+                    "weight": "semibold"
+                  },
+                  "color": "=valueFollowsZone && (metricId == \"heartRate\" || metricId == \"heartRateZone\") ? coalesce(hrZone.color, valueColor) : valueColor",
+                  "tracking": "=-valueSize * 0.012"
+                },
+                {
+                  "type": "spacer"
+                },
+                {
+                  "type": "spacer",
+                  "length": "=unitSpacing",
+                  "if": "=showUnit && metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).unit != \"\" && unitPosition == \"trailing\""
+                },
+                {
+                  "type": "text",
+                  "text": "=metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).unit",
+                  "font": {
+                    "family": "=unitFont",
+                    "size": "=unitSize",
+                    "weight": "=unitWeight"
+                  },
+                  "color": "=unitFollowsZone && (metricId == \"heartRate\" || metricId == \"heartRateZone\") ? coalesce(hrZone.color, unitColor) : unitColor",
+                  "if": "=showUnit && metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).unit != \"\" && unitPosition == \"trailing\""
+                }
+              ]
+            },
+            {
+              "type": "stack",
+              "id": "rowWithLabel",
+              "direction": "horizontal",
+              "crossAlign": "start",
+              "alignSelf": "stretch",
+              "if": "=showLabel && (labelText != \"\" ? labelText : metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).label) != \"\" && (labelPosition == \"leading\" || labelPosition == \"trailing\")",
+              "children": [
+                {
+                  "type": "text",
+                  "text": "=(labelText != \"\" ? labelText : metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).label)",
+                  "font": {
+                    "family": "=labelFont",
+                    "size": "=labelSize",
+                    "weight": "=labelWeight"
+                  },
+                  "color": "=labelFollowsZone && (metricId == \"heartRate\" || metricId == \"heartRateZone\") ? coalesce(hrZone.color, labelColor) : labelColor",
+                  "tracking": "=labelSize * 0.1",
+                  "if": "=showLabel && (labelText != \"\" ? labelText : metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).label) != \"\" && labelPosition == \"leading\""
+                },
+                {
+                  "type": "spacer",
+                  "length": "=labelSpacing",
+                  "if": "=showLabel && (labelText != \"\" ? labelText : metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).label) != \"\" && labelPosition == \"leading\""
+                },
+                {
+                  "type": "stack",
+                  "id": "cluster",
+                  "direction": "horizontal",
+                  "crossAlign": "=unitAlign",
+                  "children": [
+                    {
+                      "type": "text",
+                      "text": "=metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).unit",
+                      "font": {
+                        "family": "=unitFont",
+                        "size": "=unitSize",
+                        "weight": "=unitWeight"
+                      },
+                      "color": "=unitFollowsZone && (metricId == \"heartRate\" || metricId == \"heartRateZone\") ? coalesce(hrZone.color, unitColor) : unitColor",
+                      "if": "=showUnit && metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).unit != \"\" && unitPosition == \"leading\""
+                    },
+                    {
+                      "type": "spacer",
+                      "length": "=unitSpacing",
+                      "if": "=showUnit && metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).unit != \"\" && unitPosition == \"leading\""
+                    },
+                    {
+                      "type": "text",
+                      "text": "=metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).value",
+                      "font": {
+                        "family": "=valueFont",
+                        "size": "=valueSize",
+                        "weight": "semibold"
+                      },
+                      "color": "=valueFollowsZone && (metricId == \"heartRate\" || metricId == \"heartRateZone\") ? coalesce(hrZone.color, valueColor) : valueColor",
+                      "tracking": "=-valueSize * 0.012"
+                    },
+                    {
+                      "type": "spacer",
+                      "length": "=unitSpacing",
+                      "if": "=showUnit && metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).unit != \"\" && unitPosition == \"trailing\""
+                    },
+                    {
+                      "type": "text",
+                      "text": "=metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).unit",
+                      "font": {
+                        "family": "=unitFont",
+                        "size": "=unitSize",
+                        "weight": "=unitWeight"
+                      },
+                      "color": "=unitFollowsZone && (metricId == \"heartRate\" || metricId == \"heartRateZone\") ? coalesce(hrZone.color, unitColor) : unitColor",
+                      "if": "=showUnit && metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).unit != \"\" && unitPosition == \"trailing\""
+                    }
+                  ]
+                },
+                {
+                  "type": "spacer"
+                },
+                {
+                  "type": "spacer",
+                  "length": "=labelSpacing",
+                  "if": "=showLabel && (labelText != \"\" ? labelText : metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).label) != \"\" && labelPosition == \"trailing\""
+                },
+                {
+                  "type": "text",
+                  "text": "=(labelText != \"\" ? labelText : metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).label)",
+                  "font": {
+                    "family": "=labelFont",
+                    "size": "=labelSize",
+                    "weight": "=labelWeight"
+                  },
+                  "color": "=labelFollowsZone && (metricId == \"heartRate\" || metricId == \"heartRateZone\") ? coalesce(hrZone.color, labelColor) : labelColor",
+                  "tracking": "=labelSize * 0.1",
+                  "if": "=showLabel && (labelText != \"\" ? labelText : metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).label) != \"\" && labelPosition == \"trailing\""
+                }
+              ]
+            },
+            {
+              "type": "spacer",
+              "length": "=unitSpacing",
+              "if": "=showUnit && metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).unit != \"\" && unitPosition == \"bottom\""
+            },
+            {
+              "type": "text",
+              "text": "=metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).unit",
+              "font": {
+                "family": "=unitFont",
+                "size": "=unitSize",
+                "weight": "=unitWeight"
+              },
+              "color": "=unitFollowsZone && (metricId == \"heartRate\" || metricId == \"heartRateZone\") ? coalesce(hrZone.color, unitColor) : unitColor",
+              "if": "=showUnit && metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).unit != \"\" && unitPosition == \"bottom\"",
+              "alignSelf": "=unitAlign"
+            },
+            {
+              "type": "spacer",
+              "length": "=labelSpacing",
+              "if": "=showLabel && (labelText != \"\" ? labelText : metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).label) != \"\" && labelPosition == \"bottom\""
+            },
+            {
+              "type": "text",
+              "text": "=(labelText != \"\" ? labelText : metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).label)",
+              "font": {
+                "family": "=labelFont",
+                "size": "=labelSize",
+                "weight": "=labelWeight"
+              },
+              "color": "=labelFollowsZone && (metricId == \"heartRate\" || metricId == \"heartRateZone\") ? coalesce(hrZone.color, labelColor) : labelColor",
+              "tracking": "=labelSize * 0.1",
+              "if": "=showLabel && (labelText != \"\" ? labelText : metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).label) != \"\" && labelPosition == \"bottom\""
+            }
+          ]
+        },
+        {
+          "type": "symbol",
+          "name": "=iconName != \"\" ? iconName : metric(metricId, paceUnit, distanceUnit, elevationUnit, durationFormat, clockFormat, dateFormat, oscillationUnit, temperatureUnit).icon",
+          "frame": [
+            0,
+            0,
+            "=iconSize",
+            "=iconSize"
+          ],
+          "color": "=iconFollowsZone && (metricId == \"heartRate\" || metricId == \"heartRateZone\") ? coalesce(hrZone.color, iconColor) : iconColor",
+          "alignSelf": "=iconAlign",
+          "if": "=showIcon && (iconPosition == \"bottom\" || iconPosition == \"trailing\")"
+        }
+      ]
+    }
+  ]
+}

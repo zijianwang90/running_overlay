@@ -44,9 +44,8 @@ struct SFSymbolCatalogTests {
     }
 
     @Test func numericDefaultsAreIncludedInCatalog() {
-        let missing = OverlayElementType.allCases
-            .filter(\.isNumericOverlay)
-            .map(\.defaultNumericIconSystemName)
+        let missing = OverlayMetric.allCases
+            .map(\.defaultIconSystemName)
             .filter { SFSymbolCatalog.allNames.contains($0) == false }
 
         #expect(missing.isEmpty, "Missing numeric default SF Symbols: \(missing.joined(separator: ", "))")

@@ -3,6 +3,25 @@ import Testing
 @testable import RunningOverlay
 
 struct OverlayValueFormatterTests {
+    /// Value and unit as the former native numeric overlays assembled them.
+    private func text(
+        _ metric: OverlayMetric,
+        unit: OverlayUnitOption? = nil,
+        activity: ActivityTimeline,
+        at elapsedTime: TimeInterval
+    ) -> String {
+        let components = OverlayValueFormatter.components(
+            for: metric,
+            unit: unit,
+            activity: activity,
+            elapsedTime: elapsedTime
+        )
+        guard !components.unit.isEmpty else { return components.value }
+        return components.unit.hasPrefix("/")
+            ? components.value + components.unit
+            : components.value + " " + components.unit
+    }
+
     @Test func formatsInterpolatedDistanceAndHeartRate() {
         let startDate = Date(timeIntervalSince1970: 1_000)
         let activity = ActivityTimeline(
@@ -36,8 +55,8 @@ struct OverlayValueFormatterTests {
             laps: []
         )
 
-        #expect(OverlayValueFormatter.value(for: .distance, activity: activity, elapsedTime: 5) == "0.05 km")
-        #expect(OverlayValueFormatter.value(for: .heartRate, activity: activity, elapsedTime: 5) == "110 bpm")
+        #expect(text(.distance, activity: activity, at: 5) == "0.05 km")
+        #expect(text(.heartRate, activity: activity, at: 5) == "110 bpm")
     }
 
     @Test func formatsElapsedTime() {
@@ -55,19 +74,10 @@ struct OverlayValueFormatterTests {
             records: [],
             laps: []
         )
-        var element = OverlayElement(type: .date, position: .zero, scale: 1, style: .default)
-
-        element.style.unitOption = .dateYMDHyphen
-        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 0) == "2024-06-15")
-
-        element.style.unitOption = .dateMDYSlash
-        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 0) == "06/15/2024")
-
-        element.style.unitOption = .dateMDSlash
-        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 0) == "06/15")
-
-        element.style.unitOption = .dateMonthDay
-        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 0) == "Jun 15")
+        #expect(text(.date, unit: .dateYMDHyphen, activity: activity, at: 0) == "2024-06-15")
+        #expect(text(.date, unit: .dateMDYSlash, activity: activity, at: 0) == "06/15/2024")
+        #expect(text(.date, unit: .dateMDSlash, activity: activity, at: 0) == "06/15")
+        #expect(text(.date, unit: .dateMonthDay, activity: activity, at: 0) == "Jun 15")
     }
 
     @Test func elapsedTimeOverlayExcludesTimerPausedSegments() {
@@ -88,7 +98,7 @@ struct OverlayValueFormatterTests {
         #expect(activity.activeElapsedTime(at: 90) == 60)
         #expect(activity.activeElapsedTime(at: 150) == 90)
         #expect(activity.activeElapsedTime(at: 240) == 150)
-        #expect(OverlayValueFormatter.value(for: .elapsedTime, activity: activity, elapsedTime: 240) == "00:02:30")
+        #expect(text(.elapsedTime, activity: activity, at: 240) == "00:02:30")
     }
 
     @Test func formatsHeartRateZoneComponents() {
@@ -112,7 +122,7 @@ struct OverlayValueFormatterTests {
             ],
             laps: []
         )
-        let components = OverlayValueFormatter.components(for: .heartRateZone, activity: activity, elapsedTime: 0)
+        let components = OverlayValueFormatter.components(for: OverlayMetric.heartRateZone, activity: activity, elapsedTime: 0)
         #expect(components.label == "HR Zone")
         #expect(components.shortLabel == "ZONE")
         #expect(components.unit == "")
@@ -139,34 +149,18 @@ struct OverlayValueFormatterTests {
             laps: []
         )
 
-        var paceElement = OverlayElement(type: .pace, position: CGPoint(x: 0.5, y: 0.5), scale: 1, style: .default)
-        paceElement.style.unitOption = .paceImperial
-        #expect(OverlayValueFormatter.value(for: paceElement, activity: activity, elapsedTime: 30) == "8'03\"/mi")
-
-        paceElement.style.unitOption = .paceRowing
-        #expect(OverlayValueFormatter.value(for: paceElement, activity: activity, elapsedTime: 30) == "2'30\"/500m")
-
-        var distanceElement = OverlayElement(type: .distance, position: CGPoint(x: 0, y: 0), scale: 1, style: .default)
-        distanceElement.style.unitOption = .distanceMiles
-        #expect(OverlayValueFormatter.value(for: distanceElement, activity: activity, elapsedTime: 30) == "0.31 mi")
-
-        distanceElement.style.unitOption = .distanceMeters
-        #expect(OverlayValueFormatter.value(for: distanceElement, activity: activity, elapsedTime: 30) == "500 m")
-
-        var elevationElement = OverlayElement(type: .elevation, position: CGPoint(x: 0, y: 0), scale: 1, style: .default)
-        elevationElement.style.unitOption = .elevationFeet
-        #expect(OverlayValueFormatter.value(for: elevationElement, activity: activity, elapsedTime: 30) == "328 ft")
-
-        elevationElement.style.elevationDisplayMode = .gain
-        elevationElement.style.unitOption = .elevationMeters
-        #expect(OverlayValueFormatter.value(for: elevationElement, activity: activity, elapsedTime: 30) == "0 m")
-
-        var elapsed = OverlayElement(type: .elapsedTime, position: CGPoint(x: 0, y: 0), scale: 1, style: .default)
-        elapsed.style.unitOption = .durationSeconds
-        #expect(OverlayValueFormatter.value(for: elapsed, activity: activity, elapsedTime: 65) == "65")
+        #expect(text(.pace, unit: .paceImperial, activity: activity, at: 30) == "8'03\"/mi")
+        #expect(text(.pace, unit: .paceRowing, activity: activity, at: 30) == "2'30\"/500m")
+        #expect(text(.distance, unit: .distanceMiles, activity: activity, at: 30) == "0.31 mi")
+        #expect(text(.distance, unit: .distanceMeters, activity: activity, at: 30) == "500 m")
+        #expect(text(.elevation, unit: .elevationFeet, activity: activity, at: 30) == "328 ft")
+        #expect(text(.elevationGain, unit: .elevationMeters, activity: activity, at: 30) == "0 m")
+        #expect(text(.elapsedTime, unit: .durationSeconds, activity: activity, at: 65) == "65")
+        // A unit from another metric family falls back to the metric default.
+        #expect(text(.distance, unit: .paceImperial, activity: activity, at: 30) == "0.50 km")
     }
 
-    @Test func temperatureOverlayCanToggleFITTemperatureSource() {
+    @Test func temperatureFormatsFITTemperature() {
         let startDate = Date(timeIntervalSince1970: 0)
         let activity = ActivityTimeline(
             startDate: startDate,
@@ -189,39 +183,10 @@ struct OverlayValueFormatterTests {
             laps: []
         )
 
-        var element = OverlayElement(type: .temperature, position: .zero, scale: 1, style: .default)
-        element.style.unitOption = .temperatureCelsius
-        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 30) == "15° °C")
-
-        element.style.useFITTemperature = false
-        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 30) == "-- °C")
-
-        element.style.manualTemperatureCelsius = 7.5
-        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 30) == "8° °C")
-
-        element.style.useFITTemperature = true
-        element.style.unitOption = .temperatureFahrenheit
-        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 30) == "59° °F")
-    }
-
-    @Test func temperatureOverlayUsesManualValueWhenFITTemperatureIsMissing() {
-        let activity = ActivityTimeline(
-            startDate: Date(timeIntervalSince1970: 0),
-            duration: 60,
-            distanceMeters: 0,
-            records: [],
-            laps: []
-        )
-
-        var element = OverlayElement(type: .temperature, position: .zero, scale: 1, style: .default)
-        element.style.unitOption = .temperatureCelsius
-        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 30) == "-- °C")
-
-        element.style.manualTemperatureCelsius = -2
-        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 30) == "-2° °C")
-
-        element.style.unitOption = .temperatureFahrenheit
-        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 30) == "28° °F")
+        #expect(text(.temperature, unit: .temperatureCelsius, activity: activity, at: 30) == "15° °C")
+        #expect(text(.temperature, unit: .temperatureFahrenheit, activity: activity, at: 30) == "59° °F")
+        let missing = ActivityTimeline(startDate: startDate, duration: 60, distanceMeters: 0, records: [], laps: [])
+        #expect(text(.temperature, activity: missing, at: 30) == "-- °C")
     }
 
     @Test func elevationOverlayCanSwitchBetweenCurrentAndGain() {
@@ -255,19 +220,14 @@ struct OverlayValueFormatterTests {
             laps: []
         )
 
-        var element = OverlayElement(type: .elevation, position: .zero, scale: 1, style: .default)
-        element.style.unitOption = .elevationMeters
-
-        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 25) == "115 m")
-
-        element.style.elevationDisplayMode = .gain
-        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 25) == "20 m")
-        let components = OverlayValueFormatter.components(for: element, activity: activity, elapsedTime: 25)
+        #expect(text(.elevation, activity: activity, at: 25) == "115 m")
+        #expect(text(.elevationGain, activity: activity, at: 25) == "20 m")
+        let components = OverlayValueFormatter.components(for: OverlayMetric.elevationGain, activity: activity, elapsedTime: 25)
         #expect(components.label == "Elevation Gain")
         #expect(components.shortLabel == "GAIN")
     }
 
-    @Test func numericOverlayHonorsLabelAndUnitFlags() {
+    @Test func customLabelReplacesDefaultLabel() {
         let startDate = Date(timeIntervalSince1970: 0)
         let activity = ActivityTimeline(
             startDate: startDate,
@@ -280,19 +240,16 @@ struct OverlayValueFormatterTests {
             laps: []
         )
 
-        var element = OverlayElement(type: .heartRate, position: .zero, scale: 1, style: .default)
-        element.style.showLabel = true
-        element.style.showUnit = true
-        element.style.customLabel = "BPM"
-        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 5) == "BPM 120 bpm")
-
-        element.style.showUnit = false
-        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 5) == "BPM 120")
-
-        element.style.showLabel = false
-        element.style.customLabel = ""
-        element.style.showUnit = true
-        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 5) == "120 bpm")
+        let custom = OverlayValueFormatter.components(
+            for: OverlayMetric.heartRate,
+            customLabel: "  BPM ",
+            activity: activity,
+            elapsedTime: 5
+        )
+        #expect(custom.label == "BPM")
+        #expect(custom.value == "120")
+        let blank = OverlayValueFormatter.components(for: OverlayMetric.heartRate, customLabel: "  ", activity: activity, elapsedTime: 5)
+        #expect(blank.label == "Heart Rate")
     }
 
     @Test func avgPaceUsesCumulativeSessionAverage() {
@@ -318,8 +275,8 @@ struct OverlayValueFormatterTests {
 
         #expect(activity.avgPace(at: 60) == 60)
         #expect(activity.avgPace(at: 0) == nil)
-        #expect(OverlayValueFormatter.value(for: .avgPace, activity: activity, elapsedTime: 60) == "1'00\"/km")
-        #expect(OverlayValueFormatter.value(for: .avgPace, activity: activity, elapsedTime: 0) == "--'--\"/km")
+        #expect(text(.avgPace, activity: activity, at: 60) == "1'00\"/km")
+        #expect(text(.avgPace, activity: activity, at: 0) == "--'--\"/km")
     }
 
     @Test func lapPaceUsesRunningAverageWithinCurrentLap() {
@@ -362,7 +319,7 @@ struct OverlayValueFormatterTests {
 
         #expect(activity.lapPace(at: 99) == nil)
         #expect(activity.lapPace(at: 160) == 375)
-        #expect(OverlayValueFormatter.value(for: .lapPace, activity: activity, elapsedTime: 160) == "6'15\"/km")
+        #expect(text(.lapPace, activity: activity, at: 160) == "6'15\"/km")
     }
 
     @Test func lapPaceRoundsAcrossMinuteBoundary() {
@@ -393,119 +350,7 @@ struct OverlayValueFormatterTests {
             ]
         )
 
-        #expect(OverlayValueFormatter.value(for: .lapPace, activity: activity, elapsedTime: 239.6) == "4'00\"/km")
+        #expect(text(.lapPace, activity: activity, at: 239.6) == "4'00\"/km")
     }
 
-    @Test func customNumericFormatsRepresentativeFields() {
-        let startDate = Date(timeIntervalSince1970: 1_718_452_800)
-        let activity = ActivityTimeline(
-            startDate: startDate,
-            duration: 120,
-            distanceMeters: 1000,
-            records: [
-                ActivityRecord(
-                    elapsedTime: 0, timestamp: startDate, distanceMeters: 0,
-                    heartRate: 100, paceSecondsPerKilometer: 300, elevationMeters: 100,
-                    cadence: 170, powerWatts: 200, calories: 0,
-                    latitude: 43.641, longitude: -79.389,
-                    verticalOscillationMM: 80, groundContactTimeMS: 240,
-                    strideLengthM: 1.1, groundContactBalance: 50.1,
-                    temperatureCelsius: 18, gradePercent: 1.2
-                ),
-                ActivityRecord(
-                    elapsedTime: 120, timestamp: startDate.addingTimeInterval(120), distanceMeters: 1000,
-                    heartRate: 140, paceSecondsPerKilometer: 360, elevationMeters: 110,
-                    cadence: 180, powerWatts: 260, calories: 60,
-                    latitude: 43.642, longitude: -79.388,
-                    verticalOscillationMM: 90, groundContactTimeMS: 260,
-                    strideLengthM: 1.3, groundContactBalance: 50.5,
-                    temperatureCelsius: 20, gradePercent: 2.2
-                )
-            ],
-            laps: []
-        )
-
-        var element = OverlayElement(type: .customNumeric, position: .zero, scale: 1, style: .default)
-        element.style.showUnit = true
-
-        element.style.customNumericField = .heartRate
-        element.style.customNumericFormat = .integer
-        element.style.customUnit = "beats"
-        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 60) == "120 beats")
-
-        element.style.customNumericField = .distance
-        element.style.customNumericFormat = .number
-        element.style.customNumericPrecision = 1
-        element.style.customUnit = "m"
-        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 60) == "500.0 m")
-
-        element.style.customNumericField = .elapsedTime
-        element.style.customNumericFormat = .duration
-        element.style.customUnit = ""
-        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 65) == "00:01:05")
-
-        element.style.customNumericField = .timestamp
-        element.style.customNumericFormat = .clockTime
-        let clockFormatter = DateFormatter()
-        clockFormatter.locale = Locale(identifier: "en_US_POSIX")
-        clockFormatter.dateFormat = "HH:mm:ss"
-        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 0) == clockFormatter.string(from: startDate))
-
-        element.style.customNumericFormat = .date
-        let dateFormatter = DateFormatter()
-        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
-        dateFormatter.dateFormat = "yyyy-MM-dd"
-        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 0) == dateFormatter.string(from: startDate))
-
-        element.style.customNumericField = .latitude
-        element.style.customNumericFormat = .coordinate
-        element.style.customNumericPrecision = 3
-        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 60) == "43.642")
-    }
-
-    @Test func customNumericMissingDataPreservesUnit() {
-        let activity = ActivityTimeline(
-            startDate: Date(timeIntervalSince1970: 0),
-            duration: 60,
-            distanceMeters: 0,
-            records: [],
-            laps: []
-        )
-        var element = OverlayElement(type: .customNumeric, position: .zero, scale: 1, style: .default)
-        element.style.customNumericField = .temperature
-        element.style.customUnit = "C"
-
-        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 10) == "-- C")
-    }
-
-    @Test func customNumericCanDisplayGenericRecordField() {
-        let startDate = Date(timeIntervalSince1970: 0)
-        let activity = ActivityTimeline(
-            startDate: startDate,
-            duration: 10,
-            distanceMeters: 0,
-            records: [
-                ActivityRecord(
-                    elapsedTime: 0, timestamp: startDate, distanceMeters: nil,
-                    heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: nil,
-                    cadence: nil, powerWatts: nil, calories: nil,
-                    genericFields: ["record.field_87": 10]
-                ),
-                ActivityRecord(
-                    elapsedTime: 10, timestamp: startDate.addingTimeInterval(10), distanceMeters: nil,
-                    heartRate: nil, paceSecondsPerKilometer: nil, elevationMeters: nil,
-                    cadence: nil, powerWatts: nil, calories: nil,
-                    genericFields: ["record.field_87": 20]
-                )
-            ],
-            laps: []
-        )
-        var element = OverlayElement(type: .customNumeric, position: .zero, scale: 1, style: .default)
-        element.style.customNumericField = .record("record.field_87")
-        element.style.customNumericFormat = .number
-        element.style.customNumericPrecision = 1
-        element.style.customUnit = ""
-
-        #expect(OverlayValueFormatter.value(for: element, activity: activity, elapsedTime: 5) == "15.0")
-    }
 }

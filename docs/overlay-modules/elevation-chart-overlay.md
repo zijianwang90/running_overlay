@@ -1,14 +1,28 @@
 # Elevation Chart Overlay
 
-Last updated: 2026-06-25
+Last updated: 2026-11-09
 
-The Elevation Chart overlay is a dedicated `.elevationChart` module for rendering an activity elevation profile. It is separate from Distance Timeline and Route Map, but intentionally reuses their shared inspector and stats bar infrastructure where it makes sense.
+> **Status: bundled component.** The native `.elevationChart` element and
+> `ElevationChartOverlayDetailView` were removed without migration (ADR 0015).
+> The module is now the bundled `studio.elevation-chart` component, whose
+> `elevationChart` host node exposes the same renderer settings through the
+> generated component Inspector; older elements of the native type are dropped
+> on load. This document remains the rendering and design reference for that
+> node.
+>
+> **Stats Bar is no longer attached (2026-11-09).** The chart draws only its
+> own profile, marker and labels. A metric strip is now the standalone
+> `studio.stats-bar` component, placed freely by the user; the `statsBar`
+> field was removed from the component node format and attached bars are
+> always hidden by the resolver.
+
+The Elevation Chart overlay renders an activity elevation profile. It is separate from Distance Timeline and Route Map, but intentionally reuses their shared inspector and stats bar infrastructure where it makes sense.
 
 ## Current Implementation
 
-- Overlay type: `OverlayElementType.elevationChart`
+- Overlay type: `OverlayElementType.elevationChart` (render seed; not creatable)
 - Style model: `ElevationChartStyle` on `OverlayStyle.elevationChart`
-- Inspector: `Sources/RunningOverlay/UI/ElevationChartOverlayDetailView.swift`
+- Inspector: generated `OverlayComponentDetailView` over the component's `elevationChart` node parameters
 - Layout controls: shared `CollapsibleLayoutInspectorSection` and `OverlayLayoutInspectorRows`
 - Stats bar controls: shared `CollapsibleStatsBarInspectorSection` and `OverlayStatsBarInspectorRows`
 - Preview path: `PreviewCanvasView.ElevationChartOverlayView`
@@ -20,6 +34,7 @@ The Elevation Chart overlay is a dedicated `.elevationChart` module for renderin
 - Smoothing: the chart renderer filters quantized elevation samples and uses curved line/area paths in both Full and Progress modes. The `Smoothness` slider controls filter strength from 0 to 100 percent. At 100 percent, the overlay uses a wide display-only Gaussian filter to prioritize a visually continuous curve over passing through every integer-meter sample. Preview and export share the same smoothed sample set before their native path drawing.
 - Bottom-strip sizing: layout width supports `220...1200` design points and height supports `72...320`. Compact heights reduce vertical chart padding proportionally instead of forcing the earlier 52-point chart minimum, allowing a wide, low elevation profile to sit along the bottom of a 1280-point reference canvas without covering as much footage.
 - Dimension decoding clamps imported or legacy values to the supported range so malformed templates cannot create an unusable chart frame.
+- Component content bounds are exactly `chartWidth × chartHeight`; the retired attached Stats Bar no longer reserves extra height below the chart, so the visible card is the element's selectable and draggable bounds. Editing either dimension resizes those bounds.
 - Axis & Labels: `Grid`, `Axis Line`, and `Labels` toggles control the horizontal grid, left Y-axis stroke, and min/max/unit labels. Preview and export share the same axis-line rendering. The current-marker playhead guide is suppressed on the chart's left edge so it does not duplicate the optional Y-axis line.
 - Markers: `Current`, `Playhead Line`, `Marker Color`, `Size`, and `Value Label` control the current-position marker. `Size` scales the marker from the shared render model so preview and SwiftUI export stay proportional at different canvas resolutions. `Playhead Line` toggles the vertical dashed guide that tracks playback progress.
 
@@ -33,19 +48,19 @@ The module exposes a compact set of premium visual presets while keeping the cha
 - `Minimal White` - line-only treatment with labels and stats hidden for low-clutter footage.
 - `Big Elevation` - emphasizes a large current-elevation metric while keeping the chart visible.
 
-The presets initialize values only; all line, fill, marker, axis, stats bar, background, and effects fields remain editable. The overlay still avoids separate bar, dot, step, and segmented chart modes.
+The presets initialize values only; all line, fill, marker, axis, background, and effects fields remain editable. The overlay still avoids separate bar, dot, step, and segmented chart modes.
 
-Big Elevation uses dedicated `bigNumberFontName`, `bigNumberFontWeight`, and `bigNumberFontSize` fields so its primary metric typography can differ from the chart's general overlay font and stats bar typography.
+Big Elevation uses dedicated `bigNumberFontName`, `bigNumberFontWeight`, and `bigNumberFontSize` fields so its primary metric typography can differ from the chart's general overlay font.
 
 Elevation Chart does not define an independent card-background system. It uses the shared overlay Background, Border, and Effects modules so it stays consistent with Distance Timeline, Route Map, and the rest of the overlay editor.
 
 ## Stats Bar
 
-Elevation Chart uses the shared stats bar inspector/configuration surface already used by Route Map and Distance Timeline. Slots support shared metrics such as distance, pace, elapsed time, heart rate, elevation, grade, cadence, power, calories, and progress.
-
-The shared Inside toggle is exposed for Elevation Chart. Outside mode renders the bar below the chart card so it is not covered by the card background. Inside mode renders the bar along the chart card's inner bottom edge and reserves chart clearance above it, so the bar does not cover the elevation line or filled area.
-
-Stats bar geometry and typography are resolved once in `OverlayRenderModel.elevationChartLayout` as `OverlayElevationChartStatsBarLayout`, scaled from the shared 1280x720 reference like the rest of the chart. Preview (fitted canvas) and SwiftUI export (project resolution) consume the same scaled bar rect, font sizes, and item spacing, so the bar stays proportional to the chart card at every resolution. The inside-bar chart clearance reserve is computed in design-point space before the chart height is scaled, so it is not double-scaled.
+Stats Bar is not part of Elevation Chart. It is the standalone
+`studio.stats-bar` component: up to four host-formatted metric slots, its own
+background, dividers, corner radius and typography. Users place and scale it
+independently of any chart, so the two no longer share a container, spacing or
+geometry contract.
 
 ## First-Version Limits
 

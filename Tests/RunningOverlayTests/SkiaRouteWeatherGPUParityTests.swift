@@ -118,8 +118,8 @@ struct SkiaRouteWeatherGPUParityTests {
         )
     }
 
-    @Test(arguments: WeatherWidgetPreset.allCases)
-    func weatherGPUParity(_ preset: WeatherWidgetPreset) throws {
+    @Test
+    func weatherGPUParity() throws {
         guard let device = MTLCreateSystemDefaultDevice(),
               let queue = device.makeCommandQueue() else {
             print("GPU-PARITY skipped: no Metal device")
@@ -135,12 +135,12 @@ struct SkiaRouteWeatherGPUParityTests {
         }
         let cpu = try #require(SkiaEasyRunRenderer(size: Self.canvas))
         let activity = SkiaRouteWeatherGoldenTests.activity()
-        let layout = OverlayLayout(elements: [Self.weatherElement(preset)])
+        let layout = OverlayLayout(elements: [Self.weatherElement()])
 
         cpu.preloadAssets(layout: layout, activity: activity)
         gpu.preloadAssets(layout: layout, activity: activity)
         try Self.compare(
-            label: "weather-\(preset.rawValue)",
+            label: "weather-simple-card",
             layout: layout,
             activity: activity,
             elapsedTime: 0,
@@ -283,8 +283,8 @@ struct SkiaRouteWeatherGPUParityTests {
         )
     }
 
-    private static func weatherElement(_ preset: WeatherWidgetPreset) -> OverlayElement {
-        var widget = WeatherWidgetStyle.preset(preset)
+    private static func weatherElement() -> OverlayElement {
+        var widget = WeatherWidgetStyle.simpleCard
         widget.locationTextStyle.fontName = "Menlo"
         widget.conditionTextStyle.fontName = "Menlo"
         widget.temperatureTextStyle.fontName = "Menlo"

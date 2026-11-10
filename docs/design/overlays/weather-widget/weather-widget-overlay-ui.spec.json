@@ -1,9 +1,8 @@
 {
   "name": "Weather Widget Overlay UI",
-  "updated": "2026-05-07",
-  "status": "phase-2-open-meteo-fetch-entrypoints-and-v1-divider-controls-implemented",
+  "updated": "2026-11-09",
+  "status": "phase-2-open-meteo-fetch-entrypoints-and-single-card-template-implemented",
   "references": {
-    "presetBoard": "./weather-widget-presets.png",
     "iconSet": "./weather-icon-set.png",
     "relatedModuleSpec": "../../../overlay-modules/weather-widget-overlay.md",
     "relatedStyleSpec": "../../system/app-ui.md"
@@ -17,43 +16,13 @@
       "decorative background art behind the widgets"
     ]
   },
-  "presets": [
-    {
-      "id": "simpleCard",
-      "label": "Simple Card",
-      "defaultSize": {"width": 300, "height": 110},
-      "fields": ["conditionLabel", "conditionIcon", "location", "weekday", "temperature", "humidity"],
-      "notes": "default preset; blue translucent card with vertical divider, compact left visual block, and location/country slot"
-    },
-    {
-      "id": "compactStrip",
-      "label": "Compact Strip",
-      "defaultSize": {"width": 220, "height": 56},
-      "fields": ["conditionIcon", "temperature", "condition", "city"],
-      "notes": "small corner-friendly weather summary"
-    },
-    {
-      "id": "forecastTile",
-      "label": "Forecast Tile",
-      "defaultSize": {"width": 180, "height": 180},
-      "fields": ["location", "conditionIcon", "temperature", "highTemperature", "lowTemperature", "humidity"],
-      "notes": "larger square-ish tile for title-card or social clips; configurable horizontal and vertical dividers separate header, temperature, and metric areas"
-    },
-    {
-      "id": "minimalText",
-      "label": "Minimal Text",
-      "defaultSize": {"width": 160, "height": 92},
-      "fields": ["location", "temperature", "condition", "conditionIcon"],
-      "notes": "text-first treatment with no heavy container"
-    },
-    {
-      "id": "dashboardBar",
-      "label": "Dashboard Bar",
-      "defaultSize": {"width": 560, "height": 112},
-      "fields": ["location", "condition", "temperature", "humidity", "wind", "feelsLike"],
-      "notes": "wide weather dashboard bar with taller metric chips for readable labels and values"
-    }
-  ],
+  "cardTemplate": {
+    "id": "simpleCard",
+    "label": "Simple Card",
+    "defaultSize": {"width": 300, "height": 110},
+    "fields": ["conditionLabel", "conditionIcon", "location", "weekday", "temperature", "humidity"],
+    "notes": "only template; blue translucent card with vertical divider, compact left visual block, and location/country slot. Alternative presentations ship as separate components."
+  },
   "contentFields": {
     "required": ["condition", "temperature"],
     "optional": ["location", "weekday", "humidity", "highTemperature", "lowTemperature", "wind", "feelsLike"]
@@ -101,20 +70,16 @@
       "offline deterministic export"
     ]
   },
-  "inspectorSections": ["Layout", "Preset", "Appearance", "Typography", "Location", "Weather"],
+  "inspectorSections": ["Layout", "Effects", "Component", "Weather"],
   "inspectorSectionSeparatorRule": "Collapsed Weather Widget section headers draw one bottom separator only so adjacent boundaries stay a single thin line.",
   "inspectorSectionsHiddenForV1": [
     {
       "section": "Background",
-      "reason": "Shared overlay background controls do not affect the Weather Widget SwiftUI preset renderer."
+      "reason": "Shared overlay background controls do not affect the Weather Widget SwiftUI card renderer."
     },
     {
       "section": "Border",
-      "reason": "Shared overlay border controls do not affect the Weather Widget SwiftUI preset renderer."
-    },
-    {
-      "section": "Effects",
-      "reason": "Shared overlay effects controls do not affect the Weather Widget SwiftUI preset renderer."
+      "reason": "Shared overlay border controls do not affect the Weather Widget SwiftUI card renderer."
     }
   ],
   "inspectorControlsImplemented": [
@@ -142,11 +107,11 @@
   "inspectorControlsHiddenForV1": [
     {
       "control": "Card Color swatches",
-      "reason": "Card surface color is palette-owned in Weather Widget 1.0; the old field did not reliably affect the preset renderer."
+      "reason": "Card surface color is palette-owned in Weather Widget 1.0; the old field did not reliably affect the card renderer."
     },
     {
       "control": "Icon Size slider",
-      "reason": "Icon size is preset-owned in Weather Widget 1.0."
+      "reason": "Icon size is template-owned in Weather Widget 1.0."
     },
     {
       "control": "manual API-owned text inputs in API modes",
@@ -160,30 +125,18 @@
   "metricSlots": {
     "values": ["none", "humidity", "highLow", "wind", "feelsLike"],
     "noneBehavior": "selected '-' slots render no metric content",
-    "slotCountByPreset": {
-      "simpleCard": 1,
-      "compactStrip": 0,
-      "forecastTile": 3,
-      "minimalText": 0,
-      "dashboardBar": 3
-    },
-    "defaultSlotsByPreset": {
-      "simpleCard": ["humidity"],
-      "compactStrip": [],
-      "forecastTile": ["highLow", "humidity", "wind"],
-      "minimalText": [],
-      "dashboardBar": ["humidity", "wind", "feelsLike"]
-    },
-    "inlineFeelsLikeLabel": "Inline metric rows render feelsLike as 'Feels 12°C'; Dashboard Bar keeps 'Feels' as the chip label and '12°C' as the value."
+    "slotCount": 1,
+    "defaultSlots": ["humidity"],
+    "inlineFeelsLikeLabel": "The inline metric row renders feelsLike as 'Feels 12°C'."
   },
   "dividers": {
     "enabledControl": "Show Divider",
     "enabledDefault": true,
-    "hiddenBehavior": "when disabled, preset divider lines are not rendered; color, width, and opacity values are preserved but hidden from the Inspector",
+    "hiddenBehavior": "when disabled, the divider line is not rendered; color, width, and opacity values are preserved but hidden from the Inspector",
     "controlsWhenEnabled": ["divider color", "divider width", "divider opacity"]
   },
   "implementationNotes": [
-    "weather widget should become a dedicated overlay type, not only a numeric temperature preset",
+    "weather widget is a dedicated overlay type with a single card template; alternative presentations ship as separate components",
     "preview and export must share the same render layout",
     "API-backed weather must be cached before export",
     "fetch actions write cachedWeather, preserve the selected API dataSource, and update locationText from reverse geocoding",

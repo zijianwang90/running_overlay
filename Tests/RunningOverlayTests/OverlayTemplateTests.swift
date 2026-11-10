@@ -9,13 +9,10 @@ struct OverlayTemplateTests {
         defer { try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent()) }
 
         let project = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL))
-        project.addOverlayElement(.heartRate)
-        let elementID = try #require(project.overlayLayout.elements.first?.id)
+        let elementID = try #require(project.addComponentFromLibrary(try numericLibraryItem()))
         project.moveOverlay(elementID, to: CGPoint(x: 0.2, y: 0.8))
         project.setOverlayScale(elementID, scale: 1.5)
         project.setOverlayForegroundColor(elementID, color: .cyan)
-        project.setOverlayTextPreset(elementID, textPreset: .sportWatch)
-        project.setOverlayGaugePreset(elementID, gaugePreset: .techFuture)
         project.saveOverlayTemplate(named: "Race Layout")
 
         let loadedProject = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL))
@@ -25,13 +22,11 @@ struct OverlayTemplateTests {
         #expect(template.name == "Race Layout")
         #expect(template.referenceResolution == OverlayTemplateResolution(width: 1920, height: 1080))
         #expect(template.elements.count == 1)
-        #expect(template.elements[0].type == .heartRate)
+        #expect(template.elements[0].type == .component)
         #expect(template.elements[0].positionX == 0.2)
         #expect(template.elements[0].positionY == 0.8)
         #expect(template.elements[0].scale == 1.5)
         #expect(template.elements[0].style.foregroundColor == .cyan)
-        #expect(template.elements[0].style.textPreset == .sportWatch)
-        #expect(template.elements[0].style.gaugePreset == .techFuture)
     }
 
     @Test func overlayStyleDecodesLegacyTemplatesWithDefaultStylePresets() throws {
@@ -49,30 +44,60 @@ struct OverlayTemplateTests {
 
         let style = try JSONDecoder().decode(OverlayStyle.self, from: Data(json.utf8))
 
-        #expect(style.textPreset == .minimal)
-        #expect(style.gaugePreset == .minimalSport)
         #expect(style.distanceTimeline.preset == .minimal)
-        #expect(style.iconColorsFollowHeartRateZones == false)
-        #expect(style.valueColorsFollowHeartRateZones == false)
-        #expect(style.labelColorsFollowHeartRateZones == false)
-        #expect(style.unitColorsFollowHeartRateZones == false)
-        #expect(style.elevationDisplayMode == .current)
         #expect(style.manualTemperatureCelsius == nil)
     }
 
-    @Test func overlayStyleLegacyTextZoneColorFlagSeedsPerRoleTextFlags() throws {
-        let json = """
-        {
-          "textColorsFollowHeartRateZones": true
+    /// Templates saved with native numeric or ported visual overlays
+    /// (ADR 0014, ADR 0015) still import; those elements are dropped and
+    /// counted, the rest decode strictly.
+    @Test func templateDecodingDropsLegacyNativeElements() throws {
+        let numeric = try #require(
+            OverlayComponentLibraryItem.all.first { $0.id == "studio.numeric#pace" }
+        )
+        let reference = try OverlayComponentLibrary.reference(for: numeric)
+        let template = OverlayTemplate(
+            name: "Legacy",
+            elements: [
+                OverlayTemplateElement(
+                    type: .component, positionX: 0.1, positionY: 0.2, scale: 1,
+                    style: .default, componentReference: reference
+                ),
+                OverlayTemplateElement(
+                    type: .component, positionX: 0.8, positionY: 0.2, scale: 1,
+                    style: .default, componentReference: reference
+                )
+            ]
+        )
+        var object = try #require(
+            JSONSerialization.jsonObject(with: JSONEncoder().encode(template)) as? [String: Any]
+        )
+        var elements = try #require(object["elements"] as? [[String: Any]])
+        let legacyTypes = [
+            "pace", "distanceTimeline", "elevationChart", "intervalHUDBar",
+            "intervalTimeline", "zoneEdgeBar", "routeMap", "weatherWidget"
+        ]
+        for rawValue in legacyTypes {
+            var legacy = elements[0]
+            legacy["type"] = rawValue
+            elements.insert(legacy, at: 0)
         }
-        """
+        object["elements"] = elements
 
-        let style = try JSONDecoder().decode(OverlayStyle.self, from: Data(json.utf8))
+        let decoded = try JSONDecoder().decode(
+            OverlayTemplate.self,
+            from: JSONSerialization.data(withJSONObject: object)
+        )
 
-        #expect(style.textColorsFollowHeartRateZones == true)
-        #expect(style.valueColorsFollowHeartRateZones == true)
-        #expect(style.labelColorsFollowHeartRateZones == true)
-        #expect(style.unitColorsFollowHeartRateZones == true)
+        #expect(decoded.droppedLegacyElementCount == legacyTypes.count)
+        #expect(decoded.elements.map(\.type) == [.component, .component])
+
+        var unknown = elements[legacyTypes.count]
+        unknown["type"] = "notAnOverlay"
+        object["elements"] = [unknown]
+        #expect(throws: DecodingError.self) {
+            try JSONDecoder().decode(OverlayTemplate.self, from: JSONSerialization.data(withJSONObject: object))
+        }
     }
 
     @Test func intervalHUDBarStyleDecodesOlderFieldsWithDefaults() throws {
@@ -125,55 +150,6 @@ struct OverlayTemplateTests {
         #expect(style.thresholdZoneMarkerEnabled == IntervalHUDBarStyle.default.thresholdZoneMarkerEnabled)
         #expect(style.labelText == IntervalHUDBarStyle.default.labelText)
         #expect(style.metricUnitText == IntervalHUDBarStyle.default.metricUnitText)
-    }
-
-    @Test func intervalCountdownStyleDecodesFromOlderOverlayStyleAndEncodes() throws {
-        let oldStyle = try JSONDecoder().decode(OverlayStyle.self, from: Data("{}".utf8))
-
-        #expect(oldStyle.intervalCountdown.size == IntervalCountdownStyle.default.size)
-        #expect(oldStyle.intervalCountdown.countdownText.isVisible)
-        #expect(oldStyle.intervalCountdown.phaseText.colorMode == .followGroupColor)
-        #expect(oldStyle.intervalCountdown.resolvedRingDirection == .clockwise)
-        #expect(oldStyle.intervalCountdown.resolvedCenterMetric == .time)
-        #expect(oldStyle.intervalCountdown.resolvedCenterValueDirection == .remaining)
-
-        var style = OverlayStyle.default
-        style.intervalCountdown.helperText.isVisible = false
-        style.intervalCountdown.countdownText.colorMode = .followGroupColor
-        style.intervalCountdown.ringDirection = .counterclockwise
-        style.intervalCountdown.centerMetric = .distance
-        style.intervalCountdown.centerValueDirection = .elapsed
-        let data = try JSONEncoder().encode(style)
-        let encoded = String(decoding: data, as: UTF8.self)
-
-        #expect(encoded.contains("intervalCountdown"))
-        #expect(encoded.contains("followGroupColor"))
-        #expect(encoded.contains("counterclockwise"))
-        #expect(encoded.contains("distance"))
-        #expect(encoded.contains("elapsed"))
-    }
-
-    @Test func intervalWorkSummaryStyleDecodesFromOlderOverlayStyleAndEncodes() throws {
-        let oldStyle = try JSONDecoder().decode(OverlayStyle.self, from: Data("{}".utf8))
-
-        #expect(oldStyle.intervalWorkSummary.width == IntervalWorkSummaryStyle.default.width)
-        #expect(oldStyle.intervalWorkSummary.primaryMetric == .lapTime)
-        #expect(oldStyle.intervalWorkSummary.secondarySlots.map(\.metric) == [.lapPace, .lapDistance, .avgHeartRate])
-        #expect(oldStyle.intervalWorkSummary.componentLabelText.colorMode == .followGroupColor)
-        #expect(oldStyle.intervalWorkSummary.resolvedComponentLabelAlignment == .center)
-
-        var style = OverlayStyle.default
-        style.intervalWorkSummary.displayDuration = 8
-        style.intervalWorkSummary.primaryMetric = .lapPace
-        style.intervalWorkSummary.componentLabelAlignment = .trailing
-        style.intervalWorkSummary.secondarySlots[0].customLabel = "BEST"
-        let data = try JSONEncoder().encode(style)
-        let encoded = String(decoding: data, as: UTF8.self)
-
-        #expect(encoded.contains("intervalWorkSummary"))
-        #expect(encoded.contains("lapPace"))
-        #expect(encoded.contains("trailing"))
-        #expect(encoded.contains("BEST"))
     }
 
     @Test func overlayStyleDecodesMissingZoneEdgeBarWithDefaults() throws {
@@ -254,7 +230,7 @@ struct OverlayTemplateTests {
 
     @Test func weatherWidgetStyleRoundTripsNewFields() throws {
         var style = OverlayStyle.default
-        style.weatherWidget = .preset(.dashboardBar)
+        style.weatherWidget = .simpleCard
         style.weatherWidget.conditionLabelOverride = "Light rain"
         style.weatherWidget.humiditySuffix = "RH"
         style.weatherWidget.humidityMetricLabel = "Humidity"
@@ -262,7 +238,7 @@ struct OverlayTemplateTests {
         style.weatherWidget.feelsLikeMetricLabel = "Feels"
         style.weatherWidget.palette = .lightGlass
         style.weatherWidget.showIcon = false
-        style.weatherWidget.metricSlots = [.none, .wind, .highLow]
+        style.weatherWidget.metricSlots = [.wind]
         style.weatherWidget.dividerEnabled = false
         style.weatherWidget.dividerColor = .cyan
         style.weatherWidget.dividerThickness = 3
@@ -288,7 +264,7 @@ struct OverlayTemplateTests {
         #expect(decoded.weatherWidget.feelsLikeMetricLabel == "Feels")
         #expect(decoded.weatherWidget.palette == .lightGlass)
         #expect(decoded.weatherWidget.showIcon == false)
-        #expect(decoded.weatherWidget.metricSlots == [.none, .wind, .highLow])
+        #expect(decoded.weatherWidget.metricSlots == [.wind])
         #expect(decoded.weatherWidget.dividerEnabled == false)
         #expect(decoded.weatherWidget.dividerColor == .cyan)
         #expect(decoded.weatherWidget.dividerThickness == 3)
@@ -380,52 +356,6 @@ struct OverlayTemplateTests {
         #expect(decoded.weatherWidget.dividerOpacity == 0.34)
     }
 
-    @Test func applyWeatherWidgetPresetPreservesContentAndCachedData() throws {
-        let project = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: temporaryTemplateURL()))
-        project.addOverlayElement(.weatherWidget)
-        let id = try #require(project.overlayLayout.elements.first?.id)
-        project.mutateWeatherWidgetStyle(id) { style in
-            style.manualCondition = .snow
-            style.manualTemperatureCelsius = -2
-            style.conditionLabelOverride = "Snow"
-            style.locationText = "Sapporo, Japan"
-            style.showIcon = false
-            style.metricSlots = [.wind]
-            style.dividerEnabled = false
-            style.dividerColor = .yellow
-            style.dividerThickness = 4
-            style.dividerOpacity = 0.5
-            style.cachedWeather = WeatherPayload(
-                condition: .snow,
-                temperatureCelsius: -2,
-                humidity: 80,
-                highTemperatureCelsius: 0,
-                lowTemperatureCelsius: -6,
-                windKph: 12,
-                feelsLikeCelsius: -5,
-                resolvedLocation: "Sapporo, Japan",
-                sourceDate: nil
-            )
-        }
-
-        project.applyWeatherWidgetPreset(id, preset: .dashboardBar)
-        let updated = try #require(project.overlayLayout.elements.first?.style.weatherWidget)
-
-        #expect(updated.preset == .dashboardBar)
-        #expect(updated.manualCondition == .snow)
-        #expect(updated.manualTemperatureCelsius == -2)
-        #expect(updated.conditionLabelOverride == "Snow")
-        #expect(updated.locationText == "Sapporo, Japan")
-        #expect(updated.showIcon == false)
-        #expect(updated.metricSlots == [.wind, .wind, .feelsLike])
-        #expect(updated.dividerEnabled == false)
-        #expect(updated.dividerColor == .yellow)
-        #expect(updated.dividerThickness == 4)
-        #expect(updated.dividerOpacity == 0.5)
-        #expect(updated.cachedWeather?.condition == .snow)
-        #expect(abs(updated.width - Double(WeatherWidgetPreset.dashboardBar.defaultSize.width)) < 0.001)
-    }
-
     @Test func addedWeatherWidgetStartsWithAPIPlaceholderState() throws {
         let project = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: temporaryTemplateURL()))
 
@@ -443,14 +373,14 @@ struct OverlayTemplateTests {
         defer { try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent()) }
 
         let project = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL))
-        project.addOverlayElement(.pace)
+        project.addOverlayElement(.elevationChart)
         let originalID = try #require(project.overlayLayout.elements.first?.id)
 
         let template = OverlayTemplate(
             name: "Minimal",
             elements: [
                 OverlayTemplateElement(
-                    type: .distance,
+                    type: .distanceTimeline,
                     positionX: 0.1,
                     positionY: 0.2,
                     scale: 2,
@@ -462,12 +392,12 @@ struct OverlayTemplateTests {
 
         project.applyOverlayTemplate(template.id)
         #expect(project.overlayLayout.elements.count == 1)
-        #expect(project.overlayLayout.elements[0].type == .distance)
+        #expect(project.overlayLayout.elements[0].type == .distanceTimeline)
         #expect(project.overlayLayout.elements[0].id != originalID)
 
         project.undo()
         #expect(project.overlayLayout.elements.count == 1)
-        #expect(project.overlayLayout.elements[0].type == .pace)
+        #expect(project.overlayLayout.elements[0].type == .elevationChart)
         #expect(project.overlayLayout.elements[0].id == originalID)
     }
 
@@ -476,7 +406,7 @@ struct OverlayTemplateTests {
         defer { try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent()) }
 
         let project = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL))
-        project.addOverlayElement(.distance)
+        try #require(project.addComponentFromLibrary(try numericLibraryItem()))
 
         project.saveCurrentOverlayTemplateWithGeneratedName()
         let saved = try #require(project.overlayTemplates.first)
@@ -487,13 +417,13 @@ struct OverlayTemplateTests {
 
         let renamed = try #require(project.overlayTemplates.first)
         let createdAt = renamed.createdAt
-        project.addOverlayElement(.pace)
+        try #require(project.addComponentFromLibrary(try numericLibraryItem()))
         project.updateOverlayTemplateFromCurrentSetup(saved.id)
         let updated = try #require(project.overlayTemplates.first)
         #expect(updated.id == saved.id)
         #expect(updated.name == "Long Run")
         #expect(updated.createdAt == createdAt)
-        #expect(updated.elements.map(\.type) == [.distance, .pace])
+        #expect(updated.elements.map(\.type) == [.component, .component])
 
         project.duplicateOverlayTemplate(saved.id)
         #expect(project.overlayTemplates.count == 2)
@@ -501,7 +431,7 @@ struct OverlayTemplateTests {
 
         let loadedProject = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL))
         #expect(loadedProject.overlayTemplates.map(\.name) == ["Long Run Copy", "Long Run"])
-        #expect(loadedProject.overlayTemplates[1].elements.map(\.type) == [.distance, .pace])
+        #expect(loadedProject.overlayTemplates[1].elements.map(\.type) == [.component, .component])
     }
 
     @Test func importingExistingTemplateAssignsUniqueLibraryIdentity() throws {
@@ -509,7 +439,7 @@ struct OverlayTemplateTests {
         defer { try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent()) }
 
         let project = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL))
-        project.addOverlayElement(.distance)
+        try #require(project.addComponentFromLibrary(try numericLibraryItem()))
         project.saveOverlayTemplate(named: "Long Run")
         let original = try #require(project.overlayTemplates.first)
 
@@ -524,7 +454,7 @@ struct OverlayTemplateTests {
 
         let imported = try #require(project.overlayTemplates.first)
         project.applyOverlayTemplate(imported.id)
-        #expect(project.overlayLayout.elements.map(\.type) == [.distance])
+        #expect(project.overlayLayout.elements.map(\.type) == [.component])
 
         let loadedProject = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL))
         #expect(loadedProject.overlayTemplates.count == 2)
@@ -536,21 +466,24 @@ struct OverlayTemplateTests {
         defer { try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent()) }
 
         let project = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL))
-        project.addOverlayElement(.pace)
+        project.addOverlayElement(.elevationChart)
         let originalID = try #require(project.overlayLayout.elements.first?.id)
         let race = try #require(BuiltInOverlayTemplate.all.first { $0.id == "race" })
 
         project.applyBuiltInOverlayTemplate(race)
-        #expect(project.overlayLayout.elements.map(\.type) == [
-            .pace, .heartRate, .cadence, .routeMap, .distanceTimeline,
-            .elapsedTime, .realTime, .power, .weatherWidget, .zoneEdgeBar, .elevationChart
+        #expect(project.overlayLayout.elements.map(\.type) == Array(repeating: .component, count: 11))
+        #expect(project.overlayLayout.elements.compactMap { $0.component?.reference.id } == [
+            "studio.numeric", "studio.numeric", "studio.numeric",
+            "studio.route-map", "studio.distance-timeline",
+            "studio.numeric", "studio.numeric", "studio.numeric",
+            "studio.weather-widget", "studio.zone-edge-bar", "studio.elevation-chart"
         ])
         #expect(project.overlayLayout.elements.first?.id != originalID)
         #expect(project.selection == .none)
 
         project.undo()
         #expect(project.overlayLayout.elements.count == 1)
-        #expect(project.overlayLayout.elements[0].type == .pace)
+        #expect(project.overlayLayout.elements[0].type == .elevationChart)
         #expect(project.overlayLayout.elements[0].id == originalID)
     }
 
@@ -559,25 +492,34 @@ struct OverlayTemplateTests {
         defer { try? FileManager.default.removeItem(at: storeURL.deletingLastPathComponent()) }
 
         let project = ProjectDocument(overlayTemplateStore: OverlayTemplateStore(fileURL: storeURL))
-        project.addOverlayElement(.elapsedTime)
+        project.addOverlayElement(.elevationChart)
         let easyRun = try #require(BuiltInOverlayTemplate.all.first { $0.id == "easyRun" })
 
         project.applyBuiltInOverlayTemplate(easyRun)
 
-        #expect(project.overlayLayout.elements.map(\.type) == [.pace, .heartRate, .cadence, .routeMap, .distanceTimeline, .elapsedTime, .realTime, .power, .weatherWidget])
+        #expect(project.overlayLayout.elements.map(\.type) == Array(repeating: .component, count: 9))
+        #expect(project.overlayLayout.elements.compactMap { $0.component?.reference.id } == [
+            "studio.numeric", "studio.numeric", "studio.numeric",
+            "studio.route-map", "studio.distance-timeline",
+            "studio.numeric", "studio.numeric", "studio.numeric",
+            "studio.weather-widget"
+        ])
         #expect(project.overlayLayout.elements.first?.position.x == 0.030665921145385626)
         #expect(project.overlayLayout.elements.first?.position.y == 0.7390206334260655)
-        #expect(project.overlayLayout.elements.first?.style.textPreset == .minimal)
-        #expect(project.overlayLayout.elements.first?.style.fontName == "Monaco")
-        #expect(project.overlayLayout.elements.first?.style.labelFontName == "PT Mono")
-        #expect(project.overlayLayout.elements.first?.style.unitFontName == "PT Mono")
-        let weatherStyle = try #require(project.overlayLayout.elements.last?.style.weatherWidget)
-        #expect(weatherStyle.dataSource == .openMeteo)
-        #expect(weatherStyle.locationText.isEmpty)
-        #expect(weatherStyle.cachedWeather == nil)
-        #expect(weatherStyle.manualCondition == .sunny)
-        #expect(weatherStyle.locationTextStyle.fontName == "PT Mono")
-        #expect(weatherStyle.temperatureTextStyle.fontName == "PT Mono")
+        #expect(project.overlayLayout.elements.compactMap { $0.component?.parameters["metricId"] } == [
+            .string("pace"), .string("heartRate"), .string("cadence"),
+            .string("elapsedTime"), .string("realTime"), .string("power")
+        ])
+        let pace = try #require(project.overlayLayout.elements.first?.component)
+        #expect(pace.reference.id == "studio.numeric")
+        #expect(pace.parameters["valueFont"] == .string("Monaco"))
+        #expect(pace.parameters["labelFont"] == .string("PT Mono"))
+        #expect(pace.parameters["unitFont"] == .string("PT Mono"))
+        let weatherParams = try #require(project.overlayLayout.elements.last?.component?.parameters)
+        #expect(weatherParams["dataSource"] == .string("openMeteo"))
+        #expect(weatherParams["locationText"] == .string(""))
+        #expect(weatherParams["condition"] == .string("sunny"))
+        #expect(weatherParams["fontFamily"] == .string("PT Mono"))
     }
 
     @Test func intervalWorkoutBuiltInTemplateLoadsBundledTemplateFile() throws {
@@ -589,16 +531,20 @@ struct OverlayTemplateTests {
 
         project.applyBuiltInOverlayTemplate(intervalWorkout)
 
-        #expect(project.overlayLayout.elements.map(\.type) == [
-            .routeMap, .elapsedTime, .realTime, .weatherWidget, .intervalHUDBar, .intervalTimeline
+        #expect(project.overlayLayout.elements.map(\.type) == Array(repeating: .component, count: 6))
+        #expect(project.overlayLayout.elements.compactMap { $0.component?.reference.id } == [
+            "studio.route-map", "studio.numeric", "studio.numeric",
+            "studio.weather-widget", "studio.interval-hud-bar", "studio.interval-timeline"
         ])
-        #expect(project.overlayLayout.elements.first?.position.x == 0.110546875)
-        let weatherStyle = try #require(project.overlayLayout.elements.first { $0.type == .weatherWidget }?.style.weatherWidget)
-        #expect(weatherStyle.dataSource == .openMeteo)
-        #expect(weatherStyle.locationText.isEmpty)
-        #expect(weatherStyle.cachedWeather == nil)
-        #expect(weatherStyle.manualCondition == .sunny)
-        #expect(project.overlayLayout.elements.last?.type == .intervalTimeline)
+        #expect(project.overlayLayout.elements.first?.position.x == 0.000390625)
+        let weatherParams = try #require(
+            project.overlayLayout.elements.first { $0.component?.reference.id == "studio.weather-widget" }?
+                .component?.parameters
+        )
+        #expect(weatherParams["dataSource"] == .string("openMeteo"))
+        #expect(weatherParams["locationText"] == .string(""))
+        #expect(weatherParams["condition"] == .string("sunny"))
+        #expect(project.overlayLayout.elements.last?.component?.reference.id == "studio.interval-timeline")
     }
 
     @Test func raceBuiltInTemplateLoadsBundledTemplateFile() throws {
@@ -610,18 +556,17 @@ struct OverlayTemplateTests {
 
         project.applyBuiltInOverlayTemplate(race)
 
-        #expect(project.overlayLayout.elements.map(\.type) == [
-            .pace, .heartRate, .cadence, .routeMap, .distanceTimeline,
-            .elapsedTime, .realTime, .power, .weatherWidget, .zoneEdgeBar, .elevationChart
-        ])
+        #expect(project.overlayLayout.elements.map(\.type) == Array(repeating: .component, count: 11))
         #expect(project.overlayLayout.elements.first?.position.x == 0.030665921145385626)
-        #expect(project.overlayLayout.elements.last?.type == .elevationChart)
-        #expect(project.overlayLayout.elements.last?.position.y == 0.9108545647558387)
-        let weatherStyle = try #require(project.overlayLayout.elements.first { $0.type == .weatherWidget }?.style.weatherWidget)
-        #expect(weatherStyle.dataSource == .openMeteo)
-        #expect(weatherStyle.locationText.isEmpty)
-        #expect(weatherStyle.cachedWeather == nil)
-        #expect(weatherStyle.manualCondition == .sunny)
+        #expect(project.overlayLayout.elements.last?.component?.reference.id == "studio.elevation-chart")
+        #expect(project.overlayLayout.elements.last?.position.y == 0.8608545647558387)
+        let weatherParams = try #require(
+            project.overlayLayout.elements.first { $0.component?.reference.id == "studio.weather-widget" }?
+                .component?.parameters
+        )
+        #expect(weatherParams["dataSource"] == .string("openMeteo"))
+        #expect(weatherParams["locationText"] == .string(""))
+        #expect(weatherParams["condition"] == .string("sunny"))
     }
 
     @Test func fitImportAppliesEasyRunTemplateWhenNoTemplateWasUsedBefore() throws {
@@ -639,7 +584,7 @@ struct OverlayTemplateTests {
 
         project.finishFitImport(activity: sampleActivity(), sourceName: "morning.fit")
 
-        #expect(project.overlayLayout.elements.map(\.type) == [.pace, .heartRate, .cadence, .routeMap, .distanceTimeline, .elapsedTime, .realTime, .power, .weatherWidget])
+        #expect(project.overlayLayout.elements.map(\.type) == Array(repeating: .component, count: 9))
         #expect(project.statusMessage.contains("Applied template: Easy Run"))
         #expect(project.toastMessage == "Template applied: Easy Run")
     }
@@ -662,12 +607,59 @@ struct OverlayTemplateTests {
 
         project.finishFitImport(activity: sampleActivity(), sourceName: "race.fit")
 
-        #expect(project.overlayLayout.elements.map(\.type) == [
-            .pace, .heartRate, .cadence, .routeMap, .distanceTimeline,
-            .elapsedTime, .realTime, .power, .weatherWidget, .zoneEdgeBar, .elevationChart
-        ])
+        #expect(project.overlayLayout.elements.map(\.type) == Array(repeating: .component, count: 11))
         #expect(project.statusMessage.contains("Applied template: Race"))
         #expect(project.toastMessage == "Template applied: Race")
+    }
+
+    @Test func staleBundledTemplateReferenceRefreshesToHostBuild() throws {
+        let item = try numericLibraryItem()
+        let current = try OverlayComponentLibrary.reference(for: item)
+        var stale = current
+        stale.digest = "sha256:0000"
+
+        let stored = OverlayTemplateElement(
+            type: .component,
+            positionX: 0.1,
+            positionY: 0.2,
+            scale: 1,
+            style: .default,
+            componentReference: stale,
+            componentParameters: ["metricId": .string("pace")]
+        )
+
+        let element = stored.overlayElement
+        #expect(element.component?.reference == current)
+        #expect(element.component?.parameters["metricId"] == .string("pace"))
+    }
+
+    @Test func builtInTemplatesReferenceTheHostBundledBuild() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        for template in BuiltInOverlayTemplate.all {
+            let resourceName = try #require(template.resourceName)
+            let url = root
+                .appendingPathComponent("Sources/RunningOverlay/Resources/Templates")
+                .appendingPathComponent("\(resourceName).rotemplate")
+            let decoded = try JSONDecoder().decode(
+                OverlayTemplate.self,
+                from: Data(contentsOf: url)
+            )
+            let references = decoded.elements.compactMap(\.componentReference)
+            #expect(!references.isEmpty, "\(template.name) has no component elements")
+            for reference in references where reference.source == .bundled {
+                #expect(
+                    OverlayComponentRegistry.definition(for: reference) != nil,
+                    "\(template.name) references a stale bundled \(reference.id) \(reference.version)"
+                )
+            }
+        }
+    }
+
+    private func numericLibraryItem() throws -> OverlayComponentLibraryItem {
+        try #require(OverlayComponentLibraryItem.all.first { $0.id == "studio.numeric#pace" })
     }
 
     @Test func fitImportAppliesLastUsedUserTemplate() throws {
@@ -686,7 +678,7 @@ struct OverlayTemplateTests {
             name: "My Daily Run",
             elements: [
                 OverlayTemplateElement(
-                    type: .distance,
+                    type: .elevationChart,
                     positionX: 0.2,
                     positionY: 0.3,
                     scale: 1.4,
@@ -701,7 +693,7 @@ struct OverlayTemplateTests {
         project.finishFitImport(activity: sampleActivity(), sourceName: "daily.fit")
 
         #expect(project.overlayLayout.elements.count == 1)
-        #expect(project.overlayLayout.elements[0].type == .distance)
+        #expect(project.overlayLayout.elements[0].type == .elevationChart)
         #expect(project.overlayLayout.elements[0].position.x == 0.2)
         #expect(project.overlayLayout.elements[0].scale == 1.4)
         #expect(project.statusMessage.contains("Applied template: My Daily Run"))

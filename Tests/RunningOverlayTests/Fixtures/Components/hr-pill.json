@@ -1,0 +1,83 @@
+{
+  "spec": "ros.component/0.1",
+  "id": "studio.builtin.heart-rate-pill",
+  "version": "1.0.0",
+  "name": { "en": "Heart Rate Pill", "zh-Hans": "心率胶囊" },
+  "description": {
+    "en": "Current heart rate tinted by zone, with a 60-second trend line.",
+    "zh-Hans": "显示当前心率、心率区间配色和最近 60 秒趋势。"
+  },
+  "author": "Running Overlay Studio",
+  "license": "MIT",
+  "size": [240, 72],
+  "background": { "color": "transparent", "radius": 0 },
+  "params": [
+    {
+      "id": "accent",
+      "type": "color",
+      "label": { "en": "Accent", "zh-Hans": "强调色" },
+      "section": { "en": "Style", "zh-Hans": "样式" },
+      "default": "#FF4D4F"
+    },
+    {
+      "id": "radius",
+      "type": "number",
+      "label": { "en": "Corner Radius", "zh-Hans": "圆角" },
+      "section": { "en": "Style", "zh-Hans": "样式" },
+      "min": 0,
+      "max": 36,
+      "step": 1,
+      "unit": "pt",
+      "default": 36
+    },
+    {
+      "id": "showTrend",
+      "type": "bool",
+      "label": { "en": "Show Trend", "zh-Hans": "显示趋势" },
+      "section": { "en": "Content", "zh-Hans": "内容" },
+      "default": true
+    }
+  ],
+  "bindings": {
+    "hr": { "signal": "activity.heartRate" },
+    "zone": { "signal": "zone.heartRate" },
+    "recent": {
+      "series": "activity.heartRate",
+      "window": [-60, 0],
+      "samples": 60
+    }
+  },
+  "nodes": [
+    {
+      "type": "rect",
+      "frame": [0, 0, 240, 72],
+      "radius": "=radius",
+      "fill": "#0B1220CC"
+    },
+    {
+      "type": "text",
+      "frame": [18, 4, 116, 44],
+      "text": "=format(hr, \"integer\")",
+      "font": { "family": "system-rounded", "size": 42, "weight": "bold" },
+      "color": "=coalesce(zone.color, accent)",
+      "verticalAlign": "center"
+    },
+    {
+      "type": "text",
+      "frame": [18, 48, 116, 16],
+      "text": "BPM",
+      "font": { "family": "system", "size": 11, "weight": "semibold" },
+      "color": "#FFFFFF99"
+    },
+    {
+      "type": "sparkline",
+      "if": "=showTrend",
+      "frame": [146, 16, 78, 40],
+      "series": "=recent",
+      "stroke": "=accent",
+      "lineWidth": 2.5,
+      "fill": "#FF4D4F22",
+      "smoothing": "monotone"
+    }
+  ]
+}

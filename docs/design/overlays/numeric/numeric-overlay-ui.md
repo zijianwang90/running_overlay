@@ -1,5 +1,11 @@
 # Numeric Overlay UI Design Spec
 
+> **Historical.** The native numeric overlays this spec describes were removed
+> by [ADR 0014](../../../adr/0014-remove-native-numeric-overlays.md). Numeric
+> readings are now the bundled `studio.numeric` component, whose Inspector is
+> generated from its params ([Overlay Components](../../../overlay-components/README.md)).
+> This document is kept as the design reference those params were derived from.
+
 Last updated: 2026-06-29 (temperature manual fallback)
 
 ## Purpose

@@ -25,41 +25,27 @@ struct OverlaySharedWeatherWidgetView: View {
     let layout: WeatherWidgetRenderLayout
 
     var body: some View {
-        Group {
-            switch layout.style.preset {
-            case .simpleCard:
-                SimpleCardWeatherView(layout: layout)
-            case .compactStrip:
-                CompactStripWeatherView(layout: layout)
-            case .forecastTile:
-                ForecastTileWeatherView(layout: layout)
-            case .minimalText:
-                MinimalTextWeatherView(layout: layout)
-            case .dashboardBar:
-                DashboardBarWeatherView(layout: layout)
-            }
-        }
-        .frame(width: layout.rect.width, height: layout.rect.height)
-        .weatherReadabilityShadow(enabled: layout.style.preset == .minimalText)
+        SimpleCardWeatherView(layout: layout)
+            .frame(width: layout.rect.width, height: layout.rect.height)
     }
 }
 
 // MARK: - Preset Tokens
 
-private struct WeatherWidgetPresetTokens {
+private struct WeatherWidgetCardTokens {
     var background: LinearGradient
     var strokeColor: Color
     var strokeOpacity: Double
     var divider: Color
     var shadow: Color
 
-    static func resolve(_ layout: WeatherWidgetRenderLayout) -> WeatherWidgetPresetTokens {
+    static func resolve(_ layout: WeatherWidgetRenderLayout) -> WeatherWidgetCardTokens {
         let divider = layout.style.dividerEnabled
             ? Color(layout.style.dividerColor).opacity(layout.style.dividerOpacity)
             : .clear
-        switch effectivePalette(for: layout) {
-        case .blueGlass:
-            return WeatherWidgetPresetTokens(
+        switch layout.style.palette {
+        case .blueGlass, .presetDefault:
+            return WeatherWidgetCardTokens(
                 background: LinearGradient(
                     colors: [
                         Color(red: 0.38, green: 0.68, blue: 1.0).opacity(layout.style.cardBackgroundOpacity),
@@ -74,7 +60,7 @@ private struct WeatherWidgetPresetTokens {
                 shadow: .black.opacity(0.22)
             )
         case .lightGlass:
-            return WeatherWidgetPresetTokens(
+            return WeatherWidgetCardTokens(
                 background: LinearGradient(
                     colors: [
                         Color(red: 0.96, green: 0.98, blue: 1.0).opacity(layout.style.cardBackgroundOpacity),
@@ -89,7 +75,7 @@ private struct WeatherWidgetPresetTokens {
                 shadow: .black.opacity(0.12)
             )
         case .graphite:
-            return WeatherWidgetPresetTokens(
+            return WeatherWidgetCardTokens(
                 background: LinearGradient(
                     colors: [
                         Color(red: 0.07, green: 0.10, blue: 0.15).opacity(layout.style.cardBackgroundOpacity),
@@ -104,59 +90,14 @@ private struct WeatherWidgetPresetTokens {
                 shadow: .black.opacity(0.25)
             )
         case .minimalWhite:
-            return WeatherWidgetPresetTokens(
+            return WeatherWidgetCardTokens(
                 background: LinearGradient(colors: [.clear, .clear], startPoint: .top, endPoint: .bottom),
                 strokeColor: .clear,
                 strokeOpacity: 0,
                 divider: divider,
                 shadow: .black.opacity(0.45)
             )
-        case .presetDefault:
-            return resolve(WeatherWidgetRenderLayout(
-                style: styleWithPresetPalette(layout.style),
-                rect: layout.rect,
-                condition: layout.condition,
-                temperatureFormatted: layout.temperatureFormatted,
-                highFormatted: layout.highFormatted,
-                lowFormatted: layout.lowFormatted,
-                humidityFormatted: layout.humidityFormatted,
-                windFormatted: layout.windFormatted,
-                feelsLikeFormatted: layout.feelsLikeFormatted,
-                locationText: layout.locationText,
-                weekdayText: layout.weekdayText,
-                conditionLabel: layout.conditionLabel,
-                sfSymbolName: layout.sfSymbolName,
-                iconTint: layout.iconTint,
-                iconSize: layout.iconSize,
-                fontSize: layout.fontSize,
-                metricSlots: layout.metricSlots
-            ))
         }
-    }
-
-    private static func effectivePalette(for layout: WeatherWidgetRenderLayout) -> WeatherWidgetPalette {
-        if layout.style.palette != .presetDefault {
-            return layout.style.palette
-        }
-        switch layout.style.preset {
-        case .simpleCard: return .blueGlass
-        case .compactStrip: return .lightGlass
-        case .forecastTile: return .graphite
-        case .minimalText: return .minimalWhite
-        case .dashboardBar: return .graphite
-        }
-    }
-
-    private static func styleWithPresetPalette(_ style: WeatherWidgetStyle) -> WeatherWidgetStyle {
-        var style = style
-        switch style.preset {
-        case .simpleCard: style.palette = .blueGlass
-        case .compactStrip: style.palette = .lightGlass
-        case .forecastTile: style.palette = .graphite
-        case .minimalText: style.palette = .minimalWhite
-        case .dashboardBar: style.palette = .graphite
-        }
-        return style
     }
 }
 
@@ -165,7 +106,7 @@ private struct WeatherWidgetPresetTokens {
 private struct SimpleCardWeatherView: View {
     let layout: WeatherWidgetRenderLayout
 
-    private var tokens: WeatherWidgetPresetTokens { .resolve(layout) }
+    private var tokens: WeatherWidgetCardTokens { .resolve(layout) }
     private var scale: Double { layout.rect.width / layout.style.width }
 
     var body: some View {
@@ -235,265 +176,6 @@ private struct SimpleCardWeatherView: View {
     private func inlineMetricText(_ metric: WeatherMetricSlotRender) -> String {
         metric.kind == .feelsLike ? "\(metric.label) \(metric.value)" : metric.value
     }
-}
-
-// MARK: - Compact Strip
-
-private struct CompactStripWeatherView: View {
-    let layout: WeatherWidgetRenderLayout
-
-    private var tokens: WeatherWidgetPresetTokens { .resolve(layout) }
-    private var scale: Double { layout.rect.width / layout.style.width }
-
-    var body: some View {
-        HStack(spacing: scaled(10)) {
-            if layout.style.showIcon {
-                WeatherConditionIconView(condition: layout.condition, size: scaled(34))
-            }
-
-            Text(layout.temperatureFormatted)
-                .weatherText(layout.style.temperatureTextStyle, scale: scale)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-
-            VStack(alignment: .leading, spacing: scaled(1)) {
-                if layout.style.showConditionLabel {
-                    Text(layout.conditionLabel)
-                        .weatherText(layout.style.conditionTextStyle, scale: scale)
-                        .lineLimit(1)
-                }
-                if layout.style.showLocation, !layout.locationText.isEmpty {
-                    Text(layout.locationText)
-                        .weatherText(layout.style.locationTextStyle, scale: scale)
-                        .lineLimit(1)
-                }
-            }
-
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, scaled(16))
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .weatherCardBackground(layout: layout, tokens: tokens)
-    }
-
-    private func scaled(_ value: Double) -> Double {
-        value * scale
-    }
-}
-
-// MARK: - Forecast Tile
-
-private struct ForecastTileWeatherView: View {
-    let layout: WeatherWidgetRenderLayout
-
-    private var tokens: WeatherWidgetPresetTokens { .resolve(layout) }
-    private var scale: Double { layout.rect.width / layout.style.width }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            if layout.style.showLocation {
-                Text(layout.locationText)
-                    .weatherText(layout.style.locationTextStyle, scale: scale)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.68)
-                    .padding(.top, scaled(15))
-            }
-
-            if layout.style.showWeekday, !layout.weekdayText.isEmpty {
-                Text(layout.weekdayText)
-                    .weatherText(layout.style.slotTitleTextStyle, scale: scale)
-                    .padding(.top, scaled(2))
-            }
-
-            if layout.style.dividerEnabled {
-                dividerLine
-                    .padding(.horizontal, scaled(8))
-                    .padding(.top, scaled(8))
-                    .padding(.bottom, scaled(7))
-            } else {
-                Spacer(minLength: scaled(5))
-            }
-
-            if layout.style.showIcon {
-                WeatherConditionIconView(condition: layout.condition, size: scaled(54))
-                    .frame(height: scaled(58))
-            }
-
-            Text(layout.temperatureFormatted)
-                .weatherText(layout.style.temperatureTextStyle, scale: scale)
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
-                .padding(.top, scaled(4))
-
-            if layout.style.dividerEnabled {
-                dividerLine
-                    .padding(.horizontal, scaled(8))
-                    .padding(.top, scaled(7))
-                    .padding(.bottom, scaled(8))
-            } else {
-                Spacer(minLength: scaled(5))
-            }
-
-            HStack(spacing: scaled(7)) {
-                ForEach(Array(layout.metricSlots.enumerated()), id: \.offset) { index, metric in
-                    if index > 0, layout.style.dividerEnabled {
-                        Rectangle()
-                            .fill(tokens.divider)
-                            .frame(width: dividerThickness, height: scaled(18))
-                    }
-                    Text(inlineMetricText(metric))
-                        .weatherText(layout.style.slotLabelTextStyle, scale: scale)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
-                        .frame(maxWidth: .infinity)
-                }
-            }
-            .padding(.horizontal, scaled(8))
-            .padding(.bottom, scaled(14))
-        }
-        .padding(.horizontal, scaled(12))
-        .weatherCardBackground(layout: layout, tokens: tokens)
-    }
-
-    private func scaled(_ value: Double) -> Double {
-        value * scale
-    }
-
-    private var dividerLine: some View {
-        Rectangle()
-            .fill(tokens.divider)
-            .frame(height: dividerThickness)
-    }
-
-    private var dividerThickness: Double {
-        max(1, scaled(layout.style.dividerThickness))
-    }
-
-    private func inlineMetricText(_ metric: WeatherMetricSlotRender) -> String {
-        metric.kind == .feelsLike ? "\(metric.label) \(metric.value)" : metric.value
-    }
-}
-
-// MARK: - Minimal Text
-
-private struct MinimalTextWeatherView: View {
-    let layout: WeatherWidgetRenderLayout
-
-    private var tokens: WeatherWidgetPresetTokens { .resolve(layout) }
-    private var scale: Double { layout.rect.width / layout.style.width }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: scaled(4)) {
-            if layout.style.showLocation {
-                Text(layout.locationText)
-                    .weatherText(layout.style.locationTextStyle, scale: scale)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-            }
-
-            HStack(alignment: .center, spacing: scaled(7)) {
-                Text(layout.temperatureFormatted)
-                    .weatherText(layout.style.temperatureTextStyle, scale: scale)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-
-                if layout.style.showIcon {
-                    WeatherConditionIconView(condition: layout.condition, size: scaled(30))
-                }
-            }
-
-            if layout.style.showConditionLabel {
-                Text(layout.conditionLabel)
-                    .weatherText(layout.style.conditionTextStyle, scale: scale)
-                    .lineLimit(1)
-            }
-        }
-        .padding(.horizontal, scaled(4))
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-    }
-
-    private func scaled(_ value: Double) -> Double {
-        value * scale
-    }
-}
-
-// MARK: - Dashboard Bar
-
-private struct DashboardBarWeatherView: View {
-    let layout: WeatherWidgetRenderLayout
-
-    private var tokens: WeatherWidgetPresetTokens { .resolve(layout) }
-    private var scale: Double { layout.rect.width / layout.style.width }
-
-    var body: some View {
-        HStack(spacing: scaled(16)) {
-            VStack(alignment: .leading, spacing: scaled(3)) {
-                if layout.style.showLocation {
-                    Text(layout.locationText)
-                        .weatherText(layout.style.locationTextStyle, scale: scale)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.62)
-                }
-                if layout.style.showConditionLabel {
-                    Text(layout.conditionLabel)
-                        .weatherText(layout.style.conditionTextStyle, scale: scale)
-                        .lineLimit(1)
-                }
-            }
-            .frame(width: layout.rect.width * 0.27, alignment: .leading)
-
-            if layout.style.showIcon {
-                WeatherConditionIconView(condition: layout.condition, size: scaled(44))
-            }
-
-            Text(layout.temperatureFormatted)
-                .weatherText(layout.style.temperatureTextStyle, scale: scale)
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
-
-            Spacer(minLength: 0)
-
-            HStack(spacing: scaled(layout.style.slotSpacing)) {
-                ForEach(Array(layout.metricSlots.enumerated()), id: \.offset) { _, metric in
-                    metricChip(label: metric.label, value: metric.value)
-                }
-            }
-        }
-        .padding(.horizontal, scaled(20))
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .weatherCardBackground(layout: layout, tokens: tokens)
-    }
-
-    private func metricChip(label: String, value: String) -> some View {
-        VStack(spacing: scaled(4)) {
-            Text(label)
-                .weatherText(layout.style.slotTitleTextStyle, scale: scale)
-                .lineLimit(1)
-                .minimumScaleFactor(0.68)
-            Text(value)
-                .weatherText(layout.style.slotLabelTextStyle, scale: scale)
-                .lineLimit(1)
-                .minimumScaleFactor(0.58)
-        }
-        .padding(.horizontal, scaled(8))
-        .frame(width: scaled(68), height: scaled(58))
-        .background(Color(layout.style.slotBackgroundColor).opacity(layout.style.slotBackgroundOpacity))
-        .clipShape(RoundedRectangle(cornerRadius: scaled(8), style: .continuous))
-    }
-
-    private func scaled(_ value: Double) -> Double {
-        value * scale
-    }
-}
-
-private func metricValue(_ value: String, suffix: String) -> String {
-    let suffix = suffix.trimmingCharacters(in: .whitespacesAndNewlines)
-    return suffix.isEmpty ? value : "\(value) \(suffix)"
-}
-
-private func nonEmpty(_ value: String, fallback: String) -> String {
-    let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
-    return trimmed.isEmpty ? fallback : trimmed
 }
 
 // MARK: - Weather Icons
@@ -743,7 +425,7 @@ private struct WindLineShape: Shape {
 }
 
 private extension View {
-    func weatherCardBackground(layout: WeatherWidgetRenderLayout, tokens: WeatherWidgetPresetTokens) -> some View {
+    func weatherCardBackground(layout: WeatherWidgetRenderLayout, tokens: WeatherWidgetCardTokens) -> some View {
         background {
             RoundedRectangle(cornerRadius: scaledCornerRadius(layout), style: .continuous)
                 .fill(tokens.background)
@@ -753,10 +435,6 @@ private extension View {
                 }
                 .shadow(color: tokens.shadow, radius: max(4, layout.rect.width * 0.025), x: 0, y: max(2, layout.rect.height * 0.04))
         }
-    }
-
-    func weatherReadabilityShadow(enabled: Bool) -> some View {
-        shadow(color: enabled ? .black.opacity(0.55) : .clear, radius: enabled ? 8 : 0, x: 0, y: enabled ? 2 : 0)
     }
 
     private func scaledCornerRadius(_ layout: WeatherWidgetRenderLayout) -> Double {

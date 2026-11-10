@@ -55,8 +55,9 @@ without changing visual output or export timing.
 
 ## Second Milestone
 
-- Split export rendering into static and dynamic layers.
-- Cache the static layer for `decorSolidColor`, `decorIcon`, and `decorText`.
+- Split export rendering into static and dynamic layers. Every current
+  element type samples activity, so all overlays are dynamic; the split stays
+  in the planner for future static-only types.
 - Render dynamic overlays into a padded union rect instead of the full canvas
   when that rect covers less than 85% of the canvas.
 - Keep the same-sample dynamic render cache so repeated Layer Data sample times
@@ -399,6 +400,10 @@ should reduce `ImageRenderer` invocations or replace expensive SwiftUI overlay
 renders, not create more SwiftUI render passes.
 
 ## Numeric Batch Candidate
+
+Removed with the native numeric overlays (ADR 0014): numeric readings are
+components, which the SwiftUI exporter does not draw, so there is nothing left
+to batch. The record below is historical.
 
 Test12 targeted the remaining repeated `ImageRenderer` calls by batching simple
 numeric overlays in the per-overlay path:

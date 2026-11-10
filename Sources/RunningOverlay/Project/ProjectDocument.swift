@@ -15,6 +15,10 @@ final class ProjectDocument: ObservableObject {
         didSet { rememberNonFitZoom() }
     }
     @Published var overlayLayout = OverlayLayout.empty
+    /// Weather the host resolved for the activity location. Host-drawn weather
+    /// components read this project snapshot; native weather widgets keep their
+    /// own per-element cache.
+    @Published var weatherCache: ProjectWeatherCache?
     @Published var selection: EditorSelection = .none
     @Published var isPlaying = false
     @Published var playbackRate: Double = 1
@@ -620,6 +624,248 @@ final class ProjectDocument: ObservableObject {
         }
     }
 
+    /// Adds a declarative overlay component as one undo point. The reference
+    /// must carry the definition (imported/project) or resolve as bundled.
+    /// Invalid references are stored as-is; the renderer skips elements it
+    /// cannot resolve so a damaged project stays editable.
+    @discardableResult
+    func addComponentElement(
+        reference: OverlayComponentReference,
+        parameters: [String: OverlayJSONValue] = [:],
+        position: CGPoint = CGPoint(x: 0.5, y: 0.5),
+        scale: Double = 1
+    ) -> OverlayElement.ID {
+        registerUndoPoint()
+        var element = makeOverlayElement(type: .component, position: position, scale: scale)
+        element.component = OverlayComponentInstance(reference: reference, parameters: parameters)
+        overlayLayout.elements.append(element)
+        selection = .overlayElement(element.id)
+        statusMessage = "Added \(reference.id) component."
+        return element.id
+    }
+
+    /// Adds a read-only bundled component from the Overlay Pool.
+    @discardableResult
+    func addComponentFromLibrary(
+        _ item: OverlayComponentLibraryItem,
+        position: CGPoint = CGPoint(x: 0.5, y: 0.5),
+        scale: Double = 1
+    ) -> OverlayElement.ID? {
+        do {
+            let reference = try OverlayComponentLibrary.reference(for: item)
+            let elementID = addComponentElement(
+                reference: reference,
+                parameters: item.parameters,
+                position: position,
+                scale: scale
+            )
+            // Mirror the native weather widget: resolve a snapshot on add when
+            // the component reads host weather and the activity has a start
+            // position. Components still never fetch weather themselves.
+            if weatherPayloadForComponents == nil,
+               !activity.routePoints.isEmpty,
+               overlayLayout.elements.first(where: { $0.id == elementID })?.componentUsesHostWeather == true {
+                fetchWeatherForComponents(elementID, registersUndo: false)
+            }
+            return elementID
+        } catch {
+            statusMessage = error.localizedDescription
+            return nil
+        }
+    }
+
+    /// Imports a `.rocomponent` package (a directory with `component.json` and
+    /// an optional `assets/` folder) or a single component JSON document. The
+    /// definition and assets are embedded in the project so later edits to the
+    /// source package do not change the project. Throws validation diagnostics
+    /// for the caller to present; nothing is added when validation fails.
+    @discardableResult
+    func importComponentPackage(at url: URL) throws -> OverlayElement.ID {
+        let reference = try OverlayComponentLoader.loadReference(at: url)
+        let id = addComponentElement(reference: reference)
+        statusMessage = "Imported \(reference.id) component."
+        return id
+    }
+
+    /// Adds an instance of a component draft. The definition is embedded like
+    /// an import, so the project stays self-contained if the draft is deleted.
+    @discardableResult
+    func addComponentFromDraft(_ draft: ComponentDraft) -> OverlayElement.ID? {
+        guard let reference = draft.reference else { return nil }
+        let id = addComponentElement(reference: reference)
+        statusMessage = "Added \(draft.displayName) draft."
+        return id
+    }
+
+    /// Replaces the definition of every non-bundled instance with the same
+    /// component id, as one undo point. Parameter values and placement are
+    /// kept; values for parameters the new definition no longer declares are
+    /// ignored by the renderer. Used when a component draft changes on disk.
+    func reloadComponentDefinition(_ reference: OverlayComponentReference, displayName: String) {
+        let indices = overlayLayout.elements.indices.filter { index in
+            guard let current = overlayLayout.elements[index].component?.reference else { return false }
+            return current.source != .bundled
+                && current.id == reference.id
+                && current.digest != reference.digest
+        }
+        guard !indices.isEmpty else { return }
+        registerUndoPoint()
+        for index in indices {
+            overlayLayout.elements[index].component?.reference = reference
+        }
+        statusMessage = "Reloaded \(displayName) from draft."
+    }
+
+    /// Updates one component parameter as an undoable edit. Continuous edits
+    /// (sliders) register one transaction; the caller finishes it with
+    /// `finishContinuousEdit()`. Values are normalized against the declared
+    /// parameter type, so a damaged project cannot inject invalid values.
+    func setComponentParameter(
+        _ elementID: OverlayElement.ID,
+        parameterID: String,
+        value: OverlayJSONValue,
+        continuous: Bool = false
+    ) {
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }),
+              var component = overlayLayout.elements[index].component,
+              let definition = OverlayComponentRegistry.definition(for: component.reference),
+              let parameter = definition.parameter(named: parameterID),
+              let normalized = Self.normalizedComponentParameter(value, kind: parameter.kind) else {
+            return
+        }
+        guard component.parameters[parameterID] != normalized else { return }
+        if continuous {
+            registerContinuousUndoPoint()
+        } else {
+            registerUndoPoint()
+        }
+        component.parameters[parameterID] = normalized
+        overlayLayout.elements[index].component = component
+        statusMessage = "Updated \(parameter.label.resolve(language: OverlayComponentInstance.hostLanguage))."
+    }
+
+    static func normalizedComponentParameter(
+        _ value: OverlayJSONValue,
+        kind: OverlayComponentParamKind
+    ) -> OverlayJSONValue? {
+        switch kind {
+        case let .number(minimum, maximum, step, _, _):
+            guard case .number(let raw) = value, raw.isFinite else { return nil }
+            var number = min(max(raw, minimum), maximum)
+            if let step, step > 0 {
+                number = minimum + ((number - minimum) / step).rounded() * step
+                number = min(max(number, minimum), maximum)
+            }
+            return .number(number)
+        case .boolean:
+            guard case .boolean = value else { return nil }
+            return value
+        case .color:
+            guard case .string(let text) = value,
+                  let color = OverlayComponentColorParser.parse(text) else {
+                return nil
+            }
+            return .string(color.componentHexString)
+        case let .enumeration(options):
+            guard case .string(let text) = value,
+                  options.contains(where: { $0.value == text }) else {
+                return nil
+            }
+            return value
+        case let .string(maxLength):
+            guard case .string(let text) = value else { return nil }
+            return .string(String(text.prefix(maxLength)))
+        case .font:
+            guard case .string(let text) = value,
+                  !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return nil
+            }
+            return value
+        case let .metric(signals, _):
+            guard case .string(let text) = value, signals.contains(text) else { return nil }
+            return value
+        }
+    }
+
+    /// Promotes a bundled component to an editable project component by
+    /// embedding its definition. Parameter values and placement are preserved.
+    func makeComponentEditable(_ elementID: OverlayElement.ID) {
+        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }),
+              var component = overlayLayout.elements[index].component,
+              component.reference.source == .bundled else {
+            return
+        }
+        guard let editable = OverlayComponentLibrary.editableReference(for: component.reference) else {
+            statusMessage = "Bundled component definition is unavailable."
+            return
+        }
+        registerUndoPoint()
+        component.reference = editable
+        overlayLayout.elements[index].component = component
+        statusMessage = "Duplicated \(component.displayName) to My Components."
+    }
+
+    /// Component definitions that live in the project (imported or duplicated
+    /// from a bundle), deduplicated by digest in first-use order.
+    var projectComponentEntries: [OverlayComponentProjectEntry] {
+        var order: [String] = []
+        var references: [String: OverlayComponentReference] = [:]
+        var counts: [String: Int] = [:]
+        for element in overlayLayout.elements {
+            guard let component = element.component,
+                  component.reference.source != .bundled else {
+                continue
+            }
+            let digest = component.reference.digest
+            if references[digest] == nil {
+                references[digest] = component.reference
+                order.append(digest)
+            }
+            counts[digest, default: 0] += 1
+        }
+        return order.compactMap { digest in
+            guard let reference = references[digest] else { return nil }
+            let name = OverlayComponentRegistry.definition(for: reference)?.name
+                .resolve(language: OverlayComponentInstance.hostLanguage)
+                ?? reference.id
+            return OverlayComponentProjectEntry(
+                reference: reference,
+                displayName: name,
+                instanceCount: counts[digest] ?? 0
+            )
+        }
+    }
+
+    /// Adds another instance of a project component in one undo point.
+    @discardableResult
+    func addComponentFromProject(
+        _ entry: OverlayComponentProjectEntry,
+        position: CGPoint = CGPoint(x: 0.5, y: 0.5),
+        scale: Double = 1
+    ) -> OverlayElement.ID {
+        addComponentElement(reference: entry.reference, position: position, scale: scale)
+    }
+
+    /// Removes every instance of a project component in one undo point, so the
+    /// definition disappears from "My Components" together with its elements.
+    func removeProjectComponent(_ entry: OverlayComponentProjectEntry) {
+        let removedIDs = Set(
+            overlayLayout.elements
+                .filter {
+                    $0.component?.reference.digest == entry.reference.digest
+                        && $0.component?.reference.source != .bundled
+                }
+                .map(\.id)
+        )
+        guard !removedIDs.isEmpty else { return }
+        registerUndoPoint()
+        overlayLayout.elements.removeAll { removedIDs.contains($0.id) }
+        if case let .overlayElement(selected) = selection, removedIDs.contains(selected) {
+            selection = .none
+        }
+        statusMessage = "Removed \(entry.displayName) from the project."
+    }
+
     private func makeOverlayElement(type: OverlayElementType, position: CGPoint, scale: Double) -> OverlayElement {
         let style = defaultOverlayStyle(for: type)
         return OverlayElement(
@@ -638,19 +884,6 @@ final class ProjectDocument: ObservableObject {
         let defaultFont = FontLibraryManager.shared.defaultFamily
         style.fontName = defaultFont
         style.labelFontName = defaultFont
-        style.unitFontName = defaultFont
-        style.unitOption = type.defaultUnitOption
-        if type == .customNumeric {
-            let field = style.customNumericField
-            style.customNumericField = field
-            style.customNumericFormat = field.defaultFormat
-            style.customNumericPrecision = field.defaultPrecision
-            style.customUnit = field.defaultUnit
-            style.customLabel = field.label
-        }
-        if type == .heartRateZone || type == .date {
-            style.showUnit = false
-        }
         if type == .routeMap {
             style.routeMapColorMode = .gradient
             style.routeMapProvider = .mapKit
@@ -658,32 +891,8 @@ final class ProjectDocument: ObservableObject {
             style.backgroundOpacity = 0.74
             style.foregroundColor = .cyan
         }
-        if type == .decorSolidColor {
-            style.decor = DecorStyle(
-                shape: .roundedRectangle,
-                fillColor: .white,
-                width: 240,
-                height: 80,
-                cornerRadius: 12
-            )
-            style.backgroundEnabled = false
-        }
-        if type == .decorIcon {
-            style.decor = DecorStyle(
-                shape: .roundedRectangle,
-                fillColor: OverlayColor(red: 0, green: 0, blue: 0, alpha: 0),
-                width: 80,
-                height: 80,
-                cornerRadius: 0,
-                iconAsset: .sfSymbol(name: "star.fill", weight: .medium, scale: .large),
-                iconTint: .white,
-                iconPreserveSVGColors: false,
-                iconContentMode: .fit
-            )
-            style.backgroundEnabled = false
-        }
         if type == .weatherWidget {
-            style.weatherWidget = WeatherWidgetStyle.preset(.simpleCard)
+            style.weatherWidget = .simpleCard
             style.weatherWidget.dataSource = .openMeteo
             style.weatherWidget.locationText = ""
             style.weatherWidget.cachedWeather = nil
@@ -726,52 +935,6 @@ final class ProjectDocument: ObservableObject {
             style.shadowOpacity = 0.34
             style.shadowRadius = 10
         }
-        if type == .intervalCountdown {
-            style.intervalCountdown = .default
-            style.backgroundEnabled = true
-            style.backgroundColor = .black
-            style.backgroundOpacity = 0.74
-            style.backgroundRadius = 172
-            style.backgroundPaddingX = 0
-            style.backgroundPaddingY = 0
-            style.borderEnabled = true
-            style.borderColor = .white
-            style.borderOpacity = 0.16
-            style.borderWidth = 1
-            style.shadowEnabled = true
-            style.shadowColor = .black
-            style.shadowOpacity = 0.42
-            style.shadowRadius = 18
-            style.shadowOffsetX = 0
-            style.shadowOffsetY = 8
-            style.shadowThickness = 1
-            style.glowEnabled = false
-            style.glowColor = .white
-            style.glowIntensity = 0
-        }
-        if type == .intervalWorkSummary {
-            style.intervalWorkSummary = .default
-            style.backgroundEnabled = true
-            style.backgroundColor = .black
-            style.backgroundOpacity = 0.76
-            style.backgroundRadius = 24
-            style.backgroundPaddingX = 38
-            style.backgroundPaddingY = 26
-            style.borderEnabled = true
-            style.borderColor = .white
-            style.borderOpacity = 0.18
-            style.borderWidth = 1
-            style.shadowEnabled = true
-            style.shadowColor = .black
-            style.shadowOpacity = 0.38
-            style.shadowRadius = 16
-            style.shadowOffsetX = 0
-            style.shadowOffsetY = 8
-            style.shadowThickness = 1
-            style.glowEnabled = false
-            style.glowColor = .white
-            style.glowIntensity = 0
-        }
         if type == .zoneEdgeBar {
             style.zoneEdgeBar = .default
             style.backgroundEnabled = false
@@ -783,63 +946,6 @@ final class ProjectDocument: ObservableObject {
             style.shadowOffsetX = 0
             style.shadowOffsetY = 2
             style.shadowThickness = 1
-        }
-        if type == .decorText {
-            style.decor = DecorStyle(
-                shape: .rectangle,
-                fillColor: OverlayColor(red: 0, green: 0, blue: 0, alpha: 0),
-                width: 320,
-                height: 60,
-                cornerRadius: 0,
-                textContent: "Hello",
-                textFont: .system(family: FontLibraryManager.shared.defaultFamily),
-                textSize: 36,
-                textAlignment: .center,
-                textLineHeight: 1.2,
-                textLetterSpacing: 0,
-                textFillMode: .solid(color: .white),
-                textStrokeWidth: 0,
-                textStrokeColor: .white,
-                textAutoFit: false
-            )
-            style.backgroundEnabled = false
-        }
-        if let recommended = type.defaultNumericPreset {
-            style.textPreset = recommended
-            style.iconSystemName = type.defaultNumericIconSystemName
-            if let tokens = recommended.recommendedTokens {
-                style.fontName = tokens.fontName
-                style.fontWeight = tokens.fontWeight
-                style.fontSize = tokens.fontSize
-                style.textAlignment = tokens.textAlignment
-                style.showLabel = tokens.showLabel
-                style.showUnit = tokens.showUnit
-                style.labelPosition = tokens.labelPosition
-                style.unitPosition = tokens.unitPosition
-                if let size = tokens.labelFontSize {
-                    style.labelFontSize = size
-                }
-                if let weight = tokens.labelFontWeight {
-                    style.labelFontWeight = weight
-                }
-                if let size = tokens.unitFontSize {
-                    style.unitFontSize = size
-                }
-                if let weight = tokens.unitFontWeight {
-                    style.unitFontWeight = weight
-                }
-                style.backgroundEnabled = tokens.backgroundEnabled
-                if let bg = tokens.backgroundColor {
-                    style.backgroundColor = bg
-                }
-                if let opacity = tokens.backgroundOpacity {
-                    style.backgroundOpacity = opacity
-                }
-                style.backgroundRadius = tokens.backgroundRadius
-                if let accent = tokens.accentColor {
-                    style.accentColor = accent
-                }
-            }
         }
         return style
     }
@@ -1505,14 +1611,6 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements[index].style.fontSize = fontSize
     }
 
-    func setOverlayTextPreset(_ elementID: OverlayElement.ID, textPreset: OverlayTextPreset) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.textPreset = textPreset
-    }
-
     func setOverlayDistanceTimelinePreset(_ elementID: OverlayElement.ID, preset: DistanceTimelinePreset) {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
@@ -1586,65 +1684,6 @@ final class ProjectDocument: ObservableObject {
         }
     }
 
-    /// Applies an `OverlayTextPreset` and, when the preset declares
-    /// recommended typography/style tokens, snaps fontName/fontSize/
-    /// fontWeight/textAlignment/showLabel/showUnit/backgroundEnabled/
-    /// accentColor to those tokens so users get the intended look.
-    func applyOverlayTextPreset(_ elementID: OverlayElement.ID, textPreset: OverlayTextPreset) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.textPreset = textPreset
-        guard let tokens = textPreset.recommendedTokens else { return }
-        var style = overlayLayout.elements[index].style
-        style.fontName = tokens.fontName
-        style.fontWeight = tokens.fontWeight
-        style.fontSize = tokens.fontSize
-        style.textAlignment = tokens.textAlignment
-        style.showLabel = tokens.showLabel
-        style.showUnit = tokens.showUnit
-        style.labelPosition = tokens.labelPosition
-        style.unitPosition = tokens.unitPosition
-        if let size = tokens.labelFontSize {
-            style.labelFontSize = size
-        }
-        if let weight = tokens.labelFontWeight {
-            style.labelFontWeight = weight
-        }
-        if let size = tokens.unitFontSize {
-            style.unitFontSize = size
-        }
-        if let weight = tokens.unitFontWeight {
-            style.unitFontWeight = weight
-        }
-        style.backgroundEnabled = tokens.backgroundEnabled
-        if let bg = tokens.backgroundColor {
-            style.backgroundColor = bg
-        }
-        if let opacity = tokens.backgroundOpacity {
-            style.backgroundOpacity = opacity
-        }
-        style.backgroundRadius = tokens.backgroundRadius
-        if let accent = tokens.accentColor {
-            style.accentColor = accent
-            if textPreset == .splitLabel || textPreset == .racingStripe || textPreset == .editorial {
-                style.labelColor = accent
-            }
-        }
-        if let divider = tokens.divider {
-            style.dividerEnabled = true
-            style.dividerColor = divider.color
-            style.dividerThickness = divider.thickness
-            style.dividerOpacity = divider.opacity
-        } else {
-            // Preset has no built-in divider; collapse the section by default.
-            // The user can still toggle it on if they want a custom one.
-            style.dividerEnabled = false
-        }
-        overlayLayout.elements[index].style = style
-    }
-
     private static func svgDuration(from source: String) -> Double? {
         let pattern = #"\bdur\s*=\s*("[^"]*"|'[^']*')"#
         guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]),
@@ -1662,55 +1701,6 @@ final class ProjectDocument: ObservableObject {
             return Double(value.dropLast())
         }
         return Double(value)
-    }
-
-    func setOverlayGaugePreset(_ elementID: OverlayElement.ID, gaugePreset: OverlayGaugePreset) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.gaugePreset = gaugePreset
-        // Re-seed the gauge style block so visual parameters track the picked
-        // preset. The user can then continue tweaking individual fields via
-        // `mutateGaugeStyle(_:_:)`.
-        overlayLayout.elements[index].style.gauge = RunningGaugeStyle.preset(gaugePreset)
-    }
-
-    /// Generic mutator for the Running Gauge sub-style. Used by the gauge
-    /// inspector to update individual fields (layout, region configs, dial,
-    /// ring, ticks, dividers, color, effects). Registers a single undo
-    /// checkpoint per call so continuous controls (sliders) should still
-    /// route through `finishContinuousEdit()` when committing.
-    func mutateGaugeStyle(_ elementID: OverlayElement.ID, _ mutate: (inout RunningGaugeStyle) -> Void) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        mutate(&overlayLayout.elements[index].style.gauge)
-    }
-
-    /// Updates the layout preset and regenerates the per-region defaults.
-    func setOverlayGaugeLayout(_ elementID: OverlayElement.ID, layout: RunningGaugeLayoutPreset) {
-        mutateGaugeStyle(elementID) { gauge in
-            gauge.layoutPreset = layout
-            gauge.regions = RunningGaugeStyle.defaultRegions(for: layout)
-        }
-    }
-
-    /// Updates a single region config in place. The region is identified by
-    /// its `RunningGaugeRegion` since each region appears at most once per
-    /// layout preset.
-    func updateOverlayGaugeRegion(
-        _ elementID: OverlayElement.ID,
-        region: RunningGaugeRegion,
-        _ mutate: (inout RunningGaugeRegionConfig) -> Void
-    ) {
-        mutateGaugeStyle(elementID) { gauge in
-            guard let regionIndex = gauge.regions.firstIndex(where: { $0.region == region }) else {
-                return
-            }
-            mutate(&gauge.regions[regionIndex])
-        }
     }
 
     /// Toggle the map background visibility. Off → `.none`, on → restore the
@@ -2063,18 +2053,6 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements[index].style.routeMapStatsBar.blurRadius = min(max(radius, 0), 32)
     }
 
-    func mutateDecorStyle(_ elementID: OverlayElement.ID, _ mutate: (inout DecorStyle) -> Void) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        mutate(&overlayLayout.elements[index].style.decor)
-    }
-
-    func mutateDecorStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout DecorStyle) -> Void) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        mutate(&overlayLayout.elements[index].style.decor)
-    }
-
     func mutateWeatherWidgetStyle(_ elementID: OverlayElement.ID, _ mutate: (inout WeatherWidgetStyle) -> Void) {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
@@ -2111,30 +2089,6 @@ final class ProjectDocument: ObservableObject {
         mutate(&overlayLayout.elements[index].style.intervalTimeline)
     }
 
-    func mutateIntervalCountdownStyle(_ elementID: OverlayElement.ID, _ mutate: (inout IntervalCountdownStyle) -> Void) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        mutate(&overlayLayout.elements[index].style.intervalCountdown)
-    }
-
-    func mutateIntervalCountdownStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout IntervalCountdownStyle) -> Void) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        mutate(&overlayLayout.elements[index].style.intervalCountdown)
-    }
-
-    func mutateIntervalWorkSummaryStyle(_ elementID: OverlayElement.ID, _ mutate: (inout IntervalWorkSummaryStyle) -> Void) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        mutate(&overlayLayout.elements[index].style.intervalWorkSummary)
-    }
-
-    func mutateIntervalWorkSummaryStyleContinuous(_ elementID: OverlayElement.ID, _ mutate: (inout IntervalWorkSummaryStyle) -> Void) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        mutate(&overlayLayout.elements[index].style.intervalWorkSummary)
-    }
-
     func mutateZoneEdgeBarStyle(_ elementID: OverlayElement.ID, _ mutate: (inout ZoneEdgeBarStyle) -> Void) {
         registerUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
@@ -2147,50 +2101,12 @@ final class ProjectDocument: ObservableObject {
         mutate(&overlayLayout.elements[index].style.zoneEdgeBar)
     }
 
-    func applyWeatherWidgetPreset(_ elementID: OverlayElement.ID, preset: WeatherWidgetPreset) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        let existing = overlayLayout.elements[index].style.weatherWidget
-        var next = WeatherWidgetStyle.preset(preset)
-        next.dataSource = existing.dataSource
-        next.useFITTemperature = existing.useFITTemperature
-        next.manualCondition = existing.manualCondition
-        next.manualTemperatureCelsius = existing.manualTemperatureCelsius
-        next.manualHumidity = existing.manualHumidity
-        next.manualHigh = existing.manualHigh
-        next.manualLow = existing.manualLow
-        next.manualWind = existing.manualWind
-        next.manualFeelsLike = existing.manualFeelsLike
-        next.conditionLabelOverride = existing.conditionLabelOverride
-        next.humiditySuffix = existing.humiditySuffix
-        next.humidityMetricLabel = existing.humidityMetricLabel
-        next.windMetricLabel = existing.windMetricLabel
-        next.feelsLikeMetricLabel = existing.feelsLikeMetricLabel
-        next.dividerEnabled = existing.dividerEnabled
-        next.dividerColor = existing.dividerColor
-        next.dividerThickness = existing.dividerThickness
-        next.dividerOpacity = existing.dividerOpacity
-        next.temperatureUnit = existing.temperatureUnit
-        next.locationText = existing.locationText
-        next.showIcon = existing.showIcon
-        next.metricSlots = WeatherWidgetStyle.normalizedMetricSlots(existing.metricSlots, for: preset)
-        next.slotBackgroundColor = existing.slotBackgroundColor
-        next.slotBackgroundOpacity = existing.slotBackgroundOpacity
-        next.slotSpacing = existing.slotSpacing
-        next.locationTextStyle = existing.locationTextStyle
-        next.conditionTextStyle = existing.conditionTextStyle
-        next.temperatureTextStyle = existing.temperatureTextStyle
-        next.slotTitleTextStyle = existing.slotTitleTextStyle
-        next.slotLabelTextStyle = existing.slotLabelTextStyle
-        next.cachedWeather = existing.cachedWeather
-        overlayLayout.elements[index].style.weatherWidget = next
-    }
-
     func fetchWeatherForActivityLocation(_ elementID: OverlayElement.ID) {
         fetchWeather(elementID, registersUndo: true)
     }
 
     private func refreshOpenMeteoWeatherWidgetsAfterFitImport() {
+        refreshComponentWeatherAfterFitImport()
         let weatherWidgetIDs = overlayLayout.elements
             .filter { $0.type == .weatherWidget && $0.style.weatherWidget.dataSource.isAPI }
             .map(\.id)
@@ -2199,6 +2115,22 @@ final class ProjectDocument: ObservableObject {
         for elementID in weatherWidgetIDs {
             fetchWeatherForNewWeatherWidget(elementID, updatesStatusMessage: false)
         }
+    }
+
+    /// One project-level snapshot serves every weather component. Refresh it
+    /// after a FIT import so the cache follows the new activity instead of
+    /// keeping the previous run's temperature.
+    private func refreshComponentWeatherAfterFitImport() {
+        guard weatherCache != nil,
+              let element = overlayLayout.elements.first(where: {
+                  $0.component != nil && $0.componentUsesHostWeather
+              }) else { return }
+        fetchWeatherForComponents(
+            element.id,
+            registersUndo: false,
+            updatesStatusMessage: false,
+            source: weatherCache?.dataSource
+        )
     }
 
     private func fetchWeatherForNewWeatherWidget(_ elementID: OverlayElement.ID, updatesStatusMessage: Bool = true) {
@@ -2220,6 +2152,8 @@ final class ProjectDocument: ObservableObject {
             return
         }
         let dataSource = element.style.weatherWidget.dataSource
+        // Manual and FIT sources render their own values; only API sources fetch.
+        guard dataSource.isAPI else { return }
 
         let activity = activity
         let openWeatherAPIKey = self.openWeatherAPIKey
@@ -2229,34 +2163,11 @@ final class ProjectDocument: ObservableObject {
 
         Task {
             do {
-                let coordinate = try WeatherLocationResolver.activityStartCoordinate(from: activity)
-
-                async let resolvedLocation = WeatherLocationResolver.displayName(
-                    latitude: coordinate.latitude,
-                    longitude: coordinate.longitude
+                let payload = try await Self.fetchWeatherPayload(
+                    for: activity,
+                    dataSource: dataSource,
+                    openWeatherAPIKey: openWeatherAPIKey
                 )
-                var payload: WeatherPayload
-                switch dataSource {
-                case .openMeteo:
-                    payload = try await WeatherFetcher.fetch(
-                        latitude: coordinate.latitude,
-                        longitude: coordinate.longitude,
-                        date: activity.startDate,
-                        resolvedLocation: nil
-                    )
-                case .openWeather:
-                    payload = try await WeatherFetcher.fetchOpenWeather(
-                        latitude: coordinate.latitude,
-                        longitude: coordinate.longitude,
-                        date: activity.startDate,
-                        apiKey: openWeatherAPIKey,
-                        resolvedLocation: nil
-                    )
-                case .fitTemperature, .manual:
-                    return
-                }
-                payload.resolvedLocation = await resolvedLocation
-                payload.fetchLocationMode = .activityLocation
                 applyFetchedWeatherPayload(
                     payload,
                     dataSource: dataSource,
@@ -2265,20 +2176,70 @@ final class ProjectDocument: ObservableObject {
                     updatesStatusMessage: updatesStatusMessage
                 )
             } catch {
-                if updatesStatusMessage {
-                    if registersUndo {
-                        reportError("Weather fetch failed: \(error.localizedDescription)")
-                    } else {
-                        statusMessage = "Weather unavailable; showing placeholders."
-                    }
-                    if error as? WeatherFetchError == .openWeatherUnauthorized {
-                        showToast(
-                            "OpenWeather 401: the API key or One Call 4.0 subscription may still be activating. Verify the key, subscribe to One Call 4.0, or use Open-Meteo.",
-                            duration: 6
-                        )
-                    }
-                }
+                reportWeatherFetchFailure(
+                    error,
+                    registersUndo: registersUndo,
+                    updatesStatusMessage: updatesStatusMessage
+                )
             }
+        }
+    }
+
+    /// Fetches one host weather snapshot and resolves its display location.
+    /// Only API sources reach the network; callers must handle manual and FIT
+    /// sources before calling.
+    private static func fetchWeatherPayload(
+        for activity: ActivityTimeline,
+        dataSource: WeatherDataSource,
+        openWeatherAPIKey: String
+    ) async throws -> WeatherPayload {
+        let coordinate = try WeatherLocationResolver.activityStartCoordinate(from: activity)
+
+        async let resolvedLocation = WeatherLocationResolver.displayName(
+            latitude: coordinate.latitude,
+            longitude: coordinate.longitude
+        )
+        var payload: WeatherPayload
+        switch dataSource {
+        case .openMeteo:
+            payload = try await WeatherFetcher.fetch(
+                latitude: coordinate.latitude,
+                longitude: coordinate.longitude,
+                date: activity.startDate,
+                resolvedLocation: nil
+            )
+        case .openWeather:
+            payload = try await WeatherFetcher.fetchOpenWeather(
+                latitude: coordinate.latitude,
+                longitude: coordinate.longitude,
+                date: activity.startDate,
+                apiKey: openWeatherAPIKey,
+                resolvedLocation: nil
+            )
+        case .fitTemperature, .manual:
+            throw WeatherFetchError.missingHourlyData
+        }
+        payload.resolvedLocation = await resolvedLocation
+        payload.fetchLocationMode = .activityLocation
+        return payload
+    }
+
+    private func reportWeatherFetchFailure(
+        _ error: Error,
+        registersUndo: Bool,
+        updatesStatusMessage: Bool
+    ) {
+        guard updatesStatusMessage else { return }
+        if registersUndo {
+            reportError("Weather fetch failed: \(error.localizedDescription)")
+        } else {
+            statusMessage = "Weather unavailable; showing placeholders."
+        }
+        if error as? WeatherFetchError == .openWeatherUnauthorized {
+            showToast(
+                "OpenWeather 401: the API key or One Call 4.0 subscription may still be activating. Verify the key, subscribe to One Call 4.0, or use Open-Meteo.",
+                duration: 6
+            )
         }
     }
 
@@ -2303,132 +2264,115 @@ final class ProjectDocument: ObservableObject {
         }
     }
 
-    func setDecorShape(_ elementID: OverlayElement.ID, shape: DecorShape) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.decor.shape = shape
-        if shape == .circle {
-            let side = min(overlayLayout.elements[index].style.decor.width,
-                           overlayLayout.elements[index].style.decor.height)
-            overlayLayout.elements[index].style.decor.width = side
-            overlayLayout.elements[index].style.decor.height = side
+    // MARK: - Component Weather
+
+    /// Snapshot host-drawn components render at the current activity. `nil`
+    /// when the cache is missing or belongs to a different activity.
+    var weatherPayloadForComponents: WeatherPayload? {
+        guard let cache = weatherCache else { return nil }
+        guard let sourceDate = cache.payload.sourceDate else { return cache.payload }
+        return sourceDate == activity.startDate ? cache.payload : nil
+    }
+
+    /// Fetches a project-level snapshot for a weather-capable component.
+    ///
+    /// The component's `dataSource` parameter selects Open-Meteo or
+    /// OpenWeather; manual and activity-temperature sources never fetch. One
+    /// fetch updates the project cache, so every weather component in the
+    /// project renders the same snapshot.
+    func fetchWeatherForComponents(
+        _ elementID: OverlayElement.ID,
+        registersUndo: Bool = true,
+        updatesStatusMessage: Bool = true,
+        source: WeatherDataSource? = nil
+    ) {
+        guard let instance = overlayLayout.elements.first(where: { $0.id == elementID })?.component
+        else { return }
+        let dataSource = source ?? Self.componentWeatherSource(instance)
+        guard dataSource.isAPI else {
+            if updatesStatusMessage {
+                statusMessage = "Weather component uses \(dataSource.label); no weather fetch needed."
+            }
+            return
+        }
+
+        let activity = activity
+        let openWeatherAPIKey = self.openWeatherAPIKey
+        if updatesStatusMessage {
+            statusMessage = "Fetching \(dataSource.label) weather from Activity Location..."
+        }
+
+        Task {
+            do {
+                let payload = try await Self.fetchWeatherPayload(
+                    for: activity,
+                    dataSource: dataSource,
+                    openWeatherAPIKey: openWeatherAPIKey
+                )
+                applyFetchedProjectWeather(
+                    payload,
+                    dataSource: dataSource,
+                    resolvedFor: elementID,
+                    registersUndo: registersUndo,
+                    updatesStatusMessage: updatesStatusMessage
+                )
+            } catch {
+                reportWeatherFetchFailure(
+                    error,
+                    registersUndo: registersUndo,
+                    updatesStatusMessage: updatesStatusMessage
+                )
+            }
         }
     }
 
-    func setDecorFillColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.decor.fillColor = color
-    }
-
-    func setDecorSize(_ elementID: OverlayElement.ID, width: Double? = nil, height: Double? = nil) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        if let width {
-            overlayLayout.elements[index].style.decor.width = min(max(width, 4), 4096)
+    /// Records a host-resolved snapshot for host-drawn components. Exposed
+    /// separately from the fetch task so import-triggered refreshes and tests
+    /// share one undo and status path.
+    func applyFetchedProjectWeather(
+        _ payload: WeatherPayload,
+        dataSource: WeatherDataSource,
+        resolvedFor elementID: OverlayElement.ID? = nil,
+        registersUndo: Bool = true,
+        updatesStatusMessage: Bool = true
+    ) {
+        if registersUndo {
+            registerUndoPoint()
         }
-        if let height {
-            overlayLayout.elements[index].style.decor.height = min(max(height, 4), 4096)
+        weatherCache = ProjectWeatherCache(
+            payload: payload,
+            dataSource: dataSource,
+            fetchedAt: Date()
+        )
+        // Mirror the native widget's fetch behavior: the resolved place name
+        // becomes the instance's location text. Authored text survives because
+        // only the instance that requested the fetch is updated.
+        if let elementID,
+           let location = payload.resolvedLocation, !location.isEmpty,
+           let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }),
+           var component = overlayLayout.elements[index].component,
+           OverlayComponentRegistry.definition(for: component.reference)?
+               .parameter(named: "locationText") != nil {
+            component.parameters["locationText"] = .string(location)
+            overlayLayout.elements[index].component = component
+            markEdited()
         }
-        if overlayLayout.elements[index].style.decor.shape == .circle {
-            let side = min(overlayLayout.elements[index].style.decor.width,
-                           overlayLayout.elements[index].style.decor.height)
-            overlayLayout.elements[index].style.decor.width = side
-            overlayLayout.elements[index].style.decor.height = side
+        if updatesStatusMessage {
+            statusMessage = "Weather updated from \(dataSource.label) · \(payload.fetchLocationMode?.label ?? "Activity Location")."
         }
     }
 
-    func setDecorCornerRadius(_ elementID: OverlayElement.ID, radius: Double) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.decor.cornerRadius = min(max(radius, 0), 512)
+    /// The component instance's declared weather source, defaulting to
+    /// Open-Meteo when the parameter is absent or not a string.
+    static func componentWeatherSource(_ instance: OverlayComponentInstance) -> WeatherDataSource {
+        guard case .string(let raw)? = instance.parameters["dataSource"],
+              let source = WeatherDataSource(rawValue: raw),
+              source != .fitTemperature else {
+            return .openMeteo
+        }
+        return source
     }
 
-    func setDecorIconAsset(_ elementID: OverlayElement.ID, asset: IconAsset) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.decor.iconAsset = asset
-    }
-
-    func setDecorIconTint(_ elementID: OverlayElement.ID, color: OverlayColor) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.decor.iconTint = color
-    }
-
-    func setDecorIconPreserveSVGColors(_ elementID: OverlayElement.ID, enabled: Bool) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.decor.iconPreserveSVGColors = enabled
-    }
-
-    func setDecorIconContentMode(_ elementID: OverlayElement.ID, mode: IconContentMode) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.decor.iconContentMode = mode
-    }
-
-    // MARK: Decor Text mutators
-
-    func setDecorTextContent(_ elementID: OverlayElement.ID, content: String) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.decor.textContent = content
-    }
-
-    func setDecorTextFont(_ elementID: OverlayElement.ID, font: DecorFontRef) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.decor.textFont = font
-    }
-
-    func setDecorTextSize(_ elementID: OverlayElement.ID, size: Double) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.decor.textSize = min(max(size, 4), 512)
-    }
-
-    func setDecorTextAlignment(_ elementID: OverlayElement.ID, alignment: DecorTextAlignment) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.decor.textAlignment = alignment
-    }
-
-    func setDecorTextLineHeight(_ elementID: OverlayElement.ID, lineHeight: Double) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.decor.textLineHeight = min(max(lineHeight, 0.5), 8)
-    }
-
-    func setDecorTextLetterSpacing(_ elementID: OverlayElement.ID, spacing: Double) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.decor.textLetterSpacing = min(max(spacing, -20), 80)
-    }
-
-    func setDecorTextFillMode(_ elementID: OverlayElement.ID, fillMode: DecorTextFill) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.decor.textFillMode = fillMode
-    }
-
-    func setDecorTextStrokeWidth(_ elementID: OverlayElement.ID, width: Double) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.decor.textStrokeWidth = min(max(width, 0), 60)
-    }
-
-    func setDecorTextStrokeColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.decor.textStrokeColor = color
-    }
-
-    func setDecorTextAutoFit(_ elementID: OverlayElement.ID, enabled: Bool) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.decor.textAutoFit = enabled
-    }
 
     func setOverlayRouteMapStartMarkerStyle(_ elementID: OverlayElement.ID, markerStyle: OverlayRouteMapMarkerStyle) {
         registerUndoPoint()
@@ -2513,42 +2457,6 @@ final class ProjectDocument: ObservableObject {
         overlayLayout.elements[index].style.unitColor = color
     }
 
-    func setOverlayValueColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.valueColor = color
-    }
-
-    func setOverlayValueOpacity(_ elementID: OverlayElement.ID, opacity: Double) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.valueOpacity = min(max(opacity, 0), 1)
-    }
-
-    func setOverlayLabelColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.labelColor = color
-    }
-
-    func setOverlayLabelOpacity(_ elementID: OverlayElement.ID, opacity: Double) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.labelOpacity = min(max(opacity, 0), 1)
-    }
-
-    func setOverlayUnitColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.unitColor = color
-    }
-
-    func setOverlayUnitOpacity(_ elementID: OverlayElement.ID, opacity: Double) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.unitOpacity = min(max(opacity, 0), 1)
-    }
-
     func setOverlayBackgroundOpacity(_ elementID: OverlayElement.ID, opacity: Double) {
         registerContinuousUndoPoint()
         guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
@@ -2563,244 +2471,6 @@ final class ProjectDocument: ObservableObject {
             return
         }
         overlayLayout.elements[index].style.shadowOpacity = min(max(opacity, 0), 1)
-    }
-
-    func setOverlayUnitOption(_ elementID: OverlayElement.ID, unitOption: OverlayUnitOption) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.unitOption = unitOption
-    }
-
-    func setOverlayCustomNumericField(_ elementID: OverlayElement.ID, field: CustomNumericField) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        let previousField = overlayLayout.elements[index].style.customNumericField
-        let currentLabel = overlayLayout.elements[index].style.customLabel.trimmingCharacters(in: .whitespacesAndNewlines)
-        overlayLayout.elements[index].style.customNumericField = field
-        overlayLayout.elements[index].style.customNumericFormat = field.defaultFormat
-        overlayLayout.elements[index].style.customNumericPrecision = field.defaultPrecision
-        overlayLayout.elements[index].style.customUnit = field.defaultUnit
-        if currentLabel.isEmpty || currentLabel == previousField.label {
-            overlayLayout.elements[index].style.customLabel = field.label
-        }
-    }
-
-    func setOverlayCustomNumericFormat(_ elementID: OverlayElement.ID, format: CustomNumericFormat) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.customNumericFormat = format
-    }
-
-    func setOverlayCustomNumericPrecision(_ elementID: OverlayElement.ID, precision: Int) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.customNumericPrecision = min(max(precision, 0), 8)
-    }
-
-    func setOverlayCustomUnit(_ elementID: OverlayElement.ID, unit: String) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.customUnit = unit.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    func setOverlayElevationDisplayMode(_ elementID: OverlayElement.ID, mode: OverlayElevationDisplayMode) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.elevationDisplayMode = mode
-    }
-
-    func setOverlayUseFITTemperature(_ elementID: OverlayElement.ID, enabled: Bool) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.useFITTemperature = enabled
-    }
-
-    func setOverlayManualTemperatureCelsius(_ elementID: OverlayElement.ID, temperature: Double?) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.manualTemperatureCelsius = temperature
-    }
-
-    func setOverlayShowLabel(_ elementID: OverlayElement.ID, showLabel: Bool) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.showLabel = showLabel
-    }
-
-    func setOverlayShowUnit(_ elementID: OverlayElement.ID, showUnit: Bool) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.showUnit = showUnit
-    }
-
-    func setOverlayIconEnabled(_ elementID: OverlayElement.ID, enabled: Bool) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.iconEnabled = enabled
-    }
-
-    func setOverlayIconSystemName(_ elementID: OverlayElement.ID, systemName: String) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        let trimmed = systemName.trimmingCharacters(in: .whitespacesAndNewlines)
-        overlayLayout.elements[index].style.iconSystemName = trimmed.isEmpty
-            ? overlayLayout.elements[index].type.defaultNumericIconSystemName
-            : trimmed
-    }
-
-    func setOverlayTextColorsFollowHeartRateZones(_ elementID: OverlayElement.ID, _ enabled: Bool) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.textColorsFollowHeartRateZones = enabled
-        overlayLayout.elements[index].style.valueColorsFollowHeartRateZones = enabled
-        overlayLayout.elements[index].style.labelColorsFollowHeartRateZones = enabled
-        overlayLayout.elements[index].style.unitColorsFollowHeartRateZones = enabled
-    }
-
-    func setOverlayIconColorsFollowHeartRateZones(_ elementID: OverlayElement.ID, _ enabled: Bool) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.iconColorsFollowHeartRateZones = enabled
-    }
-
-    func setOverlayValueColorsFollowHeartRateZones(_ elementID: OverlayElement.ID, _ enabled: Bool) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.valueColorsFollowHeartRateZones = enabled
-    }
-
-    func setOverlayLabelColorsFollowHeartRateZones(_ elementID: OverlayElement.ID, _ enabled: Bool) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.labelColorsFollowHeartRateZones = enabled
-    }
-
-    func setOverlayUnitColorsFollowHeartRateZones(_ elementID: OverlayElement.ID, _ enabled: Bool) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.unitColorsFollowHeartRateZones = enabled
-    }
-
-    func setOverlayCustomLabel(_ elementID: OverlayElement.ID, label: String) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        overlayLayout.elements[index].style.customLabel = label
-    }
-
-    func setOverlayLabelPosition(_ elementID: OverlayElement.ID, position: OverlayTextAttachmentPosition) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.labelPosition = position
-    }
-
-    func setOverlayUnitPosition(_ elementID: OverlayElement.ID, position: OverlayTextAttachmentPosition) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.unitPosition = position
-    }
-
-    func setOverlayIconPosition(_ elementID: OverlayElement.ID, position: OverlayTextAttachmentPosition) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.iconPosition = position
-    }
-
-    func setOverlayLabelFontName(_ elementID: OverlayElement.ID, fontName: String) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.labelFontName = fontName
-    }
-
-    func setOverlayLabelFontSize(_ elementID: OverlayElement.ID, fontSize: Double) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.labelFontSize = min(max(fontSize, 8), 72)
-    }
-
-    func setOverlayLabelFontWeight(_ elementID: OverlayElement.ID, fontWeight: OverlayFontWeight) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.labelFontWeight = fontWeight
-    }
-
-    func setOverlayLabelSpacing(_ elementID: OverlayElement.ID, spacing: Double) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.labelSpacing = min(max(spacing, 0), 60)
-    }
-
-    func setOverlayUnitFontName(_ elementID: OverlayElement.ID, fontName: String) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.unitFontName = fontName
-    }
-
-    func setOverlayUnitFontSize(_ elementID: OverlayElement.ID, fontSize: Double) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.unitFontSize = min(max(fontSize, 8), 72)
-    }
-
-    func setOverlayUnitFontWeight(_ elementID: OverlayElement.ID, fontWeight: OverlayFontWeight) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.unitFontWeight = fontWeight
-    }
-
-    func setOverlayUnitSpacing(_ elementID: OverlayElement.ID, spacing: Double) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.unitSpacing = min(max(spacing, 0), 60)
-    }
-
-    func setOverlayIconSize(_ elementID: OverlayElement.ID, size: Double) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.iconSize = min(max(size, 8), 96)
-    }
-
-    func setOverlayIconColor(_ elementID: OverlayElement.ID, color: OverlayColor) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.iconColor = color
-    }
-
-    func setOverlayIconOpacity(_ elementID: OverlayElement.ID, opacity: Double) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.iconOpacity = min(max(opacity, 0), 1)
-    }
-
-    func setOverlayIconSpacing(_ elementID: OverlayElement.ID, spacing: Double) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.iconSpacing = min(max(spacing, 0), 60)
     }
 
     func setOverlayPosition(_ elementID: OverlayElement.ID, position: CGPoint) {
@@ -2857,24 +2527,6 @@ final class ProjectDocument: ObservableObject {
             return
         }
         overlayLayout.elements[index].style.accentColor = color
-    }
-
-    func setOverlayLabelTextAlignment(_ elementID: OverlayElement.ID, alignment: OverlayTextAlignment) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.labelTextAlignment = alignment
-    }
-
-    func setOverlayUnitTextAlignment(_ elementID: OverlayElement.ID, alignment: OverlayTextAlignment) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.unitTextAlignment = alignment
-    }
-
-    func setOverlayIconTextAlignment(_ elementID: OverlayElement.ID, alignment: OverlayTextAlignment) {
-        registerUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else { return }
-        overlayLayout.elements[index].style.iconTextAlignment = alignment
     }
 
     func setOverlayDividerEnabled(_ elementID: OverlayElement.ID, enabled: Bool) {
@@ -2935,19 +2587,6 @@ final class ProjectDocument: ObservableObject {
         }
         if let y {
             overlayLayout.elements[index].style.backgroundPaddingY = max(0, min(y, 80))
-        }
-    }
-
-    func setOverlayNumericMinimumSize(_ elementID: OverlayElement.ID, width: Double? = nil, height: Double? = nil) {
-        registerContinuousUndoPoint()
-        guard let index = overlayLayout.elements.firstIndex(where: { $0.id == elementID }) else {
-            return
-        }
-        if let width {
-            overlayLayout.elements[index].style.numericMinWidth = min(max(width, 0), 720)
-        }
-        if let height {
-            overlayLayout.elements[index].style.numericMinHeight = min(max(height, 0), 360)
         }
     }
 
@@ -3069,10 +2708,6 @@ final class ProjectDocument: ObservableObject {
         }
         let type = overlayLayout.elements[index].type
         var style = OverlayStyle.default
-        style.unitOption = type.defaultUnitOption
-        if type == .heartRateZone || type == .date {
-            style.showUnit = false
-        }
         if type == .routeMap {
             style.routeMapProvider = .mapKit
             style.routeMapBackgroundStyle = .dark
@@ -3117,7 +2752,7 @@ final class ProjectDocument: ObservableObject {
         case .weatherWidget:
             mutateWeatherWidgetStyle(elementID) { style in
                 let unit = style.temperatureUnit
-                style = WeatherWidgetStyle.preset(style.preset)
+                style = .simpleCard
                 style.temperatureUnit = unit
             }
         default:
@@ -3165,7 +2800,8 @@ final class ProjectDocument: ObservableObject {
             opacity: original.opacity,
             isVisible: true,
             isLocked: false,
-            style: original.style
+            style: original.style,
+            component: original.component
         )
         overlayLayout.elements.insert(copy, at: index + 1)
         selection = .overlayElement(copy.id)
@@ -3667,7 +3303,8 @@ final class ProjectDocument: ObservableObject {
             activity: activity,
             overlayLayout: overlayLayout,
             fitStartTime: timeline.fitStartTime,
-            segments: segments
+            segments: segments,
+            weatherPayload: weatherPayloadForComponents
         )
 
         runSwiftUIExport(
@@ -3708,7 +3345,8 @@ final class ProjectDocument: ObservableObject {
                     duration: activity.duration,
                     sourceFileName: "full_activity.mov"
                 )
-            ]
+            ],
+            weatherPayload: weatherPayloadForComponents
         )
 
         runSwiftUIExport(
@@ -3741,7 +3379,8 @@ final class ProjectDocument: ObservableObject {
                     duration: 3,
                     sourceFileName: "overlay_test_clip.mov"
                 )
-            ]
+            ],
+            weatherPayload: weatherPayloadForComponents
         )
 
         runSwiftUIExport(
@@ -3807,7 +3446,7 @@ final class ProjectDocument: ObservableObject {
             mediaItems: [],
             mediaFolders: [],
             timeline: .empty,
-            overlayElements: [],
+            overlayElements: OverlayTemplateElementList([]),
             userAssets: [],
             fitSourceName: ""
         ))
@@ -4673,11 +4312,14 @@ final class ProjectDocument: ObservableObject {
         OverlayLayout(elements: [
             OverlayElement(type: .distanceTimeline, position: CGPoint(x: 0.5, y: 0.14), scale: 1.15, isVisible: true, isLocked: false, style: .default),
             OverlayElement(type: .elevationChart, position: CGPoint(x: 0.5, y: 0.30), scale: 1.0, isVisible: true, isLocked: false, style: .default),
-            OverlayElement(type: .heartRate, position: CGPoint(x: 0.12, y: 0.86), scale: 1.25, isVisible: true, isLocked: false, style: .default),
-            OverlayElement(type: .distance, position: CGPoint(x: 0.50, y: 0.68), scale: 1.35, isVisible: true, isLocked: false, style: .default),
-            OverlayElement(type: .pace, position: CGPoint(x: 0.86, y: 0.86), scale: 1.25, isVisible: true, isLocked: false, style: .default),
-            OverlayElement(type: .elapsedTime, position: CGPoint(x: 0.86, y: 0.14), scale: 1.0, isVisible: true, isLocked: false, style: .default)
-        ])
+        ] + [
+            (OverlayMetric.heartRate, CGPoint(x: 0.12, y: 0.86), 1.25),
+            (.distance, CGPoint(x: 0.50, y: 0.68), 1.35),
+            (.pace, CGPoint(x: 0.86, y: 0.86), 1.25),
+            (.elapsedTime, CGPoint(x: 0.86, y: 0.14), 1.0)
+        ].compactMap { metric, position, scale in
+            OverlayComponentLibrary.numericElement(metric, position: position, scale: scale)
+        })
     }
 
     static func calibrationActivity() -> ActivityTimeline {
@@ -4836,7 +4478,8 @@ final class ProjectDocument: ObservableObject {
             overlayLayout: overlayLayout,
             userAssets: userAssets,
             selection: selection,
-            fitSourceName: fitSourceName
+            fitSourceName: fitSourceName,
+            weatherCache: weatherCache
         )
     }
 
@@ -4851,6 +4494,7 @@ final class ProjectDocument: ObservableObject {
         userAssets = snapshot.userAssets
         selection = snapshot.selection
         fitSourceName = snapshot.fitSourceName
+        weatherCache = snapshot.weatherCache
     }
 
     private func makePersistentSnapshot() -> ProjectPerformanceSnapshot {
@@ -4860,15 +4504,22 @@ final class ProjectDocument: ObservableObject {
             mediaItems: mediaItems,
             mediaFolders: mediaFolders,
             timeline: timeline,
-            overlayElements: overlayLayout.elements.map(OverlayTemplateElement.init(element:)),
+            overlayElements: OverlayTemplateElementList(
+                overlayLayout.elements.map(OverlayTemplateElement.init(element:))
+            ),
             userAssets: userAssets,
             fitSourceName: fitSourceName,
-            workoutStructureSelection: workoutStructureSelection
+            workoutStructureSelection: workoutStructureSelection,
+            weatherCache: weatherCache
         )
     }
 
     private func restorePersistentSnapshot(_ snapshot: ProjectPerformanceSnapshot) -> String? {
-        let credentialMessage = migrateLegacyOpenWeatherAPIKeyIfNeeded(from: snapshot.settings)
+        let messages = [
+            migrateLegacyOpenWeatherAPIKeyIfNeeded(from: snapshot.settings),
+            Self.droppedLegacyElementsMessage(snapshot.overlayElements.droppedLegacyCount)
+        ].compactMap { $0 }
+        let credentialMessage = messages.isEmpty ? nil : messages.joined(separator: " ")
         settings = snapshot.settings
         settings.removeLegacyCredentials()
         activity = snapshot.activity
@@ -4876,9 +4527,16 @@ final class ProjectDocument: ObservableObject {
         mediaItems = snapshot.mediaItems
         mediaFolders = snapshot.mediaFolders
         timeline = snapshot.timeline
-        overlayLayout = OverlayLayout(elements: snapshot.overlayElements.map(\.overlayElement))
+        overlayLayout = OverlayLayout(elements: snapshot.overlayElements.elements.map(\.overlayElement))
         userAssets = snapshot.userAssets
         fitSourceName = snapshot.fitSourceName
+        // Drop a cached snapshot that belongs to a different activity start.
+        // Saving and reopening keeps it because the start date round-trips.
+        weatherCache = snapshot.weatherCache.flatMap { cache in
+            guard let sourceDate = cache.payload.sourceDate,
+                  sourceDate != snapshot.activity.startDate else { return cache }
+            return nil
+        }
 
         selection = .none
         isPlaying = false
@@ -4893,6 +4551,13 @@ final class ProjectDocument: ObservableObject {
         redoStack.removeAll()
         updateUndoRedoFlags()
         return credentialMessage
+    }
+
+    /// Status text when native numeric overlays were dropped on load (ADR 0014).
+    static func droppedLegacyElementsMessage(_ count: Int) -> String? {
+        guard count > 0 else { return nil }
+        let noun = count == 1 ? "overlay" : "overlays"
+        return "Removed \(count) legacy \(noun) with no migration; add the matching component from the Overlay Pool."
     }
 
     private func migrateLegacyOpenWeatherAPIKeyIfNeeded(from settings: ProjectSettings) -> String? {
@@ -4931,6 +4596,7 @@ private struct ProjectSnapshot: Equatable {
     var userAssets: [UserAsset]
     var selection: EditorSelection
     var fitSourceName: String
+    var weatherCache: ProjectWeatherCache?
 }
 
 struct ProjectPerformanceSnapshot: Codable, Equatable {
@@ -4940,10 +4606,13 @@ struct ProjectPerformanceSnapshot: Codable, Equatable {
     var mediaItems: [MediaItem]
     var mediaFolders: [MediaFolder]
     var timeline: TimelineModel
-    var overlayElements: [OverlayTemplateElement]
+    var overlayElements: OverlayTemplateElementList
     var userAssets: [UserAsset]
     var fitSourceName: String
     var workoutStructureSelection: WorkoutStructureSelection? = nil
+    /// Optional so projects written before the component weather cache decode
+    /// unchanged. Existing native weather caches stay on their element styles.
+    var weatherCache: ProjectWeatherCache? = nil
 }
 
 private struct CopiedOverlayConfiguration {

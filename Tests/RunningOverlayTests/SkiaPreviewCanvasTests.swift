@@ -85,16 +85,12 @@ import Testing
     /// modules, not merely report support for them.
     @Test func sharedRendererDrawsPortedModules() throws {
         let types: [OverlayElementType] = [
-            .heartRate,
-            .decorSolidColor,
             .distanceTimeline,
-            .runningGauge,
             .elevationChart,
             .routeMap,
             .weatherWidget,
             .intervalHUDBar,
             .intervalTimeline,
-            .intervalCountdown,
             .zoneEdgeBar,
         ]
 
@@ -128,15 +124,6 @@ import Testing
             #expect(nonEmptySamples > 0, "\(type.rawValue) drew no pixels")
         }
 
-        // Work Summary draws only inside its display window. This test samples
-        // t=12s, so assert dispatch without requiring pixels here.
-        let workSummary = OverlayElement(
-            type: .intervalWorkSummary,
-            position: CGPoint(x: 0.5, y: 0.5),
-            scale: 1,
-            style: .default
-        )
-        #expect(SkiaEasyRunRenderer.supports(workSummary))
     }
 
     /// Interaction in Skia mode uses model rects for every visible element.
@@ -189,22 +176,30 @@ import Testing
     }
 
     /// The removed SwiftUI fallback pass must not leave a second draw behind.
-    /// A 50% white decor fill drawn once reads alpha ~128; a double draw would
+    /// A 50% white fill drawn once reads alpha ~128; a double draw would
     /// read ~191.
-    @Test func translucentDecorIsDrawnOnce() throws {
+    @Test func translucentComponentFillIsDrawnOnce() throws {
+        let item = try #require(
+            OverlayComponentLibraryItem.decor.first { $0.id == "studio.decor-shape" }
+        )
+        let reference = try OverlayComponentLibrary.reference(for: item)
         var style = OverlayStyle.default
-        style.decor.shape = .rectangle
-        style.decor.fillColor = OverlayColor(red: 1, green: 1, blue: 1, alpha: 0.5)
-        style.decor.width = 400
-        style.decor.height = 300
-        // Isolate the fill: a shadow underneath would also raise center alpha.
+        // Isolate the fill: element effects would also raise center alpha.
         style.shadowEnabled = false
         style.borderEnabled = false
+        style.glowEnabled = false
         let element = OverlayElement(
-            type: .decorSolidColor,
+            type: .component,
             position: CGPoint(x: 0.5, y: 0.5),
             scale: 1,
-            style: style
+            style: style,
+            component: OverlayComponentInstance(reference: reference, parameters: [
+                "shape": .string("rectangle"),
+                "shapeWidth": .number(400),
+                "shapeHeight": .number(300),
+                "fill": .string("#FFFFFF80"),
+                "borderEnabled": .boolean(false)
+            ])
         )
 
         let view = SkiaPreviewMetalView(
@@ -230,7 +225,7 @@ import Testing
         let index = (y * Int(Self.hd1080.width) + x) * 4
         let alpha = Int(pixels[index + 3])
 
-        #expect(abs(alpha - 128) <= 8, "decor alpha \(alpha) suggests a double draw")
+        #expect(abs(alpha - 128) <= 8, "component alpha \(alpha) suggests a double draw")
     }
 
     /// The default Easy Run template must preview entirely through Skia.
@@ -360,6 +355,83 @@ import Testing
         #expect(view.presentedFrameCount >= 3)
     }
 
+    // MARK: - Component frame reuse
+
+    /// The preview asks for every component frame from SwiftUI `body` and then
+    /// draws the same elements. A draw publishes its measured bounds so the
+    /// frame query answers without resolving the component again, scaled to the
+    /// fitted on-screen canvas.
+    @Test func componentFrameQueryReusesPaintedBounds() throws {
+        let item = try #require(
+            OverlayComponentLibraryItem.all.first { $0.id == "studio.builtin.heart-rate-pill" }
+        )
+        let reference = try OverlayComponentLibrary.reference(for: item)
+        let element = OverlayElement(
+            type: .component,
+            position: CGPoint(x: 0.25, y: 0.4),
+            scale: 1,
+            style: .default,
+            component: OverlayComponentInstance(reference: reference)
+        )
+        let full = Self.hd1080
+        let half = CGSize(width: full.width / 2, height: full.height / 2)
+        let fullContext = OverlayRenderContext(
+            canvasSize: full,
+            activity: Self.activity,
+            elapsedTime: 30
+        )
+        let halfContext = OverlayRenderContext(
+            canvasSize: half,
+            activity: Self.activity,
+            elapsedTime: 30
+        )
+
+        // Ground truth from the uncached measurement path.
+        let measuredFull = try #require(
+            OverlayComponentSkiaRenderer.frame(for: element, renderContext: fullContext)
+        )
+        let measuredHalf = try #require(
+            OverlayComponentSkiaRenderer.frame(for: element, renderContext: halfContext)
+        )
+        #expect(abs(measuredFull.width * 0.5 - measuredHalf.width) < 0.5)
+        #expect(abs(measuredFull.height * 0.5 - measuredHalf.height) < 0.5)
+        #expect(abs(measuredFull.minX * 0.5 - measuredHalf.minX) < 0.5)
+
+        // A preview draw publishes the bounds it painted.
+        let renderer = try #require(SkiaEasyRunRenderer(size: full))
+        renderer.publishesPreviewFrames = true
+        renderer.draw(
+            layout: OverlayLayout(elements: [element]),
+            activity: Self.activity,
+            elapsedTime: 30
+        )
+
+        let cachedFull = try #require(
+            OverlayComponentSkiaRenderer.frame(for: element, renderContext: fullContext)
+        )
+        let cachedHalf = try #require(
+            OverlayComponentSkiaRenderer.frame(for: element, renderContext: halfContext)
+        )
+        #expect(abs(cachedFull.minX - measuredFull.minX) < 0.001)
+        #expect(abs(cachedFull.minY - measuredFull.minY) < 0.001)
+        #expect(abs(cachedFull.width - measuredFull.width) < 0.001)
+        #expect(abs(cachedFull.height - measuredFull.height) < 0.001)
+        #expect(abs(cachedHalf.minX - measuredHalf.minX) < 0.5)
+        #expect(abs(cachedHalf.minY - measuredHalf.minY) < 0.5)
+        #expect(abs(cachedHalf.width - measuredHalf.width) < 0.5)
+        #expect(abs(cachedHalf.height - measuredHalf.height) < 0.5)
+
+        // Moving the element shifts the reused frame without a new measurement.
+        var moved = element
+        moved.position = CGPoint(x: 0.5, y: 0.4)
+        let movedFrame = try #require(
+            OverlayComponentSkiaRenderer.frame(for: moved, renderContext: fullContext)
+        )
+        let expectedX = full.width * 0.5
+        #expect(abs(movedFrame.minX - expectedX) < 0.001)
+        #expect(abs(movedFrame.width - measuredFull.width) < 0.001)
+    }
+
     // MARK: - Helpers
 
     private static let hd1080 = CGSize(width: 1920, height: 1080)
@@ -483,31 +555,36 @@ import Testing
             )
         }
 
-        var decorTextStyle = OverlayStyle.default
-        decorTextStyle.decor.textContent = "MIXED"
-        var decorIconStyle = OverlayStyle.default
-        decorIconStyle.decor.iconAsset = .sfSymbol(name: "star.fill")
         var routeStyle = OverlayStyle.default
         routeStyle.routeMapBackgroundStyle = .none
         routeStyle.routeMapWidth = 320
         routeStyle.routeMapHeight = 240
 
-        return OverlayLayout(elements: [
-            make(.pace, 0.10, 0.10),
-            make(.heartRate, 0.28, 0.10),
-            make(.decorSolidColor, 0.82, 0.14),
-            make(.decorIcon, 0.82, 0.34, decorIconStyle),
-            make(.decorText, 0.82, 0.46, decorTextStyle),
+        let numeric = [(OverlayMetric.pace, 0.10), (.heartRate, 0.28)].compactMap { metric, x in
+            OverlayComponentLibrary.numericElement(metric, position: CGPoint(x: x, y: 0.10), scale: 1)
+        }
+        let decor = ["studio.decor-shape", "studio.decor-icon", "studio.decor-text"].enumerated()
+            .compactMap { index, id -> OverlayElement? in
+                guard let item = OverlayComponentLibraryItem.decor.first(where: { $0.id == id }),
+                      let reference = try? OverlayComponentLibrary.reference(for: item) else {
+                    return nil
+                }
+                return OverlayElement(
+                    type: .component,
+                    position: CGPoint(x: 0.82, y: 0.14 + Double(index) * 0.16),
+                    scale: 1,
+                    style: .default,
+                    component: OverlayComponentInstance(reference: reference, parameters: item.parameters)
+                )
+            }
+        return OverlayLayout(elements: numeric + decor + [
             make(.routeMap, 0.18, 0.72, routeStyle),
             make(.distanceTimeline, 0.50, 0.10),
-            make(.runningGauge, 0.50, 0.40),
             make(.elevationChart, 0.50, 0.70),
             make(.weatherWidget, 0.80, 0.70),
             make(.intervalTimeline, 0.50, 0.90),
-            make(.intervalCountdown, 0.75, 0.90),
             make(.intervalHUDBar, 0.30, 0.92),
             make(.zoneEdgeBar, 0.50, 0.96),
-            make(.intervalWorkSummary, 0.65, 0.55),
         ])
     }
 

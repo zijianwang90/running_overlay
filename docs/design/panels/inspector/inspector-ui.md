@@ -310,8 +310,8 @@ Controls:
 
 Implementation mapping:
 
-- Text overlays map to `OverlayTextPreset`: Minimal, Pill Badge, Metric Card, Big Number, Sport Watch, Split Label.
-- Running Gauge maps to `OverlayGaugePreset`: Minimal Sport, High Contrast, Trail Adventure, Tech Future, Retro Digital.
+- Numeric overlays have no text presets; they are the `studio.numeric` component (ADR 0014).
+- Running Gauge is the `studio.running-gauge` component (ADR 0015); dial, ring, region, and typography settings are component parameters.
 - Route Map does not expose a preset; line color mode and Glow live in the Route Line section.
 - Existing style supports font name, font size, font weight, foreground color, background opacity, shadow opacity, and shadow radius.
 
@@ -377,7 +377,7 @@ is no `Done` commit step; Reset lives in the header action menu.
 - Canonical row set is fixed: `Position`, `Scale`, `Width`, `Height`, `Opacity`.
 - Layout `Opacity` is element-level opacity (`OverlayElement.opacity`) and must fade the whole rendered overlay in preview and export. Background-only transparency belongs in the shared Background module.
 - `Rotation` is not part of Layout and must not be shown in this section.
-- For square overlays such as Running Gauge, `Width` and `Height` can be hidden.
+- For square overlays (for example the running gauge component), `Width` and `Height` can be hidden.
 - Section ordering rule:
   - if the detail panel starts with a `Preset` section, `Layout` must be the second section;
   - otherwise, `Layout` must be the first section.
@@ -414,7 +414,7 @@ The current entry points are:
 - `OverlayElementListView`
 - `OverlayElementInspectorView`
 
-Implementation status: the list below is the original refactor plan. The legacy `OverlayDetailView` and the single-column row primitives it used (`InspectorSliderRow`, `ColorSwatchButton`, and similar) have since been removed from `ParameterPanelView.swift`; every overlay type now has a dedicated detail view built from the `InspectorDense*` primitives in `Sources/RunningOverlay/UI/InspectorRows/`.
+Implementation status: the list below is the original refactor plan. The legacy `OverlayDetailView` and the single-column row primitives it used (`InspectorSliderRow`, `ColorSwatchButton`, and similar) have since been removed from `ParameterPanelView.swift`. Every creatable overlay is a component and edits through the generated `OverlayComponentDetailView`, which is built from the `InspectorDense*` primitives in `Sources/RunningOverlay/UI/InspectorRows/`; the type-specific native detail views were removed with their element types (ADR 0015).
 
 Recommended refactor:
 

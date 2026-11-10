@@ -1,6 +1,21 @@
 # Distance Timeline Overlay
 
-Last updated: 2026-04-28
+Last updated: 2026-11-09
+
+> **Status: bundled component.** The native `.distanceTimeline` element and
+> `DistanceTimelineOverlayDetailView` were removed without migration (ADR
+> 0015). Distance Timeline is now the bundled `studio.distance-timeline`
+> component, whose `distanceTimeline` host node exposes the same renderer
+> settings through the generated component Inspector; older elements of the
+> native type are dropped on load. This document remains the rendering and
+> design reference for that node.
+>
+> **Stats Bar is no longer attached (2026-11-09).** The timeline draws only its
+> own track, axis and marker. Metric strips are the standalone
+> `studio.stats-bar` component, placed freely by the user; the `statsBar` field
+> was removed from the component node format and attached bars are always
+> hidden by the resolver. The Stats Bar sections below describe the retired
+> native controls and remain as historical design reference.
 
 ## Purpose
 
@@ -159,6 +174,11 @@ Implemented on 2026-04-28:
 - The route preset renders a stylized route progress curve with optional elevation-profile underlay from FIT elevation samples.
 - When FIT GPS samples are available, the route preset projects and renders the sampled route geometry with a current-position marker; when GPS is missing, it falls back to the stylized progress curve.
 - The Inspector uses dense module-specific sections: Preset, Value, Label, Layout, Progress, Axis Labels, Stats Bar, Media Slot, Route / Elevation, Background & Border, and Effects. Irrelevant sections are hidden for presets that do not use them.
+
+Component bounds follow `timelineWidth`/`timelineHeight` plus only the space
+needed by out-of-frame labels that are currently enabled (axis endpoints,
+distance points, marker distance). The retired attached Stats Bar no longer
+reserves a fixed 460×150 box.
 
 Remaining:
 

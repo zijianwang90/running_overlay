@@ -1,0 +1,950 @@
+{
+  "spec": "ros.component/0.1",
+  "id": "studio.weather-widget",
+  "version": "1.0.0",
+  "name": {
+    "en": "Weather Widget",
+    "zh-Hans": "天气小组件"
+  },
+  "description": {
+    "en": "Weather card with condition icon, temperature and metric slots. The host supplies weather; the widget never fetches it.",
+    "zh-Hans": "带天气图标、温度和指标槽位的天气卡片。天气数据由宿主提供，组件不联网。"
+  },
+  "author": "Running Overlay Studio",
+  "license": "MIT",
+  "size": "content",
+  "padding": [
+    0,
+    0
+  ],
+  "params": [
+    {
+      "id": "componentWidth",
+      "type": "number",
+      "label": {
+        "en": "Width",
+        "zh-Hans": "宽度"
+      },
+      "section": {
+        "en": "Layout",
+        "zh-Hans": "Layout"
+      },
+      "default": 300,
+      "min": 120,
+      "max": 4096,
+      "step": 1
+    },
+    {
+      "id": "componentHeight",
+      "type": "number",
+      "label": {
+        "en": "Height",
+        "zh-Hans": "高度"
+      },
+      "section": {
+        "en": "Layout",
+        "zh-Hans": "Layout"
+      },
+      "default": 110,
+      "min": 40,
+      "max": 4096,
+      "step": 1
+    },
+    {
+      "id": "dataSource",
+      "type": "enum",
+      "label": {
+        "en": "Data Source",
+        "zh-Hans": "数据源"
+      },
+      "description": {
+        "en": "API sources render the weather the host fetched for the activity location; Manual renders the values below.",
+        "zh-Hans": "API 数据源渲染宿主为活动位置抓取的天气；手动则使用下方数值。"
+      },
+      "section": {
+        "en": "Weather Data",
+        "zh-Hans": "Weather Data"
+      },
+      "default": "openMeteo",
+      "options": [
+        {
+          "value": "manual",
+          "label": "Manual"
+        },
+        {
+          "value": "openMeteo",
+          "label": "Open-Meteo API"
+        },
+        {
+          "value": "openWeather",
+          "label": "OpenWeather API"
+        }
+      ]
+    },
+    {
+      "id": "condition",
+      "type": "enum",
+      "label": {
+        "en": "Condition",
+        "zh-Hans": "Condition"
+      },
+      "section": {
+        "en": "Weather Data",
+        "zh-Hans": "Weather Data"
+      },
+      "default": "sunny",
+      "options": [
+        {
+          "value": "sunny",
+          "label": "Sunny"
+        },
+        {
+          "value": "clearNight",
+          "label": "Clear Night"
+        },
+        {
+          "value": "partlyCloudy",
+          "label": "Partly Cloudy"
+        },
+        {
+          "value": "cloudy",
+          "label": "Cloudy"
+        },
+        {
+          "value": "rain",
+          "label": "Rain"
+        },
+        {
+          "value": "heavyRain",
+          "label": "Heavy Rain"
+        },
+        {
+          "value": "thunder",
+          "label": "Thunderstorm"
+        },
+        {
+          "value": "snow",
+          "label": "Snow"
+        },
+        {
+          "value": "fog",
+          "label": "Fog"
+        },
+        {
+          "value": "wind",
+          "label": "Wind"
+        }
+      ]
+    },
+    {
+      "id": "temperatureC",
+      "type": "number",
+      "label": {
+        "en": "Temperature (°C)",
+        "zh-Hans": "Temperature (°C)"
+      },
+      "section": {
+        "en": "Weather Data",
+        "zh-Hans": "Weather Data"
+      },
+      "default": 13,
+      "min": -60,
+      "max": 60,
+      "step": 0.1
+    },
+    {
+      "id": "humidity",
+      "type": "number",
+      "label": {
+        "en": "Humidity (%)",
+        "zh-Hans": "Humidity (%)"
+      },
+      "section": {
+        "en": "Weather Data",
+        "zh-Hans": "Weather Data"
+      },
+      "default": 87,
+      "min": 0,
+      "max": 100,
+      "step": 1
+    },
+    {
+      "id": "highC",
+      "type": "number",
+      "label": {
+        "en": "High (°C)",
+        "zh-Hans": "High (°C)"
+      },
+      "section": {
+        "en": "Weather Data",
+        "zh-Hans": "Weather Data"
+      },
+      "default": 16,
+      "min": -60,
+      "max": 60,
+      "step": 0.1
+    },
+    {
+      "id": "lowC",
+      "type": "number",
+      "label": {
+        "en": "Low (°C)",
+        "zh-Hans": "Low (°C)"
+      },
+      "section": {
+        "en": "Weather Data",
+        "zh-Hans": "Weather Data"
+      },
+      "default": 11,
+      "min": -60,
+      "max": 60,
+      "step": 0.1
+    },
+    {
+      "id": "windKph",
+      "type": "number",
+      "label": {
+        "en": "Wind (km/h)",
+        "zh-Hans": "Wind (km/h)"
+      },
+      "section": {
+        "en": "Weather Data",
+        "zh-Hans": "Weather Data"
+      },
+      "default": 12,
+      "min": 0,
+      "max": 200,
+      "step": 1
+    },
+    {
+      "id": "feelsLikeC",
+      "type": "number",
+      "label": {
+        "en": "Feels Like (°C)",
+        "zh-Hans": "Feels Like (°C)"
+      },
+      "section": {
+        "en": "Weather Data",
+        "zh-Hans": "Weather Data"
+      },
+      "default": 21,
+      "min": -60,
+      "max": 60,
+      "step": 0.1
+    },
+    {
+      "id": "temperatureUnit",
+      "type": "enum",
+      "label": {
+        "en": "Unit",
+        "zh-Hans": "Unit"
+      },
+      "section": {
+        "en": "Weather Data",
+        "zh-Hans": "Weather Data"
+      },
+      "default": "celsius",
+      "options": [
+        {
+          "value": "celsius",
+          "label": "Celsius (°C)"
+        },
+        {
+          "value": "fahrenheit",
+          "label": "Fahrenheit (°F)"
+        }
+      ]
+    },
+    {
+      "id": "useActivityTemperature",
+      "type": "bool",
+      "label": {
+        "en": "Use Activity Temperature",
+        "zh-Hans": "Use Activity Temperature"
+      },
+      "section": {
+        "en": "Weather Data",
+        "zh-Hans": "Weather Data"
+      },
+      "default": false
+    },
+    {
+      "id": "locationText",
+      "type": "string",
+      "label": {
+        "en": "Location",
+        "zh-Hans": "Location"
+      },
+      "section": {
+        "en": "Weather Data",
+        "zh-Hans": "Weather Data"
+      },
+      "default": "",
+      "maxLength": 128
+    },
+    {
+      "id": "showLocation",
+      "type": "bool",
+      "label": {
+        "en": "Show Location",
+        "zh-Hans": "Show Location"
+      },
+      "section": {
+        "en": "Visibility",
+        "zh-Hans": "Visibility"
+      },
+      "default": true
+    },
+    {
+      "id": "showWeekday",
+      "type": "bool",
+      "label": {
+        "en": "Show Weekday",
+        "zh-Hans": "Show Weekday"
+      },
+      "section": {
+        "en": "Visibility",
+        "zh-Hans": "Visibility"
+      },
+      "default": true
+    },
+    {
+      "id": "showHumidity",
+      "type": "bool",
+      "label": {
+        "en": "Show Humidity",
+        "zh-Hans": "Show Humidity"
+      },
+      "section": {
+        "en": "Visibility",
+        "zh-Hans": "Visibility"
+      },
+      "default": true
+    },
+    {
+      "id": "showHighLow",
+      "type": "bool",
+      "label": {
+        "en": "Show High / Low",
+        "zh-Hans": "Show High / Low"
+      },
+      "section": {
+        "en": "Visibility",
+        "zh-Hans": "Visibility"
+      },
+      "default": false
+    },
+    {
+      "id": "showWind",
+      "type": "bool",
+      "label": {
+        "en": "Show Wind",
+        "zh-Hans": "Show Wind"
+      },
+      "section": {
+        "en": "Visibility",
+        "zh-Hans": "Visibility"
+      },
+      "default": false
+    },
+    {
+      "id": "showFeelsLike",
+      "type": "bool",
+      "label": {
+        "en": "Show Feels Like",
+        "zh-Hans": "Show Feels Like"
+      },
+      "section": {
+        "en": "Visibility",
+        "zh-Hans": "Visibility"
+      },
+      "default": false
+    },
+    {
+      "id": "showIcon",
+      "type": "bool",
+      "label": {
+        "en": "Show Icon",
+        "zh-Hans": "Show Icon"
+      },
+      "section": {
+        "en": "Visibility",
+        "zh-Hans": "Visibility"
+      },
+      "default": true
+    },
+    {
+      "id": "showConditionLabel",
+      "type": "bool",
+      "label": {
+        "en": "Show Condition",
+        "zh-Hans": "Show Condition"
+      },
+      "section": {
+        "en": "Visibility",
+        "zh-Hans": "Visibility"
+      },
+      "default": true
+    },
+    {
+      "id": "conditionLabelOverride",
+      "type": "string",
+      "label": {
+        "en": "Condition Label",
+        "zh-Hans": "Condition Label"
+      },
+      "section": {
+        "en": "Labels",
+        "zh-Hans": "Labels"
+      },
+      "default": "",
+      "maxLength": 128
+    },
+    {
+      "id": "humiditySuffix",
+      "type": "string",
+      "label": {
+        "en": "Humidity Suffix",
+        "zh-Hans": "Humidity Suffix"
+      },
+      "section": {
+        "en": "Labels",
+        "zh-Hans": "Labels"
+      },
+      "default": "RH",
+      "maxLength": 16
+    },
+    {
+      "id": "humidityMetricLabel",
+      "type": "string",
+      "label": {
+        "en": "Humidity Label",
+        "zh-Hans": "Humidity Label"
+      },
+      "section": {
+        "en": "Labels",
+        "zh-Hans": "Labels"
+      },
+      "default": "RH",
+      "maxLength": 24
+    },
+    {
+      "id": "windMetricLabel",
+      "type": "string",
+      "label": {
+        "en": "Wind Label",
+        "zh-Hans": "Wind Label"
+      },
+      "section": {
+        "en": "Labels",
+        "zh-Hans": "Labels"
+      },
+      "default": "Wind",
+      "maxLength": 24
+    },
+    {
+      "id": "feelsLikeMetricLabel",
+      "type": "string",
+      "label": {
+        "en": "Feels Like Label",
+        "zh-Hans": "Feels Like Label"
+      },
+      "section": {
+        "en": "Labels",
+        "zh-Hans": "Labels"
+      },
+      "default": "Feels",
+      "maxLength": 24
+    },
+    {
+      "id": "backgroundOpacity",
+      "type": "number",
+      "label": {
+        "en": "Background Opacity",
+        "zh-Hans": "背景不透明度"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 0.92,
+      "min": 0,
+      "max": 1,
+      "step": 0.01
+    },
+    {
+      "id": "backgroundRadius",
+      "type": "number",
+      "label": {
+        "en": "Corner Radius",
+        "zh-Hans": "圆角"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 10,
+      "min": 0,
+      "max": 200,
+      "step": 0.5
+    },
+    {
+      "id": "dividerEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Dividers",
+        "zh-Hans": "分隔线"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": true
+    },
+    {
+      "id": "dividerColor",
+      "type": "color",
+      "label": {
+        "en": "Divider Color",
+        "zh-Hans": "分隔线颜色"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "dividerThickness",
+      "type": "number",
+      "label": {
+        "en": "Divider Thickness",
+        "zh-Hans": "分隔线粗细"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 1,
+      "min": 0,
+      "max": 16,
+      "step": 0.5
+    },
+    {
+      "id": "dividerOpacity",
+      "type": "number",
+      "label": {
+        "en": "Divider Opacity",
+        "zh-Hans": "分隔线不透明度"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 0.34,
+      "min": 0,
+      "max": 1,
+      "step": 0.01
+    },
+    {
+      "id": "iconSize",
+      "type": "number",
+      "label": {
+        "en": "Icon Size",
+        "zh-Hans": "Icon Size"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 54,
+      "min": 8,
+      "max": 200,
+      "step": 1
+    },
+    {
+      "id": "slotBackgroundColor",
+      "type": "color",
+      "label": {
+        "en": "Slot Color",
+        "zh-Hans": "Slot Color"
+      },
+      "section": {
+        "en": "Slots",
+        "zh-Hans": "Slots"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "slotBackgroundOpacity",
+      "type": "number",
+      "label": {
+        "en": "Slot Opacity",
+        "zh-Hans": "Slot Opacity"
+      },
+      "section": {
+        "en": "Slots",
+        "zh-Hans": "Slots"
+      },
+      "default": 0.16,
+      "min": 0,
+      "max": 1,
+      "step": 0.01
+    },
+    {
+      "id": "slotSpacing",
+      "type": "number",
+      "label": {
+        "en": "Slot Spacing",
+        "zh-Hans": "Slot Spacing"
+      },
+      "default": 10,
+      "min": 0,
+      "max": 40,
+      "step": 0.5,
+      "advanced": true
+    },
+    {
+      "id": "fontFamily",
+      "type": "string",
+      "label": {
+        "en": "Font Family",
+        "zh-Hans": "Font Family"
+      },
+      "default": "",
+      "maxLength": 128,
+      "advanced": true
+    },
+    {
+      "id": "locationFontSize",
+      "type": "number",
+      "label": {
+        "en": "Size",
+        "zh-Hans": "Size"
+      },
+      "default": 19,
+      "min": 6,
+      "max": 300,
+      "step": 1,
+      "advanced": true
+    },
+    {
+      "id": "locationFontWeight",
+      "type": "enum",
+      "label": {
+        "en": "Weight",
+        "zh-Hans": "Weight"
+      },
+      "default": "bold",
+      "options": [
+        {
+          "value": "regular",
+          "label": "Regular"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semibold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        }
+      ],
+      "advanced": true
+    },
+    {
+      "id": "locationColor",
+      "type": "color",
+      "label": {
+        "en": "Color",
+        "zh-Hans": "Color"
+      },
+      "section": {
+        "en": "Location Text",
+        "zh-Hans": "Location Text"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "conditionFontSize",
+      "type": "number",
+      "label": {
+        "en": "Size",
+        "zh-Hans": "Size"
+      },
+      "default": 26,
+      "min": 6,
+      "max": 300,
+      "step": 1,
+      "advanced": true
+    },
+    {
+      "id": "conditionFontWeight",
+      "type": "enum",
+      "label": {
+        "en": "Weight",
+        "zh-Hans": "Weight"
+      },
+      "default": "semibold",
+      "options": [
+        {
+          "value": "regular",
+          "label": "Regular"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semibold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        }
+      ],
+      "advanced": true
+    },
+    {
+      "id": "conditionColor",
+      "type": "color",
+      "label": {
+        "en": "Color",
+        "zh-Hans": "Color"
+      },
+      "section": {
+        "en": "Condition Text",
+        "zh-Hans": "Condition Text"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "temperatureFontSize",
+      "type": "number",
+      "label": {
+        "en": "Size",
+        "zh-Hans": "Size"
+      },
+      "default": 33,
+      "min": 6,
+      "max": 300,
+      "step": 1,
+      "advanced": true
+    },
+    {
+      "id": "temperatureFontWeight",
+      "type": "enum",
+      "label": {
+        "en": "Weight",
+        "zh-Hans": "Weight"
+      },
+      "default": "bold",
+      "options": [
+        {
+          "value": "regular",
+          "label": "Regular"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semibold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        }
+      ],
+      "advanced": true
+    },
+    {
+      "id": "temperatureColor",
+      "type": "color",
+      "label": {
+        "en": "Color",
+        "zh-Hans": "Color"
+      },
+      "section": {
+        "en": "Temperature Text",
+        "zh-Hans": "Temperature Text"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "slotTitleFontSize",
+      "type": "number",
+      "label": {
+        "en": "Size",
+        "zh-Hans": "Size"
+      },
+      "default": 15,
+      "min": 6,
+      "max": 300,
+      "step": 1,
+      "advanced": true
+    },
+    {
+      "id": "slotTitleFontWeight",
+      "type": "enum",
+      "label": {
+        "en": "Weight",
+        "zh-Hans": "Weight"
+      },
+      "default": "semibold",
+      "options": [
+        {
+          "value": "regular",
+          "label": "Regular"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semibold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        }
+      ],
+      "advanced": true
+    },
+    {
+      "id": "slotTitleColor",
+      "type": "color",
+      "label": {
+        "en": "Color",
+        "zh-Hans": "Color"
+      },
+      "section": {
+        "en": "Slot Title Text",
+        "zh-Hans": "Slot Title Text"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "slotLabelFontSize",
+      "type": "number",
+      "label": {
+        "en": "Size",
+        "zh-Hans": "Size"
+      },
+      "default": 15,
+      "min": 6,
+      "max": 300,
+      "step": 1,
+      "advanced": true
+    },
+    {
+      "id": "slotLabelFontWeight",
+      "type": "enum",
+      "label": {
+        "en": "Weight",
+        "zh-Hans": "Weight"
+      },
+      "default": "semibold",
+      "options": [
+        {
+          "value": "regular",
+          "label": "Regular"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semibold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        }
+      ],
+      "advanced": true
+    },
+    {
+      "id": "slotLabelColor",
+      "type": "color",
+      "label": {
+        "en": "Color",
+        "zh-Hans": "Color"
+      },
+      "section": {
+        "en": "Slot Label Text",
+        "zh-Hans": "Slot Label Text"
+      },
+      "default": "#FFFFFF"
+    }
+  ],
+  "nodes": [
+    {
+      "type": "weatherWidget",
+      "frame": [
+        0,
+        0,
+        "=componentWidth",
+        "=componentHeight"
+      ],
+      "dataSource": "=dataSource",
+      "condition": "=condition",
+      "temperatureC": "=temperatureC",
+      "humidity": "=humidity",
+      "highC": "=highC",
+      "lowC": "=lowC",
+      "windKph": "=windKph",
+      "feelsLikeC": "=feelsLikeC",
+      "temperatureUnit": "=temperatureUnit",
+      "useActivityTemperature": "=useActivityTemperature ? 1 : 0",
+      "locationText": "=locationText",
+      "showLocation": "=showLocation ? 1 : 0",
+      "showWeekday": "=showWeekday ? 1 : 0",
+      "showHumidity": "=showHumidity ? 1 : 0",
+      "showHighLow": "=showHighLow ? 1 : 0",
+      "showWind": "=showWind ? 1 : 0",
+      "showFeelsLike": "=showFeelsLike ? 1 : 0",
+      "showIcon": "=showIcon ? 1 : 0",
+      "showConditionLabel": "=showConditionLabel ? 1 : 0",
+      "conditionLabelOverride": "=conditionLabelOverride",
+      "humiditySuffix": "=humiditySuffix",
+      "humidityMetricLabel": "=humidityMetricLabel",
+      "windMetricLabel": "=windMetricLabel",
+      "feelsLikeMetricLabel": "=feelsLikeMetricLabel",
+      "cardBackgroundOpacity": "=backgroundOpacity",
+      "cardCornerRadius": "=backgroundRadius",
+      "dividerEnabled": "=dividerEnabled ? 1 : 0",
+      "dividerColor": "=dividerColor",
+      "dividerThickness": "=dividerThickness",
+      "dividerOpacity": "=dividerOpacity",
+      "iconSize": "=iconSize",
+      "slotBackgroundColor": "=slotBackgroundColor",
+      "slotBackgroundOpacity": "=slotBackgroundOpacity",
+      "slotSpacing": "=slotSpacing",
+      "fontFamily": "=fontFamily",
+      "locationFontSize": "=locationFontSize",
+      "locationFontWeight": "=locationFontWeight",
+      "locationColor": "=locationColor",
+      "conditionFontSize": "=conditionFontSize",
+      "conditionFontWeight": "=conditionFontWeight",
+      "conditionColor": "=conditionColor",
+      "temperatureFontSize": "=temperatureFontSize",
+      "temperatureFontWeight": "=temperatureFontWeight",
+      "temperatureColor": "=temperatureColor",
+      "slotTitleFontSize": "=slotTitleFontSize",
+      "slotTitleFontWeight": "=slotTitleFontWeight",
+      "slotTitleColor": "=slotTitleColor",
+      "slotLabelFontSize": "=slotLabelFontSize",
+      "slotLabelFontWeight": "=slotLabelFontWeight",
+      "slotLabelColor": "=slotLabelColor"
+    }
+  ]
+}

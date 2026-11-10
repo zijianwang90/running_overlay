@@ -30,30 +30,8 @@ struct ParameterPanelView: View {
     @ViewBuilder
     private func overlayDetail(_ elementID: OverlayElement.ID) -> some View {
         if let element = project.selectedOverlay(elementID) {
-            if element.type.isNumericOverlay {
-                NumericOverlayDetailView(elementID: elementID)
-            } else if element.type == .distanceTimeline {
-                DistanceTimelineOverlayDetailView(elementID: elementID)
-            } else if element.type == .elevationChart {
-                ElevationChartOverlayDetailView(elementID: elementID)
-            } else if element.type == .runningGauge {
-                RunningGaugeOverlayDetailView(elementID: elementID)
-            } else if element.type == .intervalHUDBar {
-                IntervalHUDBarOverlayDetailView(elementID: elementID)
-            } else if element.type == .intervalTimeline {
-                IntervalTimelineOverlayDetailView(elementID: elementID)
-            } else if element.type == .intervalCountdown {
-                IntervalCountdownOverlayDetailView(elementID: elementID)
-            } else if element.type == .intervalWorkSummary {
-                IntervalWorkSummaryOverlayDetailView(elementID: elementID)
-            } else if element.type == .zoneEdgeBar {
-                ZoneEdgeBarOverlayDetailView(elementID: elementID)
-            } else if element.type == .routeMap {
-                RouteMapOverlayDetailView(elementID: elementID)
-            } else if element.type == .weatherWidget {
-                WeatherWidgetOverlayDetailView(elementID: elementID)
-            } else if element.type.isDecorOverlay {
-                DecorOverlayDetailView(elementID: elementID)
+            if element.type == .component {
+                OverlayComponentDetailView(elementID: elementID)
             } else {
                 MissingOverlayInspectorView()
             }
@@ -91,7 +69,7 @@ private struct OverlayDetailHeader: View {
                 set: { project.openOverlayDetailFromList($0) }
             )) {
                 ForEach(elements) { item in
-                    Label(item.type.label, systemImage: item.isLocked ? "lock.fill" : item.type.inspectorIcon)
+                    Label(item.displayLabel, systemImage: item.isLocked ? "lock.fill" : item.type.inspectorIcon)
                         .tag(item.id)
                         .disabled(item.isLocked && item.id != element.id)
                 }
@@ -504,7 +482,7 @@ private struct OverlayElementRow: View {
                 .foregroundStyle(InspectorTheme.textSecondary)
                 .frame(width: 18)
 
-            Text(element.type.label)
+            Text(element.displayLabel)
                 .font(InspectorTheme.bodyFont)
                 .foregroundStyle(InspectorTheme.textPrimary)
                 .lineLimit(1)
@@ -714,8 +692,10 @@ private enum InspectorTheme {
 }
 
 extension OverlayElementType {
+    /// The pool tile catalog is keyed by display name during the migration to
+    /// declarative components; legacy native types reuse its icons.
     var inspectorIcon: String {
-        OverlayTileInfo.all.first { $0.type == self }?.systemImage ?? "square.stack.3d.up"
+        OverlayTileInfo.all.first { $0.label == label }?.systemImage ?? "square.stack.3d.up"
     }
 }
 

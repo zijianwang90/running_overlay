@@ -19,12 +19,67 @@ enum SkiaRouteMapModule {
         into assets: SkiaRenderAssets
     ) {
         SkiaRenderAssets.preloadRouteMaps(
-            elements: elements,
+            elements: routeMapElements(
+                in: elements,
+                activity: activity,
+                canvasSize: canvasSize
+            ),
             activity: activity,
             canvasSize: canvasSize,
             mapSnapshots: mapSnapshots,
             into: assets
         )
+    }
+
+    /// Map snapshots needed by native route maps and by declarative components
+    /// that contain a route-map node. Preview and export request these keys
+    /// before preloading assets.
+    static func snapshotRequests(
+        elements: [OverlayElement],
+        activity: ActivityTimeline,
+        canvasSize: CGSize
+    ) -> Set<MapSnapshotRequest> {
+        let context = OverlayRenderContext(
+            canvasSize: canvasSize,
+            activity: activity,
+            elapsedTime: 0
+        )
+        var requests: Set<MapSnapshotRequest> = []
+        for element in routeMapElements(in: elements, activity: activity, canvasSize: canvasSize) {
+            let layout = OverlayRenderModel.routeMapLayout(for: element, in: context)
+            if let request = RouteMapSnapshotRequestBuilder.request(for: element, layout: layout) {
+                requests.insert(request)
+            }
+        }
+        return requests
+    }
+
+    /// Native render elements for every visible route map, expanding component
+    /// instances through their resolved route-map nodes.
+    private static func routeMapElements(
+        in elements: [OverlayElement],
+        activity: ActivityTimeline,
+        canvasSize: CGSize
+    ) -> [OverlayElement] {
+        let context = OverlayRenderContext(
+            canvasSize: canvasSize,
+            activity: activity,
+            elapsedTime: 0
+        )
+        return elements.flatMap { element -> [OverlayElement] in
+            guard element.isVisible else { return [] }
+            switch element.type {
+            case .routeMap:
+                return [element]
+            case .component:
+                return OverlayComponentSkiaRenderer.routeMapHostElements(
+                    for: element,
+                    renderContext: context
+                )
+            default:
+                return []
+            }
+        }
     }
 
     static func draw(

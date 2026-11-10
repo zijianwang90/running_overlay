@@ -31,11 +31,12 @@ The four reference container variants:
 
 ## Applies To
 
-- `OverlayElementType.routeMap` only.
+- The bundled `studio.route-map` component (host-drawn `routeMap` node only).
 
-Route Map does **not** share the Numeric Overlay detail view. It uses its own
-`RouteMapOverlayDetailView`, but reuses the shared dense Inspector primitives
-from `Sources/RunningOverlay/UI/InspectorRows/InspectorDenseComponents.swift`
+The native `RouteMapOverlayDetailView` was removed with the native element type
+(ADR 0015). Route Map is now edited by the generated component Inspector, which
+reuses the shared dense Inspector primitives from
+`Sources/RunningOverlay/UI/InspectorRows/InspectorDenseComponents.swift`
 (`InspectorDenseRow`, `InspectorDenseSliderRow`, `InspectorDenseSegmented`,
 `InspectorDenseMenuLabel`, `InspectorDenseSwatchStrip`, `InspectorAnchorGrid`)
 and `NumericTokens` so density and spacing match the rest of the Inspector.

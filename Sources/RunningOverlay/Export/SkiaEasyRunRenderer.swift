@@ -33,12 +33,19 @@ final class SkiaEasyRunRenderer {
     private lazy var chartsCanvas = SkiaChartsCanvas(context: context, size: size)
     private let renderAssets = SkiaRenderAssets()
     private var assetsPrepared = false
+    /// Weather the host resolved for the activity location. Host-drawn weather
+    /// components read it through the render context; components never fetch.
+    var weatherPayload: WeatherPayload?
+    /// Preview only: lets component draws publish their measured bounds so the
+    /// selection/hit-test frame query does not resolve every component twice
+    /// per update. Export never publishes, so a concurrent export cannot
+    /// overwrite the preview's frame cache.
+    var publishesPreviewFrames = false
 
     /// Chart-family modules with a real Skia port. Keep this in sync as Group
     /// D/E lands each renderer; unported types stay on the SwiftUI fallback.
     private static let portedChartTypes: Set<OverlayElementType> = [
         .distanceTimeline,
-        .runningGauge,
         .elevationChart
     ]
 
@@ -47,8 +54,6 @@ final class SkiaEasyRunRenderer {
     private static let portedIntervalTypes: Set<OverlayElementType> = [
         .intervalHUDBar,
         .intervalTimeline,
-        .intervalCountdown,
-        .intervalWorkSummary,
         .zoneEdgeBar
     ]
 
@@ -119,15 +124,12 @@ final class SkiaEasyRunRenderer {
     }
 
     static func supports(_ element: OverlayElement) -> Bool {
-        element.type.isNumericOverlay
-            || element.type == .elapsedTime
-            || element.type == .realTime
-            || element.type == .distanceTimeline
+        element.type == .distanceTimeline
             || element.type == .routeMap
             || element.type == .weatherWidget
-            || SkiaTextModule.supports(element)
             || portedChartTypes.contains(element.type)
             || portedIntervalTypes.contains(element.type)
+            || element.type == .component
     }
 
     /// Records the draw commands without reading pixels back.
@@ -136,8 +138,23 @@ final class SkiaEasyRunRenderer {
         if !assetsPrepared {
             preloadAssets(layout: layout, activity: activity)
         }
-        let renderContext = OverlayRenderContext(canvasSize: size, activity: activity, elapsedTime: elapsedTime)
+        let renderContext = OverlayRenderContext(
+            canvasSize: size,
+            activity: activity,
+            elapsedTime: elapsedTime,
+            renderAssets: renderAssets,
+            weatherPayload: weatherPayload
+        )
         for element in layout.elements where element.isVisible && Self.supports(element) {
+            if element.type == .component {
+                OverlayComponentSkiaRenderer.draw(
+                    element,
+                    renderContext: renderContext,
+                    context: context,
+                    publishesPreviewFrame: publishesPreviewFrames
+                )
+                continue
+            }
             if Self.portedChartTypes.contains(element.type) {
                 SkiaChartsModule.draw(
                     element,
@@ -152,16 +169,6 @@ final class SkiaEasyRunRenderer {
                     in: renderContext,
                     skiaContext: context,
                     maskCache: intervalMaskCache
-                )
-                continue
-            }
-            if SkiaTextModule.supports(element) {
-                SkiaTextModule.draw(
-                    element: element,
-                    context: context,
-                    canvasSize: size,
-                    activity: activity,
-                    elapsedTime: elapsedTime
                 )
                 continue
             }
@@ -224,95 +231,6 @@ final class SkiaEasyRunRenderer {
         var rowBytes = 0
         guard let base = skb_read_pixels(context, &rowBytes) else { return nil }
         return (base, rowBytes)
-    }
-
-    // MARK: - Text elements
-
-    private func drawTextElement(_ element: OverlayElement, renderContext: OverlayRenderContext) {
-        let layout = OverlayRenderModel.textLayout(for: element, in: renderContext)
-        let originX = size.width * element.position.x
-        let originY = size.height * element.position.y
-        let valueFont = cachedFont(
-            family: element.style.fontName,
-            size: layout.fontSize,
-            weight: .semibold
-        )
-        let unitFont = cachedFont(
-            family: layout.unitFontName,
-            size: layout.unitFontSize,
-            weight: Self.weight(layout.unitFontWeight)
-        )
-
-        let valueLine = Self.makeLine(
-            layout.components.value,
-            font: valueFont,
-            tracking: -layout.fontSize * 0.012
-        )
-        let unitLine = Self.makeLine(layout.components.unit, font: unitFont, tracking: 0)
-        let valueHeight = valueLine.ascent + valueLine.descent + valueLine.leading
-        let unitHeight = unitLine.ascent + unitLine.descent + unitLine.leading
-
-        let showIcon = layout.iconEnabled && !layout.iconSystemName.isEmpty
-        let textX = showIcon ? layout.iconSize + layout.iconSpacing : 0
-        let showUnit = element.style.showUnit && !layout.components.unit.isEmpty
-        let unitX = originX + textX + valueLine.width + (showUnit ? layout.unitSpacing : 0)
-
-        let valueBaseline = originY + valueLine.ascent
-        let unitTop: Double
-        switch layout.unitTextAlignment {
-        case .leading:
-            unitTop = originY
-        case .center:
-            unitTop = originY + (valueHeight - unitHeight) / 2
-        case .trailing:
-            unitTop = originY + valueHeight - unitHeight
-        }
-        let unitBaseline = unitTop + unitLine.ascent
-
-        let shadow = shadowParameters(for: element, layout: layout)
-        if showIcon {
-            let iconTop = originY + (valueHeight - layout.iconSize) / 2
-            drawIcon(
-                name: layout.iconSystemName,
-                rect: CGRect(x: originX, y: iconTop, width: layout.iconSize, height: layout.iconSize),
-                color: resolvedColor(
-                    layout.iconColor,
-                    followsZones: layout.iconColorsFollowHeartRateZones,
-                    base: layout.dynamicHeartRateZoneColor
-                ),
-                opacity: layout.iconOpacity * element.opacity,
-                shadow: shadow
-            )
-        }
-
-        drawGlyphs(
-            valueLine,
-            font: valueFont,
-            x: originX + textX,
-            baselineY: valueBaseline,
-            color: resolvedColor(
-                element.style.valueColor,
-                followsZones: layout.valueColorsFollowHeartRateZones,
-                base: layout.dynamicHeartRateZoneColor
-            ),
-            opacity: element.style.valueOpacity * element.opacity,
-            shadow: shadow
-        )
-        if showUnit {
-            drawGlyphs(
-                unitLine,
-                font: unitFont,
-                x: unitX,
-                baselineY: unitBaseline,
-                color: resolvedColor(
-                    element.style.unitColor,
-                    followsZones: layout.unitColorsFollowHeartRateZones,
-                    base: layout.dynamicHeartRateZoneColor
-                ),
-                opacity: element.style.unitOpacity * element.opacity,
-                shadow: shadow
-            )
-        }
     }
 
     // MARK: - Route map
@@ -450,7 +368,6 @@ final class SkiaEasyRunRenderer {
     private func drawWeatherWidget(_ element: OverlayElement, renderContext: OverlayRenderContext) {
         let layout = OverlayRenderModel.weatherWidgetLayout(for: element, in: renderContext)
         let style = layout.style
-        guard style.preset == .simpleCard else { return }
         let rect = layout.rect
         let scale = rect.width / max(style.width, 1)
         let cornerRadius = style.cardCornerRadius * rect.width / max(style.width, 1)
@@ -954,20 +871,6 @@ final class SkiaEasyRunRenderer {
         var offsetX: Double
         var offsetY: Double
         var alpha: Double
-    }
-
-    private func shadowParameters(for element: OverlayElement, layout: OverlayTextRenderLayout) -> ShadowParameters {
-        guard element.style.shadowEnabled, element.style.shadowOpacity > 0 else {
-            return ShadowParameters(sigma: 0, offsetX: 0, offsetY: 0, alpha: 0)
-        }
-        let sigmaFactor = ProcessInfo.processInfo.environment["SKIA_SHADOW_SIGMA_FACTOR"]
-            .flatMap(Double.init) ?? 1.0
-        return ShadowParameters(
-            sigma: layout.shadowRadius * sigmaFactor,
-            offsetX: element.style.shadowOffsetX,
-            offsetY: element.style.shadowOffsetY,
-            alpha: element.style.shadowOpacity * element.opacity
-        )
     }
 
     private func drawGlyphs(

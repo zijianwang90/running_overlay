@@ -1,0 +1,1016 @@
+{
+  "spec": "ros.component/0.1",
+  "id": "studio.interval-timeline",
+  "version": "1.0.0",
+  "name": {
+    "en": "Interval Timeline",
+    "zh-Hans": "间歇时间轴"
+  },
+  "description": {
+    "en": "Lap schedule rail for interval workouts with a live marker.",
+    "zh-Hans": "间歇训练的圈段日程条，带实时标记。"
+  },
+  "author": "Running Overlay Studio",
+  "license": "MIT",
+  "size": "content",
+  "padding": [
+    0,
+    0
+  ],
+  "minSize": [
+    120,
+    40
+  ],
+  "params": [
+    {
+      "id": "railWidth",
+      "type": "number",
+      "label": {
+        "en": "Width",
+        "zh-Hans": "宽度"
+      },
+      "section": {
+        "en": "Layout",
+        "zh-Hans": "布局"
+      },
+      "default": 780,
+      "min": 120,
+      "max": 4000,
+      "step": 1
+    },
+    {
+      "id": "segmentAreaHeight",
+      "type": "number",
+      "label": {
+        "en": "Segment Area Height",
+        "zh-Hans": "分段区高度"
+      },
+      "section": {
+        "en": "Layout",
+        "zh-Hans": "布局"
+      },
+      "default": 64,
+      "min": 20,
+      "max": 400,
+      "step": 1
+    },
+    {
+      "id": "mode",
+      "type": "enum",
+      "label": {
+        "en": "Mode",
+        "zh-Hans": "模式"
+      },
+      "section": {
+        "en": "Timeline",
+        "zh-Hans": "时间轴"
+      },
+      "default": "centered",
+      "options": [
+        {
+          "value": "centered",
+          "label": "Centered Window"
+        },
+        {
+          "value": "full",
+          "label": "Full Schedule"
+        }
+      ]
+    },
+    {
+      "id": "visibleNeighbors",
+      "type": "number",
+      "label": {
+        "en": "Visible Neighbors",
+        "zh-Hans": "两侧可见分段"
+      },
+      "section": {
+        "en": "Timeline",
+        "zh-Hans": "时间轴"
+      },
+      "default": 3,
+      "min": 0,
+      "max": 16,
+      "step": 1
+    },
+    {
+      "id": "fullLayout",
+      "type": "enum",
+      "label": {
+        "en": "Full Layout",
+        "zh-Hans": "完整布局"
+      },
+      "section": {
+        "en": "Timeline",
+        "zh-Hans": "时间轴"
+      },
+      "default": "equal",
+      "options": [
+        {
+          "value": "equal",
+          "label": "Equal"
+        },
+        {
+          "value": "duration",
+          "label": "Duration"
+        }
+      ]
+    },
+    {
+      "id": "showsWarmup",
+      "type": "bool",
+      "label": {
+        "en": "Show Warmup",
+        "zh-Hans": "显示热身"
+      },
+      "section": {
+        "en": "Timeline",
+        "zh-Hans": "时间轴"
+      },
+      "default": true
+    },
+    {
+      "id": "showsRest",
+      "type": "bool",
+      "label": {
+        "en": "Show Rest",
+        "zh-Hans": "显示休息"
+      },
+      "section": {
+        "en": "Timeline",
+        "zh-Hans": "时间轴"
+      },
+      "default": true
+    },
+    {
+      "id": "showsCooldown",
+      "type": "bool",
+      "label": {
+        "en": "Show Cooldown",
+        "zh-Hans": "显示冷身"
+      },
+      "section": {
+        "en": "Timeline",
+        "zh-Hans": "时间轴"
+      },
+      "default": true
+    },
+    {
+      "id": "overflowHintEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Overflow Hint",
+        "zh-Hans": "溢出提示"
+      },
+      "section": {
+        "en": "Timeline",
+        "zh-Hans": "时间轴"
+      },
+      "default": true
+    },
+    {
+      "id": "segmentGap",
+      "type": "number",
+      "label": {
+        "en": "Segment Gap",
+        "zh-Hans": "分段间距"
+      },
+      "default": 4,
+      "min": 0,
+      "max": 60,
+      "step": 1,
+      "advanced": true
+    },
+    {
+      "id": "cornerRadius",
+      "type": "number",
+      "label": {
+        "en": "Segment Radius",
+        "zh-Hans": "分段圆角"
+      },
+      "section": {
+        "en": "Layout",
+        "zh-Hans": "布局"
+      },
+      "default": 6,
+      "min": 0,
+      "max": 40,
+      "step": 1
+    },
+    {
+      "id": "segmentHeight",
+      "type": "number",
+      "label": {
+        "en": "Segment Height",
+        "zh-Hans": "分段高度"
+      },
+      "section": {
+        "en": "Layout",
+        "zh-Hans": "布局"
+      },
+      "default": 30,
+      "min": 4,
+      "max": 200,
+      "step": 1
+    },
+    {
+      "id": "currentSegmentHeightScale",
+      "type": "number",
+      "label": {
+        "en": "Current Height Scale",
+        "zh-Hans": "当前分段高度倍数"
+      },
+      "section": {
+        "en": "Current",
+        "zh-Hans": "当前"
+      },
+      "default": 1.35,
+      "min": 1,
+      "max": 3,
+      "step": 0.05
+    },
+    {
+      "id": "currentSegmentWidthFraction",
+      "type": "number",
+      "label": {
+        "en": "Current Width",
+        "zh-Hans": "当前分段宽度"
+      },
+      "section": {
+        "en": "Current",
+        "zh-Hans": "当前"
+      },
+      "default": 0.28,
+      "min": 0.1,
+      "max": 0.6,
+      "step": 0.01
+    },
+    {
+      "id": "fullEqualCurrentSegmentWidthFraction",
+      "type": "number",
+      "label": {
+        "en": "Full Current Width",
+        "zh-Hans": "完整布局当前宽度"
+      },
+      "section": {
+        "en": "Current",
+        "zh-Hans": "当前"
+      },
+      "default": 0,
+      "min": 0,
+      "max": 0.65,
+      "step": 0.01
+    },
+    {
+      "id": "minSegmentWidth",
+      "type": "number",
+      "label": {
+        "en": "Minimum Segment Width",
+        "zh-Hans": "最小分段宽度"
+      },
+      "section": {
+        "en": "Layout",
+        "zh-Hans": "布局"
+      },
+      "default": 54,
+      "min": 0,
+      "max": 400,
+      "step": 1
+    },
+    {
+      "id": "currentProgressEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Current Progress",
+        "zh-Hans": "当前进度"
+      },
+      "section": {
+        "en": "Current",
+        "zh-Hans": "当前"
+      },
+      "default": true
+    },
+    {
+      "id": "repCounterEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Rep Counter",
+        "zh-Hans": "组数计数"
+      },
+      "section": {
+        "en": "Current",
+        "zh-Hans": "当前"
+      },
+      "default": true
+    },
+    {
+      "id": "markerEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Marker",
+        "zh-Hans": "标记"
+      },
+      "section": {
+        "en": "Marker",
+        "zh-Hans": "标记"
+      },
+      "default": true
+    },
+    {
+      "id": "markerLabelEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Marker Label",
+        "zh-Hans": "标记文字"
+      },
+      "section": {
+        "en": "Marker",
+        "zh-Hans": "标记"
+      },
+      "default": true
+    },
+    {
+      "id": "markerLabel",
+      "type": "string",
+      "label": {
+        "en": "Marker Text",
+        "zh-Hans": "标记文本"
+      },
+      "section": {
+        "en": "Marker",
+        "zh-Hans": "标记"
+      },
+      "default": ""
+    },
+    {
+      "id": "markerPosition",
+      "type": "enum",
+      "label": {
+        "en": "Marker Position",
+        "zh-Hans": "标记位置"
+      },
+      "default": "liveProgress",
+      "options": [
+        {
+          "value": "liveProgress",
+          "label": "Live Progress"
+        },
+        {
+          "value": "segmentCenter",
+          "label": "Segment Center"
+        }
+      ],
+      "advanced": true
+    },
+    {
+      "id": "markerColor",
+      "type": "color",
+      "label": {
+        "en": "Marker Color",
+        "zh-Hans": "标记颜色"
+      },
+      "section": {
+        "en": "Marker",
+        "zh-Hans": "标记"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "markerFontSize",
+      "type": "number",
+      "label": {
+        "en": "Marker Font Size",
+        "zh-Hans": "标记字号"
+      },
+      "default": 11,
+      "min": 6,
+      "max": 48,
+      "step": 1,
+      "advanced": true
+    },
+    {
+      "id": "markerFontWeight",
+      "type": "enum",
+      "label": {
+        "en": "Marker Weight",
+        "zh-Hans": "标记字重"
+      },
+      "default": "bold",
+      "options": [
+        {
+          "value": "regular",
+          "label": "Regular"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semibold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        }
+      ],
+      "advanced": true
+    },
+    {
+      "id": "markerFontFamily",
+      "type": "font",
+      "label": {
+        "en": "Marker Font",
+        "zh-Hans": "标记字体"
+      },
+      "default": "",
+      "advanced": true
+    },
+    {
+      "id": "fontFamily",
+      "type": "font",
+      "label": {
+        "en": "Font",
+        "zh-Hans": "字体"
+      },
+      "default": "",
+      "advanced": true
+    },
+    {
+      "id": "currentWorkDistance",
+      "type": "enum",
+      "label": {
+        "en": "Work Distance",
+        "zh-Hans": "训练距离"
+      },
+      "section": {
+        "en": "Labels",
+        "zh-Hans": "标签"
+      },
+      "default": "elapsed",
+      "options": [
+        {
+          "value": "hidden",
+          "label": "Hidden"
+        },
+        {
+          "value": "elapsed",
+          "label": "Elapsed"
+        },
+        {
+          "value": "remaining",
+          "label": "Remaining"
+        }
+      ]
+    },
+    {
+      "id": "currentWorkTime",
+      "type": "enum",
+      "label": {
+        "en": "Work Time",
+        "zh-Hans": "训练时间"
+      },
+      "section": {
+        "en": "Labels",
+        "zh-Hans": "标签"
+      },
+      "default": "remaining",
+      "options": [
+        {
+          "value": "hidden",
+          "label": "Hidden"
+        },
+        {
+          "value": "elapsed",
+          "label": "Elapsed"
+        },
+        {
+          "value": "remaining",
+          "label": "Remaining"
+        }
+      ]
+    },
+    {
+      "id": "currentRestKindEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Rest Kind Label",
+        "zh-Hans": "休息类型标签"
+      },
+      "section": {
+        "en": "Labels",
+        "zh-Hans": "标签"
+      },
+      "default": true
+    },
+    {
+      "id": "currentRestDistance",
+      "type": "enum",
+      "label": {
+        "en": "Rest Distance",
+        "zh-Hans": "休息距离"
+      },
+      "section": {
+        "en": "Labels",
+        "zh-Hans": "标签"
+      },
+      "default": "hidden",
+      "options": [
+        {
+          "value": "hidden",
+          "label": "Hidden"
+        },
+        {
+          "value": "elapsed",
+          "label": "Elapsed"
+        },
+        {
+          "value": "remaining",
+          "label": "Remaining"
+        }
+      ]
+    },
+    {
+      "id": "currentRestTime",
+      "type": "enum",
+      "label": {
+        "en": "Rest Time",
+        "zh-Hans": "休息时间"
+      },
+      "section": {
+        "en": "Labels",
+        "zh-Hans": "标签"
+      },
+      "default": "remaining",
+      "options": [
+        {
+          "value": "hidden",
+          "label": "Hidden"
+        },
+        {
+          "value": "elapsed",
+          "label": "Elapsed"
+        },
+        {
+          "value": "remaining",
+          "label": "Remaining"
+        }
+      ]
+    },
+    {
+      "id": "neighborLabel",
+      "type": "enum",
+      "label": {
+        "en": "Neighbor Labels",
+        "zh-Hans": "相邻标签"
+      },
+      "section": {
+        "en": "Labels",
+        "zh-Hans": "标签"
+      },
+      "default": "distance",
+      "options": [
+        {
+          "value": "hidden",
+          "label": "Hidden"
+        },
+        {
+          "value": "distance",
+          "label": "Distance"
+        },
+        {
+          "value": "time",
+          "label": "Time"
+        }
+      ]
+    },
+    {
+      "id": "completedOpacity",
+      "type": "number",
+      "label": {
+        "en": "Completed Opacity",
+        "zh-Hans": "已完成不透明度"
+      },
+      "section": {
+        "en": "Colors",
+        "zh-Hans": "颜色"
+      },
+      "default": 0.45,
+      "min": 0,
+      "max": 1,
+      "step": 0.05
+    },
+    {
+      "id": "futureOpacity",
+      "type": "number",
+      "label": {
+        "en": "Future Opacity",
+        "zh-Hans": "未开始不透明度"
+      },
+      "section": {
+        "en": "Colors",
+        "zh-Hans": "颜色"
+      },
+      "default": 0.32,
+      "min": 0,
+      "max": 1,
+      "step": 0.05
+    },
+    {
+      "id": "warmupColor",
+      "type": "color",
+      "label": {
+        "en": "Warmup Color",
+        "zh-Hans": "热身心率色"
+      },
+      "section": {
+        "en": "Colors",
+        "zh-Hans": "颜色"
+      },
+      "default": "#2F6BFF"
+    },
+    {
+      "id": "activeColor",
+      "type": "color",
+      "label": {
+        "en": "Work Color",
+        "zh-Hans": "训练颜色"
+      },
+      "section": {
+        "en": "Colors",
+        "zh-Hans": "颜色"
+      },
+      "default": "#FF8A1E"
+    },
+    {
+      "id": "restColor",
+      "type": "color",
+      "label": {
+        "en": "Rest Color",
+        "zh-Hans": "休息颜色"
+      },
+      "section": {
+        "en": "Colors",
+        "zh-Hans": "颜色"
+      },
+      "default": "#2BB44B"
+    },
+    {
+      "id": "cooldownColor",
+      "type": "color",
+      "label": {
+        "en": "Cooldown Color",
+        "zh-Hans": "冷身颜色"
+      },
+      "section": {
+        "en": "Colors",
+        "zh-Hans": "颜色"
+      },
+      "default": "#8A4BFF"
+    },
+    {
+      "id": "unknownColor",
+      "type": "color",
+      "label": {
+        "en": "Unknown Color",
+        "zh-Hans": "未知颜色"
+      },
+      "section": {
+        "en": "Colors",
+        "zh-Hans": "颜色"
+      },
+      "default": "#616E85"
+    },
+    {
+      "id": "foregroundColor",
+      "type": "color",
+      "label": {
+        "en": "Overflow Color",
+        "zh-Hans": "溢出颜色"
+      },
+      "section": {
+        "en": "Colors",
+        "zh-Hans": "颜色"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "backgroundEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Background",
+        "zh-Hans": "背景"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": false
+    },
+    {
+      "id": "backgroundColor",
+      "type": "color",
+      "label": {
+        "en": "Background Color",
+        "zh-Hans": "背景颜色"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": "#101820"
+    },
+    {
+      "id": "backgroundOpacity",
+      "type": "number",
+      "label": {
+        "en": "Background Opacity",
+        "zh-Hans": "背景不透明度"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 0.82,
+      "min": 0,
+      "max": 1,
+      "step": 0.05
+    },
+    {
+      "id": "backgroundRadius",
+      "type": "number",
+      "label": {
+        "en": "Corner Radius",
+        "zh-Hans": "圆角"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 18,
+      "min": 0,
+      "max": 80,
+      "step": 1
+    },
+    {
+      "id": "paddingX",
+      "type": "number",
+      "label": {
+        "en": "Horizontal Padding",
+        "zh-Hans": "水平内边距"
+      },
+      "default": 12,
+      "min": 0,
+      "max": 80,
+      "step": 1,
+      "advanced": true
+    },
+    {
+      "id": "paddingY",
+      "type": "number",
+      "label": {
+        "en": "Vertical Padding",
+        "zh-Hans": "垂直内边距"
+      },
+      "default": 10,
+      "min": 0,
+      "max": 80,
+      "step": 1,
+      "advanced": true
+    },
+    {
+      "id": "borderEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Border",
+        "zh-Hans": "边框"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": false
+    },
+    {
+      "id": "borderColor",
+      "type": "color",
+      "label": {
+        "en": "Border Color",
+        "zh-Hans": "边框颜色"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "borderOpacity",
+      "type": "number",
+      "label": {
+        "en": "Border Opacity",
+        "zh-Hans": "边框不透明度"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 0.3,
+      "min": 0,
+      "max": 1,
+      "step": 0.02
+    },
+    {
+      "id": "borderWidth",
+      "type": "number",
+      "label": {
+        "en": "Border Width",
+        "zh-Hans": "边框粗细"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 2,
+      "min": 0,
+      "max": 20,
+      "step": 0.5
+    }
+  ],
+  "bindings": {
+    "S": {
+      "value": "=signal(\"host.scale\")"
+    },
+    "laps": {
+      "list": "structure.laps"
+    },
+    "segment": {
+      "signal": "structure.segment"
+    },
+    "elapsed": {
+      "signal": "activity.elapsed"
+    },
+    "currentIndex": {
+      "value": "=field(segment, \"index\")"
+    },
+    "timeProgress": {
+      "value": "=field(segment, \"timeProgress\")"
+    },
+    "distanceProgress": {
+      "value": "=field(segment, \"distanceProgress\")"
+    },
+    "stripMode": {
+      "value": "=mode == \"centered\" ? \"emphasized\" : (fullLayout == \"equal\" ? \"equal\" : \"weighted\")"
+    },
+    "emphasis": {
+      "value": "=mode == \"centered\" ? clamp(currentSegmentWidthFraction, 0.1, 0.6) : clamp(fullEqualCurrentSegmentWidthFraction, 0, 0.65)"
+    },
+    "windowCount": {
+      "value": "=mode == \"centered\" ? visibleNeighbors : 100000"
+    },
+    "markerText": {
+      "value": "=markerLabel == \"\" ? \"NOW\" : markerLabel"
+    },
+    "repText": {
+      "value": "=repCounterEnabled && field(segment, \"phaseText\") == \"WORK\" ? concat(\"Rep \", field(segment, \"repText\")) : \"\""
+    },
+    "progressOpacity": {
+      "value": "=currentProgressEnabled ? 0.30 : 0"
+    },
+    "markerOn": {
+      "value": "=markerEnabled ? 1 : 0"
+    },
+    "markerLabelOn": {
+      "value": "=markerLabelEnabled ? 1 : 0"
+    },
+    "overflowOn": {
+      "value": "=overflowHintEnabled ? 1 : 0"
+    },
+    "innerHeight": {
+      "value": "=max(segmentAreaHeight - 12, 1)"
+    },
+    "normalHeight": {
+      "value": "=min(segmentHeight, innerHeight)"
+    },
+    "currentHeight": {
+      "value": "=min(normalHeight * currentSegmentHeightScale, innerHeight)"
+    },
+    "stripHeight": {
+      "value": "=6 + innerHeight / 2 + currentHeight / 2 + 4 + (6 + 2 + max(markerFontSize * 1.4, 14)) + 4"
+    },
+    "padX": {
+      "value": "=paddingX"
+    },
+    "padY": {
+      "value": "=paddingY"
+    },
+    "frameW": {
+      "value": "=railWidth + padX * 2"
+    },
+    "frameH": {
+      "value": "=stripHeight + padY * 2"
+    }
+  },
+  "nodes": [
+    {
+      "type": "rect",
+      "if": "=backgroundEnabled",
+      "frame": [
+        "=0",
+        "=0",
+        "=frameW",
+        "=frameH"
+      ],
+      "radius": "=backgroundRadius",
+      "fill": "=backgroundColor",
+      "opacity": "=backgroundOpacity"
+    },
+    {
+      "type": "timelineStrip",
+      "frame": [
+        "=backgroundEnabled ? padX : 0",
+        "=backgroundEnabled ? padY : 0",
+        "=railWidth",
+        "=stripHeight"
+      ],
+      "segments": "=laps",
+      "currentIndex": "=currentIndex",
+      "elapsed": "=elapsed",
+      "mode": "=stripMode",
+      "emphasisFraction": "=emphasis",
+      "window": "=windowCount",
+      "showsWarmup": "=showsWarmup ? 1 : 0",
+      "showsRest": "=showsRest ? 1 : 0",
+      "showsCooldown": "=showsCooldown ? 1 : 0",
+      "segmentAreaHeight": "=segmentAreaHeight",
+      "segmentHeight": "=segmentHeight",
+      "currentHeightScale": "=currentSegmentHeightScale",
+      "minSegmentWidth": "=minSegmentWidth",
+      "gap": "=segmentGap",
+      "radius": "=cornerRadius",
+      "currentBorderWidth": "=max(1.4, 0.5 / S)",
+      "completedOpacity": "=completedOpacity",
+      "futureOpacity": "=futureOpacity",
+      "colors": {
+        "warmup": "=warmupColor",
+        "active": "=activeColor",
+        "rest": "=restColor",
+        "cooldown": "=cooldownColor",
+        "unknown": "=unknownColor"
+      },
+      "labels": {
+        "font": {
+          "family": "=fontFamily",
+          "size": 16,
+          "weight": "regular"
+        },
+        "currentWorkDistance": "=currentWorkDistance",
+        "currentWorkTime": "=currentWorkTime",
+        "currentRestKind": "=currentRestKindEnabled ? 1 : 0",
+        "currentRestDistance": "=currentRestDistance",
+        "currentRestTime": "=currentRestTime",
+        "neighbor": "=neighborLabel"
+      },
+      "progress": {
+        "value": "=timeProgress",
+        "color": "#FFFFFF",
+        "opacity": "=progressOpacity"
+      },
+      "marker": {
+        "enabled": "=markerOn",
+        "position": "=markerPosition == \"segmentCenter\" ? \"center\" : \"progress\"",
+        "color": "=markerColor",
+        "label": "=markerText",
+        "showsLabel": "=markerLabelOn",
+        "font": {
+          "family": "=markerFontFamily == \"\" ? fontFamily : markerFontFamily",
+          "size": "=markerFontSize",
+          "weight": "=markerFontWeight"
+        }
+      },
+      "overflow": {
+        "enabled": "=overflowOn",
+        "text": "···",
+        "color": "=foregroundColor",
+        "inset": 36
+      },
+      "repText": "=repText",
+      "distanceProgress": "=distanceProgress"
+    },
+    {
+      "type": "rect",
+      "if": "=borderEnabled",
+      "frame": [
+        "=0",
+        "=0",
+        "=frameW",
+        "=frameH"
+      ],
+      "radius": "=backgroundRadius",
+      "fill": "#00000000",
+      "stroke": "=borderColor",
+      "strokeWidth": "=max(borderWidth, 0.5 / S)",
+      "opacity": "=borderOpacity"
+    }
+  ]
+}

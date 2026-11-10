@@ -1,0 +1,28 @@
+{
+  "spec": "ros.component/0.1",
+  "id": "examples.metric-card",
+  "version": "1.0.0",
+  "name": { "en": "Metric Card", "zh-Hans": "指标卡片" },
+  "description": "A minimal content-sized metric with editable label, color and units.",
+  "license": "MIT",
+  "size": "content",
+  "padding": [16, 12],
+  "minSize": [180, 0],
+  "background": { "color": "#152030E6", "radius": 12 },
+  "params": [
+    { "id": "metricId", "type": "enum", "label": "Metric", "default": "heartRate",
+      "options": [ { "value": "heartRate", "label": "Heart Rate" }, { "value": "pace", "label": "Pace" }, { "value": "distance", "label": "Distance" } ] },
+    { "id": "accent", "type": "color", "label": "Accent", "default": "#66D9EF" },
+    { "id": "title", "type": "string", "label": "Title", "maxLength": 48, "default": "RUN" },
+    { "id": "showTitle", "type": "bool", "label": "Show Title", "default": true }
+  ],
+  "nodes": [
+    { "type": "stack", "direction": "vertical", "spacing": 6, "crossAlign": "start", "children": [
+      { "type": "text", "if": "=showTitle", "text": "=title", "font": { "family": "system", "size": 12, "weight": "semibold" }, "color": "#FFFFFFAA" },
+      { "type": "stack", "direction": "horizontal", "spacing": 6, "crossAlign": "end", "children": [
+        { "type": "text", "text": "=metric(metricId).value", "font": { "family": "system", "size": 36, "weight": "semibold" }, "color": "=accent" },
+        { "type": "text", "text": "=metric(metricId).unit", "font": { "family": "system", "size": 14, "weight": "medium" }, "color": "#FFFFFFFF" }
+      ] }
+    ] }
+  ]
+}

@@ -177,7 +177,7 @@ enum IntervalHUDBarMetric: String, CaseIterable, Identifiable, Codable {
         }
     }
 
-    var elementType: OverlayElementType? {
+    var overlayMetric: OverlayMetric? {
         switch self {
         case .heartRateZone, .hrDrop:
             nil
@@ -225,19 +225,19 @@ enum IntervalHUDBarMetric: String, CaseIterable, Identifiable, Codable {
     }
 
     static var selectableCases: [IntervalHUDBarMetric] {
-        ActivityMetricCatalog.selectableElementTypes.compactMap(Self.init(elementType:))
+        ActivityMetricCatalog.selectableMetrics.compactMap(Self.init(metric:))
     }
 
     var defaultUnitOption: OverlayUnitOption {
-        elementType?.defaultUnitOption ?? .bpm
+        overlayMetric?.defaultUnitOption ?? .bpm
     }
 
     var unitOptions: [OverlayUnitOption] {
-        elementType.map(OverlayUnitOption.options(for:)) ?? []
+        overlayMetric?.unitOptions ?? []
     }
 
-    init?(elementType: OverlayElementType) {
-        switch elementType {
+    init?(metric: OverlayMetric) {
+        switch metric {
         case .heartRate: self = .heartRate
         case .pace: self = .pace
         case .avgPace: self = .avgPace
@@ -430,7 +430,7 @@ struct IntervalHUDBarStyle: Equatable, Codable {
         showsZone = try container.decodeIfPresent(Bool.self, forKey: .showsZone) ?? defaults.showsZone
         zoneDisplayMode = try container.decodeIfPresent(IntervalHUDBarZoneDisplayMode.self, forKey: .zoneDisplayMode) ?? defaults.zoneDisplayMode
         let decodedMetricSlots = try container.decodeIfPresent([IntervalHUDBarMetricSlot].self, forKey: .metricSlots) ?? defaults.metricSlots
-        metricSlots = decodedMetricSlots.filter { $0.metric.elementType?.isNumericOverlay == true }
+        metricSlots = decodedMetricSlots.filter { $0.metric.overlayMetric != nil }
         phaseColorFallback = try container.decodeIfPresent(OverlayColor.self, forKey: .phaseColorFallback) ?? defaults.phaseColorFallback
         trackColor = try container.decodeIfPresent(OverlayColor.self, forKey: .trackColor) ?? defaults.trackColor
         trackOpacity = try container.decodeIfPresent(Double.self, forKey: .trackOpacity) ?? defaults.trackOpacity

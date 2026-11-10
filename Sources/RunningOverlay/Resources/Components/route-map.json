@@ -1,0 +1,610 @@
+{
+  "spec": "ros.component/0.1",
+  "id": "studio.route-map",
+  "version": "1.0.0",
+  "name": {
+    "en": "Route Map",
+    "zh-Hans": "路线图"
+  },
+  "description": {
+    "en": "Projected GPS route window with markers.",
+    "zh-Hans": "带起终点标记的路线图。"
+  },
+  "author": "Running Overlay Studio",
+  "license": "MIT",
+  "size": "content",
+  "params": [
+    {
+      "id": "shape",
+      "type": "enum",
+      "label": {
+        "en": "shape",
+        "zh-Hans": "shape"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": "square",
+      "options": [
+        {
+          "value": "square",
+          "label": "square"
+        },
+        {
+          "value": "circle",
+          "label": "circle"
+        }
+      ]
+    },
+    {
+      "id": "backgroundStyle",
+      "type": "enum",
+      "label": {
+        "en": "backgroundStyle",
+        "zh-Hans": "backgroundStyle"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": "dark",
+      "options": [
+        {
+          "value": "none",
+          "label": "none"
+        },
+        {
+          "value": "dark",
+          "label": "dark"
+        },
+        {
+          "value": "light",
+          "label": "light"
+        },
+        {
+          "value": "terrain",
+          "label": "terrain"
+        },
+        {
+          "value": "satellite",
+          "label": "satellite"
+        }
+      ]
+    },
+    {
+      "id": "backgroundRadius",
+      "type": "number",
+      "label": {
+        "en": "Corner Radius",
+        "zh-Hans": "圆角"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 12,
+      "min": 0,
+      "max": 120
+    },
+    {
+      "id": "backgroundOpacity",
+      "type": "number",
+      "label": {
+        "en": "Background Opacity",
+        "zh-Hans": "背景不透明度"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 1,
+      "min": 0,
+      "max": 1
+    },
+    {
+      "id": "startMarkerStyle",
+      "type": "enum",
+      "label": {
+        "en": "startMarkerStyle",
+        "zh-Hans": "startMarkerStyle"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": "dot",
+      "options": [
+        {
+          "value": "hidden",
+          "label": "hidden"
+        },
+        {
+          "value": "dot",
+          "label": "dot"
+        },
+        {
+          "value": "pin",
+          "label": "pin"
+        },
+        {
+          "value": "flag",
+          "label": "flag"
+        }
+      ]
+    },
+    {
+      "id": "endMarkerStyle",
+      "type": "enum",
+      "label": {
+        "en": "endMarkerStyle",
+        "zh-Hans": "endMarkerStyle"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": "dot",
+      "options": [
+        {
+          "value": "hidden",
+          "label": "hidden"
+        },
+        {
+          "value": "dot",
+          "label": "dot"
+        },
+        {
+          "value": "pin",
+          "label": "pin"
+        },
+        {
+          "value": "flag",
+          "label": "flag"
+        }
+      ]
+    },
+    {
+      "id": "runnerMarkerStyle",
+      "type": "enum",
+      "label": {
+        "en": "runnerMarkerStyle",
+        "zh-Hans": "runnerMarkerStyle"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": "dot",
+      "options": [
+        {
+          "value": "hidden",
+          "label": "hidden"
+        },
+        {
+          "value": "dot",
+          "label": "dot"
+        },
+        {
+          "value": "pin",
+          "label": "pin"
+        },
+        {
+          "value": "flag",
+          "label": "flag"
+        }
+      ]
+    },
+    {
+      "id": "startMarkerColor",
+      "type": "color",
+      "label": {
+        "en": "startMarkerColor",
+        "zh-Hans": "startMarkerColor"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "endMarkerColor",
+      "type": "color",
+      "label": {
+        "en": "endMarkerColor",
+        "zh-Hans": "endMarkerColor"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "runnerMarkerColor",
+      "type": "color",
+      "label": {
+        "en": "runnerMarkerColor",
+        "zh-Hans": "runnerMarkerColor"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": "#FF8A1F"
+    },
+    {
+      "id": "glowEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Glow",
+        "zh-Hans": "发光"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": false
+    },
+    {
+      "id": "mapOpacity",
+      "type": "number",
+      "label": {
+        "en": "mapOpacity",
+        "zh-Hans": "mapOpacity"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": 0.72,
+      "min": 0,
+      "max": 1
+    },
+    {
+      "id": "borderEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Border",
+        "zh-Hans": "边框"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": true
+    },
+    {
+      "id": "borderOpacity",
+      "type": "number",
+      "label": {
+        "en": "Border Opacity",
+        "zh-Hans": "边框不透明度"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 0.18,
+      "min": 0,
+      "max": 1
+    },
+    {
+      "id": "foregroundColor",
+      "type": "color",
+      "label": {
+        "en": "foregroundColor",
+        "zh-Hans": "foregroundColor"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "fontFamily",
+      "type": "string",
+      "label": {
+        "en": "fontFamily",
+        "zh-Hans": "fontFamily"
+      },
+      "default": "Helvetica Neue",
+      "maxLength": 128,
+      "advanced": true
+    },
+    {
+      "id": "mapWidth",
+      "type": "number",
+      "label": {
+        "en": "mapWidth",
+        "zh-Hans": "mapWidth"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": 320,
+      "min": 8,
+      "max": 8192
+    },
+    {
+      "id": "mapHeight",
+      "type": "number",
+      "label": {
+        "en": "mapHeight",
+        "zh-Hans": "mapHeight"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": 320,
+      "min": 8,
+      "max": 8192
+    },
+    {
+      "id": "fontSize",
+      "type": "number",
+      "label": {
+        "en": "fontSize",
+        "zh-Hans": "fontSize"
+      },
+      "default": 28,
+      "min": 1,
+      "max": 400,
+      "advanced": true
+    },
+    {
+      "id": "fontWeight",
+      "type": "enum",
+      "label": {
+        "en": "fontWeight",
+        "zh-Hans": "fontWeight"
+      },
+      "default": "semibold",
+      "options": [
+        {
+          "value": "ultraLight",
+          "label": "ultraLight"
+        },
+        {
+          "value": "thin",
+          "label": "thin"
+        },
+        {
+          "value": "light",
+          "label": "light"
+        },
+        {
+          "value": "regular",
+          "label": "regular"
+        },
+        {
+          "value": "medium",
+          "label": "medium"
+        },
+        {
+          "value": "semibold",
+          "label": "semibold"
+        },
+        {
+          "value": "bold",
+          "label": "bold"
+        },
+        {
+          "value": "heavy",
+          "label": "heavy"
+        },
+        {
+          "value": "black",
+          "label": "black"
+        }
+      ],
+      "advanced": true
+    },
+    {
+      "id": "edgeFade",
+      "type": "enum",
+      "label": {
+        "en": "edgeFade",
+        "zh-Hans": "edgeFade"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": "solid",
+      "options": [
+        {
+          "value": "solid",
+          "label": "solid"
+        },
+        {
+          "value": "fadeOut",
+          "label": "fadeOut"
+        }
+      ]
+    },
+    {
+      "id": "fadeAmount",
+      "type": "number",
+      "label": {
+        "en": "fadeAmount",
+        "zh-Hans": "fadeAmount"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": 0.22,
+      "min": 0,
+      "max": 1
+    },
+    {
+      "id": "colorMode",
+      "type": "enum",
+      "label": {
+        "en": "colorMode",
+        "zh-Hans": "colorMode"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": "solid",
+      "options": [
+        {
+          "value": "solid",
+          "label": "solid"
+        },
+        {
+          "value": "gradient",
+          "label": "gradient"
+        }
+      ]
+    },
+    {
+      "id": "gradientStart",
+      "type": "color",
+      "label": {
+        "en": "gradientStart",
+        "zh-Hans": "gradientStart"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": "#34C759"
+    },
+    {
+      "id": "gradientMiddle",
+      "type": "color",
+      "label": {
+        "en": "gradientMiddle",
+        "zh-Hans": "gradientMiddle"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": "#FFCC00"
+    },
+    {
+      "id": "gradientEnd",
+      "type": "color",
+      "label": {
+        "en": "gradientEnd",
+        "zh-Hans": "gradientEnd"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": "#FF3B30"
+    },
+    {
+      "id": "zoom",
+      "type": "number",
+      "label": {
+        "en": "zoom",
+        "zh-Hans": "zoom"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": 1,
+      "min": 0.5,
+      "max": 3
+    },
+    {
+      "id": "showsPointsOfInterest",
+      "type": "bool",
+      "label": {
+        "en": "showsPointsOfInterest",
+        "zh-Hans": "showsPointsOfInterest"
+      },
+      "section": {
+        "en": "Route Map",
+        "zh-Hans": "Route Map"
+      },
+      "default": true
+    },
+    {
+      "id": "borderColor",
+      "type": "color",
+      "label": {
+        "en": "Border Color",
+        "zh-Hans": "边框颜色"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "borderWidth",
+      "type": "number",
+      "label": {
+        "en": "Border Width",
+        "zh-Hans": "边框粗细"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 1,
+      "min": 0,
+      "max": 20
+    }
+  ],
+  "nodes": [
+    {
+      "type": "routeMap",
+      "frame": [
+        "=0",
+        "=0",
+        "=mapWidth",
+        "=mapHeight"
+      ],
+      "shape": "=shape",
+      "backgroundStyle": "=backgroundStyle",
+      "cornerRadius": "=backgroundRadius",
+      "backgroundOpacity": "=backgroundOpacity",
+      "startMarkerStyle": "=startMarkerStyle",
+      "endMarkerStyle": "=endMarkerStyle",
+      "runnerMarkerStyle": "=runnerMarkerStyle",
+      "startMarkerColor": "=startMarkerColor",
+      "endMarkerColor": "=endMarkerColor",
+      "runnerMarkerColor": "=runnerMarkerColor",
+      "glowEnabled": "=glowEnabled ? 1 : 0",
+      "mapOpacity": "=mapOpacity",
+      "borderEnabled": "=borderEnabled ? 1 : 0",
+      "borderOpacity": "=borderOpacity",
+      "foregroundColor": "=foregroundColor",
+      "fontFamily": "=fontFamily",
+      "width": "=mapWidth",
+      "height": "=mapHeight",
+      "fontSize": "=fontSize",
+      "fontWeight": "=fontWeight",
+      "edgeFade": "=edgeFade",
+      "fadeAmount": "=fadeAmount",
+      "colorMode": "=colorMode",
+      "gradientStart": "=gradientStart",
+      "gradientMiddle": "=gradientMiddle",
+      "gradientEnd": "=gradientEnd",
+      "zoom": "=zoom",
+      "showsPointsOfInterest": "=showsPointsOfInterest",
+      "borderColor": "=borderColor",
+      "borderWidth": "=borderWidth"
+    }
+  ],
+  "bindings": {},
+  "padding": [
+    0,
+    0
+  ]
+}

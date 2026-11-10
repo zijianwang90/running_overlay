@@ -1,0 +1,111 @@
+{
+  "spec": "ros.component/0.1",
+  "id": "studio.examples.lap-splits",
+  "version": "1.0.0",
+  "name": { "en": "Lap Splits", "zh-Hans": "分圈配速" },
+  "description": {
+    "en": "Lap splits with pace and average heart rate.",
+    "zh-Hans": "显示分圈配速和平均心率。"
+  },
+  "author": "Running Overlay Studio",
+  "license": "MIT",
+  "size": [320, 224],
+  "params": [
+    {
+      "id": "accent",
+      "type": "color",
+      "label": { "en": "Accent", "zh-Hans": "强调色" },
+      "section": { "en": "Style", "zh-Hans": "样式" },
+      "default": "#4DA3FF"
+    },
+    {
+      "id": "maxRows",
+      "type": "number",
+      "label": { "en": "Visible Laps", "zh-Hans": "显示圈数" },
+      "section": { "en": "Content", "zh-Hans": "内容" },
+      "min": 1,
+      "max": 6,
+      "step": 1,
+      "default": 5
+    },
+    {
+      "id": "title",
+      "type": "string",
+      "label": { "en": "Title", "zh-Hans": "标题" },
+      "section": { "en": "Content", "zh-Hans": "内容" },
+      "maxLength": 32,
+      "default": "LAPS"
+    }
+  ],
+  "bindings": {
+    "laps": { "list": "structure.laps" }
+  },
+  "nodes": [
+    {
+      "type": "rect",
+      "frame": [0, 0, 320, 224],
+      "radius": 16,
+      "fill": "#0B1220E6"
+    },
+    {
+      "type": "text",
+      "frame": [16, 10, 200, 22],
+      "text": "=title",
+      "font": { "family": "system", "size": 13, "weight": "bold" },
+      "color": "#FFFFFFB3"
+    },
+    {
+      "type": "line",
+      "from": [16, 38],
+      "to": [304, 38],
+      "width": 1,
+      "color": "#FFFFFF26"
+    },
+    {
+      "type": "repeat",
+      "frame": [16, 44, 288, 168],
+      "over": "=laps",
+      "as": "lap",
+      "max": "=maxRows",
+      "children": [
+        {
+          "type": "rect",
+          "if": "=index % 2 == 0",
+          "frame": [16, "=44 + index * 34", 288, 28],
+          "radius": 6,
+          "fill": "#FFFFFF0F"
+        },
+        {
+          "type": "text",
+          "frame": [26, "=44 + index * 34 + 6", 28, 16],
+          "text": "=format(index + 1, \"integer\")",
+          "font": { "family": "system", "size": 12, "weight": "medium" },
+          "color": "#FFFFFF80"
+        },
+        {
+          "type": "text",
+          "frame": [60, "=44 + index * 34 + 5", 120, 18],
+          "text": "=format(lap.avgPace, \"pace\")",
+          "font": { "family": "system", "size": 14, "weight": "semibold" },
+          "color": "#FFFFFFE6"
+        },
+        {
+          "type": "text",
+          "frame": [192, "=44 + index * 34 + 5", 52, 18],
+          "text": "=format(lap.avgHeartRate, \"integer\")",
+          "font": { "family": "system", "size": 14, "weight": "medium" },
+          "color": "=accent",
+          "align": "right"
+        },
+        {
+          "type": "text",
+          "frame": [252, "=44 + index * 34 + 5", 44, 18],
+          "text": "bpm",
+          "font": { "family": "system", "size": 10, "weight": "regular" },
+          "color": "#FFFFFF66",
+          "align": "right"
+        }
+      ]
+    }
+  ]
+}

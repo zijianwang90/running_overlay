@@ -77,7 +77,7 @@ an encoder-setting change.
 - Main `Export` has no renderer UI control; it honors the process backend selection described above.
 - Test clip/frame time sampling uses the same activity-time conversion as preview (`timeline.activityElapsed(atProjectTime:)`) before Layer Data FPS quantization.
 - `renderPNG` now supports the same post-render vertical row flip option used by MOV export, so test frame outputs match preview orientation.
-- Text preset export accent color now resolves from `element.style.accentColor` rather than `NSColor.controlAccentColor`.
+- Export accent color resolves from `element.style.accentColor` rather than `NSColor.controlAccentColor`.
 - Apply project frame rate, resolution, bitrate, and Layer Data FPS.
 - Treat project aspect ratio as fixed during export. The export dialog displays
   it read-only and offers only resolution presets compatible with that ratio.
@@ -107,7 +107,6 @@ an encoder-setting change.
 - Per-overlay and dynamic-region compositing converts SwiftUI top-left render rects into pixel-buffer draw rects before drawing into `CGContext`; full-frame renders still draw at the full canvas rect.
 - Inside the per-overlay path, Route Map overlays with no visible stats bar can prerender the static map/route layer once per export task and render only the current marker per unique Layer Data sample. Route maps with visible stats bars stay on the normal per-overlay render because their text values are elapsed-time dependent.
 - Inside the per-overlay path, full-profile Elevation Chart overlays can prerender their static fill geometry once per export task and render only the current-position marker per unique Layer Data sample. The chart is baked into layered images (`elevationChartBaseVisibility` chrome/grid/axis/base fill, `elevationChartLineVisibility` line/glow, and for Dark Terrain dual-area charts an `elevationChartLowerVisibility` lower-fill layer). Each frame composites base, the dual-area lower fill cropped to the right of `chartAreaWidth * progress` (`elevationChartCutXInImage`), the line, then the freshly rendered marker plus axis labels. Eligibility (`canUseElevationChartStaticFillCache`) requires full-profile mode and an area fill, and excludes big numbers, a visible stats bar, and the shared foreground glow, because those either change per frame or are applied to the whole composite. `elevationChartStaticFillParity` verifies the composite matches a full single-pass render within anti-aliasing tolerance. Measured locally at 1280x720, the per-frame render work drops from ~1.86 ms to ~0.79 ms per chart (~2.4x), with a one-time ~37 ms cache build.
-- Inside the per-overlay path, nearby simple numeric overlays may render as a single `SwiftUIOverlayLayerView` batch when their padded union is smaller than their individual padded areas and below 45% of the canvas. Only contiguous runs are batched, so interleaved non-numeric overlays keep the layout z-order. The batch keeps the existing SwiftUI visual path and is profiled under the first grouped numeric overlay type.
 - Export-performance benchmarks should use the same privacy-safe local snapshot
   through `swift run RunningOverlay --benchmark-export ... --benchmark-output
   ...`, with each optimization round writing to a new numbered output

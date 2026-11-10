@@ -139,55 +139,6 @@ import Testing
         }
     }
 
-    @Test func runningGaugeRoadRun() async throws {
-        try await OverlayPreferenceFixtures.withDefaults {
-            var style = OverlayStyle.default
-            style.gauge = .preset(.roadRun)
-            style.gauge.fontName = "Helvetica Neue"
-            let element = OverlayElement(
-                type: .runningGauge,
-                position: CGPoint(x: 0.5, y: 0.5),
-                scale: 1,
-                style: style
-            )
-            try await compare(
-                layout: OverlayLayout(elements: [element]),
-                elapsedTime: 242,
-                label: "gauge-road-run"
-            )
-        }
-    }
-
-    @Test func runningGaugeGlassGlow() async throws {
-        try await OverlayPreferenceFixtures.withDefaults {
-            var style = OverlayStyle.default
-            var gauge = RunningGaugeStyle.preset(.premiumGlass)
-            gauge.layoutPreset = .topThreeMiddleBottom
-            gauge.regions = RunningGaugeStyle.defaultRegions(
-                for: .topThreeMiddleBottom
-            )
-            gauge.fontName = "Helvetica Neue"
-            gauge.glassEffectEnabled = true
-            gauge.glowEnabled = true
-            gauge.glowRadius = 8
-            gauge.glowOpacity = 0.7
-            gauge.progressRingEnabled = true
-            gauge.progressRoundedCaps = false
-            style.gauge = gauge
-            let element = OverlayElement(
-                type: .runningGauge,
-                position: CGPoint(x: 0.5, y: 0.5),
-                scale: 1.25,
-                style: style
-            )
-            try await compare(
-                layout: OverlayLayout(elements: [element]),
-                elapsedTime: 242,
-                label: "gauge-glass-glow"
-            )
-        }
-    }
-
     @Test func elevationChartGradientArea() async throws {
         try await OverlayPreferenceFixtures.withDefaults {
             let element = elevationElement(.gradientArea)
@@ -264,18 +215,26 @@ import Testing
     // MARK: - Helpers
 
     private func easyRunLayout() throws -> OverlayLayout {
-        let url = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .appendingPathComponent(
-                "Sources/RunningOverlay/Resources/Templates/EasyRun.rotemplate"
+        var style = OverlayStyle.default
+        var timeline = DistanceTimelineStyle.preset(.minimal)
+        timeline.width = 522.0824571833073
+        timeline.height = 68
+        timeline.showAxisLabels = true
+        timeline.showDistancePoints = true
+        timeline.tickMarksEnabled = true
+        timeline.tickDensity = 12
+        timeline.glowEnabled = true
+        style.distanceTimeline = timeline
+        style.fontName = "PT Mono"
+        style.fontSize = 19
+        return OverlayLayout(elements: [
+            OverlayElement(
+                type: .distanceTimeline,
+                position: CGPoint(x: 0.5, y: 0.06896883363068688),
+                scale: 1,
+                style: style
             )
-        let template = try JSONDecoder().decode(
-            OverlayTemplate.self,
-            from: Data(contentsOf: url)
-        )
-        return template.layout
+        ])
     }
 
     private func compare(

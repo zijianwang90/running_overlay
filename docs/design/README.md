@@ -47,9 +47,9 @@ This directory stores implementation-facing product design references for Runnin
 
 ## Overlays
 
-- [Numeric Overlay UI Spec](./overlays/numeric/numeric-overlay-ui.md): dense reusable Inspector detail template for numeric metric overlays.
-- [Numeric Overlay UI Structured Spec](./overlays/numeric/numeric-overlay-ui.spec.json): machine-readable controls, model gaps, and unit rules for numeric overlay development.
-- [Numeric Overlay mockup](./overlays/numeric/numeric-overlay.png): compact numeric overlay detail panel with units and background controls.
+- [Numeric Overlay UI Spec](./overlays/numeric/numeric-overlay-ui.md) (historical): Inspector of the native numeric overlays removed by ADR 0014; numeric overlays are now the `studio.numeric` component with a generated Inspector.
+- [Numeric Overlay UI Structured Spec](./overlays/numeric/numeric-overlay-ui.spec.json) (historical): controls of the removed native numeric Inspector.
+- [Numeric Overlay mockup](./overlays/numeric/numeric-overlay.png) (historical): the removed native numeric detail panel.
 - [Route Map Overlay UI Spec](./overlays/route-map/route-map-overlay-ui.md): route map overlay editor layout and visual rules.
 - [Route Map Overlay UI Structured Spec](./overlays/route-map/route-map-overlay-ui.spec.json): machine-readable route map controls, model paths, and presets.
 - [Distance Timeline Overlay UI Spec](./overlays/distance-timeline/distance-timeline-overlay-ui.md): progress/timeline overlay style system, custom media slots, variants, and Inspector controls.
@@ -68,7 +68,6 @@ This directory stores implementation-facing product design references for Runnin
 - [Interval Work Summary Overlay UI Structured Spec](./overlays/interval-work-summary/interval-work-summary-overlay-ui.spec.json): machine-readable trigger, metric, typography, timing, and inspector rules for the work summary overlay.
 - [Zone Edge Bar Overlay UI Spec](./overlays/zone-edge-bar/zone-edge-bar-overlay-ui.md): independent HR/pace zone strip for edge-pinned or free placement.
 - [Zone Edge Bar Overlay UI Structured Spec](./overlays/zone-edge-bar/zone-edge-bar-overlay-ui.spec.json): machine-readable placement, defaults, marker, and inspector rules.
-- [Weather Widget Overlay UI Spec](./overlays/weather-widget/weather-widget-overlay-ui.md): weather-app-style overlay presets, location/temperature content rules, and shared condition icon guidance.
-- [Weather Widget Overlay UI Structured Spec](./overlays/weather-widget/weather-widget-overlay-ui.spec.json): machine-readable weather widget presets, fields, icon set, and data strategy.
-- [Weather Widget preset board](./overlays/weather-widget/weather-widget-presets.png): five visual directions for weather app plugin-style overlays.
+- [Weather Widget Overlay UI Spec](./overlays/weather-widget/weather-widget-overlay-ui.md): weather-app-style single card, location/temperature content rules, and shared condition icon guidance.
+- [Weather Widget Overlay UI Structured Spec](./overlays/weather-widget/weather-widget-overlay-ui.spec.json): machine-readable weather widget card template, fields, icon set, and data strategy.
 - [Weather Widget icon set](./overlays/weather-widget/weather-icon-set.png): unified weather condition icon family reference.

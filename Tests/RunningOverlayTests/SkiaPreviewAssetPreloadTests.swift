@@ -146,25 +146,35 @@ import Testing
         #expect(provider.requestCount == 0)
     }
 
-    /// Decor icon and decor text joined the unified dispatch in this merge;
-    /// neither may fall back to SwiftUI.
-    @Test func decorIconAndTextRenderThroughSkia() throws {
-        var iconStyle = OverlayStyle.default
-        iconStyle.decor.iconAsset = .sfSymbol(name: "heart.fill")
-        let icon = OverlayElement(
-            type: .decorIcon,
-            position: CGPoint(x: 0.4, y: 0.5),
-            scale: 1,
-            style: iconStyle
+    /// Bundled icon and text components render through the shared Skia
+    /// dispatch; neither may fall back to SwiftUI.
+    @Test func decorIconAndTextComponentsRenderThroughSkia() throws {
+        func component(
+            _ id: String,
+            at position: CGPoint,
+            parameters: [String: OverlayJSONValue] = [:]
+        ) throws -> OverlayElement {
+            let item = try #require(OverlayComponentLibraryItem.decor.first { $0.id == id })
+            return OverlayElement(
+                type: .component,
+                position: position,
+                scale: 1,
+                style: .default,
+                component: OverlayComponentInstance(
+                    reference: try OverlayComponentLibrary.reference(for: item),
+                    parameters: item.parameters.merging(parameters) { $1 }
+                )
+            )
+        }
+        let icon = try component(
+            "studio.decor-icon",
+            at: CGPoint(x: 0.4, y: 0.5),
+            parameters: ["symbolName": .string("heart.fill")]
         )
-
-        var textStyle = OverlayStyle.default
-        textStyle.decor.textContent = "SKIA"
-        let text = OverlayElement(
-            type: .decorText,
-            position: CGPoint(x: 0.6, y: 0.5),
-            scale: 1,
-            style: textStyle
+        let text = try component(
+            "studio.decor-text",
+            at: CGPoint(x: 0.6, y: 0.5),
+            parameters: ["text": .string("SKIA")]
         )
 
         for element in [icon, text] {

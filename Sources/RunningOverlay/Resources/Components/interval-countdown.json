@@ -1,0 +1,1018 @@
+{
+  "spec": "ros.component/0.1",
+  "id": "studio.interval-countdown",
+  "version": "1.0.0",
+  "name": {
+    "en": "Interval Countdown",
+    "zh-Hans": "间歇倒计时"
+  },
+  "description": {
+    "en": "Current interval remaining time or distance with a progress ring.",
+    "zh-Hans": "当前间歇的剩余时间或距离，带进度环。"
+  },
+  "author": "Running Overlay Studio",
+  "license": "MIT",
+  "size": "content",
+  "padding": [
+    0,
+    0
+  ],
+  "minSize": [
+    80,
+    80
+  ],
+  "params": [
+    {
+      "id": "size",
+      "type": "number",
+      "label": {
+        "en": "Diameter"
+      },
+      "section": {
+        "en": "Layout"
+      },
+      "default": 344,
+      "min": 80,
+      "max": 2048,
+      "step": 1
+    },
+    {
+      "id": "centerMetric",
+      "type": "enum",
+      "label": {
+        "en": "Center Value"
+      },
+      "section": {
+        "en": "Layout"
+      },
+      "default": "time",
+      "options": [
+        {
+          "value": "time",
+          "label": "Time"
+        },
+        {
+          "value": "distance",
+          "label": "Distance"
+        }
+      ]
+    },
+    {
+      "id": "valueDirection",
+      "type": "enum",
+      "label": {
+        "en": "Value Direction"
+      },
+      "default": "remaining",
+      "options": [
+        {
+          "value": "remaining",
+          "label": "End to 0"
+        },
+        {
+          "value": "elapsed",
+          "label": "0 to End"
+        }
+      ],
+      "advanced": true
+    },
+    {
+      "id": "ringWidth",
+      "type": "number",
+      "label": {
+        "en": "Ring Width"
+      },
+      "section": {
+        "en": "Progress Ring"
+      },
+      "default": 18,
+      "min": 1,
+      "max": 120,
+      "step": 0.5
+    },
+    {
+      "id": "trackColor",
+      "type": "color",
+      "label": {
+        "en": "Track Color"
+      },
+      "section": {
+        "en": "Progress Ring"
+      },
+      "default": "#292F36"
+    },
+    {
+      "id": "trackOpacity",
+      "type": "number",
+      "label": {
+        "en": "Track Opacity"
+      },
+      "section": {
+        "en": "Progress Ring"
+      },
+      "default": 1,
+      "min": 0,
+      "max": 1,
+      "step": 0.01
+    },
+    {
+      "id": "fillColorMode",
+      "type": "enum",
+      "label": {
+        "en": "Fill Color"
+      },
+      "section": {
+        "en": "Progress Ring"
+      },
+      "default": "followGroupColor",
+      "options": [
+        {
+          "value": "followGroupColor",
+          "label": "Follow Group"
+        },
+        {
+          "value": "customColor",
+          "label": "Custom"
+        }
+      ]
+    },
+    {
+      "id": "fillColor",
+      "type": "color",
+      "label": {
+        "en": "Custom Fill"
+      },
+      "section": {
+        "en": "Progress Ring"
+      },
+      "default": "#FF8A1F"
+    },
+    {
+      "id": "ringDirection",
+      "type": "enum",
+      "label": {
+        "en": "Direction"
+      },
+      "default": "clockwise",
+      "options": [
+        {
+          "value": "clockwise",
+          "label": "Clockwise"
+        },
+        {
+          "value": "counterclockwise",
+          "label": "Counterclockwise"
+        }
+      ],
+      "advanced": true
+    },
+    {
+      "id": "ringGlowEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Ring Glow"
+      },
+      "section": {
+        "en": "Progress Ring"
+      },
+      "default": true
+    },
+    {
+      "id": "ringGlowIntensity",
+      "type": "number",
+      "label": {
+        "en": "Ring Glow Intensity"
+      },
+      "section": {
+        "en": "Progress Ring"
+      },
+      "default": 0.45,
+      "min": 0,
+      "max": 2,
+      "step": 0.01
+    },
+    {
+      "id": "helperVisible",
+      "type": "bool",
+      "label": {
+        "en": "Show Helper"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": true
+    },
+    {
+      "id": "helperFontFamily",
+      "type": "string",
+      "label": {
+        "en": "Helper Font"
+      },
+      "default": "Menlo",
+      "maxLength": 128,
+      "advanced": true
+    },
+    {
+      "id": "helperFontSize",
+      "type": "number",
+      "label": {
+        "en": "Helper Size"
+      },
+      "default": 14.0,
+      "min": 6,
+      "max": 300,
+      "step": 1,
+      "advanced": true
+    },
+    {
+      "id": "helperWeight",
+      "type": "enum",
+      "label": {
+        "en": "Helper Weight"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "semibold",
+      "options": [
+        {
+          "value": "regular",
+          "label": "Regular"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semibold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        }
+      ]
+    },
+    {
+      "id": "helperColorMode",
+      "type": "enum",
+      "label": {
+        "en": "Helper Color"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "customColor",
+      "options": [
+        {
+          "value": "followGroupColor",
+          "label": "Follow Group"
+        },
+        {
+          "value": "customColor",
+          "label": "Custom"
+        }
+      ]
+    },
+    {
+      "id": "helperColor",
+      "type": "color",
+      "label": {
+        "en": "Helper Color Value"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "#B5BFC7"
+    },
+    {
+      "id": "phaseVisible",
+      "type": "bool",
+      "label": {
+        "en": "Show Phase"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": true
+    },
+    {
+      "id": "phaseFontFamily",
+      "type": "string",
+      "label": {
+        "en": "Phase Font"
+      },
+      "default": "Menlo",
+      "maxLength": 128,
+      "advanced": true
+    },
+    {
+      "id": "phaseFontSize",
+      "type": "number",
+      "label": {
+        "en": "Phase Size"
+      },
+      "default": 16.0,
+      "min": 6,
+      "max": 300,
+      "step": 1,
+      "advanced": true
+    },
+    {
+      "id": "phaseWeight",
+      "type": "enum",
+      "label": {
+        "en": "Phase Weight"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "bold",
+      "options": [
+        {
+          "value": "regular",
+          "label": "Regular"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semibold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        }
+      ]
+    },
+    {
+      "id": "phaseColorMode",
+      "type": "enum",
+      "label": {
+        "en": "Phase Color"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "followGroupColor",
+      "options": [
+        {
+          "value": "followGroupColor",
+          "label": "Follow Group"
+        },
+        {
+          "value": "customColor",
+          "label": "Custom"
+        }
+      ]
+    },
+    {
+      "id": "phaseColor",
+      "type": "color",
+      "label": {
+        "en": "Phase Color Value"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "#FF8A1F"
+    },
+    {
+      "id": "repVisible",
+      "type": "bool",
+      "label": {
+        "en": "Show Rep"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": true
+    },
+    {
+      "id": "repFontFamily",
+      "type": "string",
+      "label": {
+        "en": "Rep Font"
+      },
+      "default": "Menlo",
+      "maxLength": 128,
+      "advanced": true
+    },
+    {
+      "id": "repFontSize",
+      "type": "number",
+      "label": {
+        "en": "Rep Size"
+      },
+      "default": 16.0,
+      "min": 6,
+      "max": 300,
+      "step": 1,
+      "advanced": true
+    },
+    {
+      "id": "repWeight",
+      "type": "enum",
+      "label": {
+        "en": "Rep Weight"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "bold",
+      "options": [
+        {
+          "value": "regular",
+          "label": "Regular"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semibold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        }
+      ]
+    },
+    {
+      "id": "repColorMode",
+      "type": "enum",
+      "label": {
+        "en": "Rep Color"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "followGroupColor",
+      "options": [
+        {
+          "value": "followGroupColor",
+          "label": "Follow Group"
+        },
+        {
+          "value": "customColor",
+          "label": "Custom"
+        }
+      ]
+    },
+    {
+      "id": "repColor",
+      "type": "color",
+      "label": {
+        "en": "Rep Color Value"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "#FF8A1F"
+    },
+    {
+      "id": "countdownFontFamily",
+      "type": "string",
+      "label": {
+        "en": "Countdown Font"
+      },
+      "default": "Menlo",
+      "maxLength": 128,
+      "advanced": true
+    },
+    {
+      "id": "countdownFontSize",
+      "type": "number",
+      "label": {
+        "en": "Countdown Size"
+      },
+      "default": 74.0,
+      "min": 6,
+      "max": 300,
+      "step": 1,
+      "advanced": true
+    },
+    {
+      "id": "countdownWeight",
+      "type": "enum",
+      "label": {
+        "en": "Countdown Weight"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "bold",
+      "options": [
+        {
+          "value": "regular",
+          "label": "Regular"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semibold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        }
+      ]
+    },
+    {
+      "id": "countdownColor",
+      "type": "color",
+      "label": {
+        "en": "Countdown Color Value"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "captionVisible",
+      "type": "bool",
+      "label": {
+        "en": "Show Caption"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": true
+    },
+    {
+      "id": "captionFontFamily",
+      "type": "string",
+      "label": {
+        "en": "Caption Font"
+      },
+      "default": "Menlo",
+      "maxLength": 128,
+      "advanced": true
+    },
+    {
+      "id": "captionFontSize",
+      "type": "number",
+      "label": {
+        "en": "Caption Size"
+      },
+      "default": 13.0,
+      "min": 6,
+      "max": 300,
+      "step": 1,
+      "advanced": true
+    },
+    {
+      "id": "captionWeight",
+      "type": "enum",
+      "label": {
+        "en": "Caption Weight"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "regular",
+      "options": [
+        {
+          "value": "regular",
+          "label": "Regular"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semibold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        }
+      ]
+    },
+    {
+      "id": "captionColorMode",
+      "type": "enum",
+      "label": {
+        "en": "Caption Color"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "customColor",
+      "options": [
+        {
+          "value": "followGroupColor",
+          "label": "Follow Group"
+        },
+        {
+          "value": "customColor",
+          "label": "Custom"
+        }
+      ]
+    },
+    {
+      "id": "captionColor",
+      "type": "color",
+      "label": {
+        "en": "Caption Color Value"
+      },
+      "section": {
+        "en": "Text"
+      },
+      "default": "#7D8794"
+    },
+    {
+      "id": "backgroundEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Background",
+        "zh-Hans": "背景"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": false
+    },
+    {
+      "id": "backgroundColor",
+      "type": "color",
+      "label": {
+        "en": "Background Color",
+        "zh-Hans": "背景颜色"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": "#000000"
+    },
+    {
+      "id": "backgroundOpacity",
+      "type": "number",
+      "label": {
+        "en": "Background Opacity",
+        "zh-Hans": "背景不透明度"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 0.22,
+      "min": 0,
+      "max": 1,
+      "step": 0.01
+    },
+    {
+      "id": "paddingX",
+      "type": "number",
+      "label": {
+        "en": "Horizontal Padding",
+        "zh-Hans": "水平内边距"
+      },
+      "default": 10,
+      "min": 0,
+      "max": 200,
+      "step": 0.5,
+      "advanced": true
+    },
+    {
+      "id": "paddingY",
+      "type": "number",
+      "label": {
+        "en": "Vertical Padding",
+        "zh-Hans": "垂直内边距"
+      },
+      "default": 6,
+      "min": 0,
+      "max": 200,
+      "step": 0.5,
+      "advanced": true
+    },
+    {
+      "id": "backgroundRadius",
+      "type": "number",
+      "label": {
+        "en": "Corner Radius",
+        "zh-Hans": "圆角"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 6,
+      "min": 0,
+      "max": 200,
+      "step": 0.5
+    },
+    {
+      "id": "borderEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Border",
+        "zh-Hans": "边框"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": false
+    },
+    {
+      "id": "borderColor",
+      "type": "color",
+      "label": {
+        "en": "Border Color",
+        "zh-Hans": "边框颜色"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "borderOpacity",
+      "type": "number",
+      "label": {
+        "en": "Border Opacity",
+        "zh-Hans": "边框不透明度"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 0.22,
+      "min": 0,
+      "max": 1,
+      "step": 0.01
+    },
+    {
+      "id": "borderWidth",
+      "type": "number",
+      "label": {
+        "en": "Border Width",
+        "zh-Hans": "边框粗细"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 1,
+      "min": 0,
+      "max": 32,
+      "step": 0.5
+    }
+  ],
+  "bindings": {
+    "seg": {
+      "signal": "structure.segment"
+    }
+  },
+  "nodes": [
+    {
+      "type": "group",
+      "frame": [
+        0,
+        0,
+        "=size",
+        "=size"
+      ],
+      "children": [
+        {
+          "type": "group",
+          "if": "=backgroundEnabled",
+          "frame": [
+            0,
+            0,
+            "=size",
+            "=size"
+          ],
+          "children": [
+            {
+              "type": "rect",
+              "frame": [
+                "=-paddingX",
+                "=-paddingY",
+                "=size + paddingX * 2",
+                "=size + paddingY * 2"
+              ],
+              "radius": "=min(max(backgroundRadius, 0), min(size + paddingX * 2, size + paddingY * 2) / 2)",
+              "fill": "=backgroundColor",
+              "opacity": "=backgroundOpacity"
+            },
+            {
+              "type": "rect",
+              "if": "=borderEnabled",
+              "frame": [
+                "=-paddingX",
+                "=-paddingY",
+                "=size + paddingX * 2",
+                "=size + paddingY * 2"
+              ],
+              "radius": "=min(max(backgroundRadius, 0), min(size + paddingX * 2, size + paddingY * 2) / 2)",
+              "fill": "transparent",
+              "stroke": "=borderColor",
+              "strokeWidth": "=borderWidth",
+              "opacity": "=borderOpacity"
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "frame": [
+            0,
+            0,
+            "=size",
+            "=size"
+          ],
+          "children": [
+            {
+              "type": "group",
+              "frame": [
+                0,
+                0,
+                "=size",
+                "=size"
+              ],
+              "children": [
+                {
+                  "type": "group",
+                  "frame": [
+                    0,
+                    0,
+                    "=size",
+                    "=size"
+                  ],
+                  "opacity": "=trackOpacity",
+                  "children": [
+                    {
+                      "type": "arc",
+                      "frame": [
+                        0,
+                        0,
+                        "=size",
+                        "=size"
+                      ],
+                      "value": "=1",
+                      "startDegrees": 0,
+                      "sweepDegrees": 360,
+                      "radius": "=max((size - ringWidth * 2) / 2, 0)",
+                      "width": "=ringWidth",
+                      "fillColor": "=trackColor",
+                      "cap": "round",
+                      "trackColor": "=trackColor"
+                    }
+                  ]
+                },
+                {
+                  "type": "group",
+                  "frame": [
+                    0,
+                    0,
+                    "=size",
+                    "=size"
+                  ],
+                  "children": [
+                    {
+                      "type": "arc",
+                      "frame": [
+                        0,
+                        0,
+                        "=size",
+                        "=size"
+                      ],
+                      "value": "=ringDirection == \"clockwise\" ? 1 - seg.timeProgress : seg.timeProgress",
+                      "startDegrees": -90,
+                      "sweepDegrees": "=ringDirection == \"clockwise\" ? 360 : -360",
+                      "radius": "=max((size - ringWidth * 2) / 2, 0)",
+                      "width": "=ringWidth",
+                      "fillColor": "=fillColorMode == \"followGroupColor\" ? seg.groupColor : fillColor",
+                      "cap": "round"
+                    }
+                  ],
+                  "shadows": [
+                    {
+                      "sigma": "=(ringGlowEnabled ? ringGlowIntensity * 16 : 0) / signal(\"host.scale\")",
+                      "dx": 0,
+                      "dy": 0,
+                      "color": "=fillColorMode == \"followGroupColor\" ? seg.groupColor : fillColor",
+                      "opacity": "=ringGlowEnabled ? ringGlowIntensity * 0.70 : 0"
+                    },
+                    {
+                      "sigma": "=(ringGlowEnabled ? ringGlowIntensity * 28 : 0) / signal(\"host.scale\")",
+                      "dx": 0,
+                      "dy": 0,
+                      "color": "=fillColorMode == \"followGroupColor\" ? seg.groupColor : fillColor",
+                      "opacity": "=ringGlowEnabled ? ringGlowIntensity * 0.35 : 0"
+                    }
+                  ],
+                  "shadowBounds": [
+                    "=(ringWidth + ringWidth) / 2 - 90 / signal(\"host.scale\")",
+                    "=(ringWidth + ringWidth) / 2 - 90 / signal(\"host.scale\")",
+                    "=size - ringWidth * 2 + 180 / signal(\"host.scale\")",
+                    "=size - ringWidth * 2 + 180 / signal(\"host.scale\")"
+                  ]
+                },
+                {
+                  "type": "textRows",
+                  "frame": [
+                    "=(size - (size - ringWidth * 3.6)) / 2",
+                    "=(size - (size - ringWidth * 3.6)) / 2",
+                    "=size - ringWidth * 3.6",
+                    "=size - ringWidth * 3.6"
+                  ],
+                  "spacing": 2,
+                  "rows": [
+                    {
+                      "if": "=helperVisible",
+                      "runs": [
+                        {
+                          "text": "CURRENT SET",
+                          "font": {
+                            "family": "=helperFontFamily",
+                            "size": "=helperFontSize",
+                            "weight": "=helperWeight"
+                          },
+                          "color": "=helperColorMode == \"followGroupColor\" ? seg.groupColor : helperColor",
+                          "minimumScaleFactor": 0.64
+                        }
+                      ]
+                    },
+                    {
+                      "if": "=phaseVisible || repVisible",
+                      "spacing": 5,
+                      "runs": [
+                        {
+                          "if": "=phaseVisible",
+                          "text": "=seg.phaseText",
+                          "font": {
+                            "family": "=phaseFontFamily",
+                            "size": "=phaseFontSize",
+                            "weight": "=phaseWeight"
+                          },
+                          "color": "=phaseColorMode == \"followGroupColor\" ? seg.groupColor : phaseColor",
+                          "minimumScaleFactor": 0.64
+                        },
+                        {
+                          "if": "=repVisible",
+                          "text": "=seg.repText",
+                          "font": {
+                            "family": "=repFontFamily",
+                            "size": "=repFontSize",
+                            "weight": "=repWeight"
+                          },
+                          "color": "=repColorMode == \"followGroupColor\" ? seg.groupColor : repColor",
+                          "minimumScaleFactor": 0.64
+                        }
+                      ]
+                    },
+                    {
+                      "runs": [
+                        {
+                          "text": "=centerMetric == \"time\" ? (valueDirection == \"remaining\" ? seg.remainingText : seg.elapsedText) : (valueDirection == \"remaining\" ? seg.remainingDistanceText : seg.elapsedDistanceText)",
+                          "font": {
+                            "family": "=countdownFontFamily",
+                            "size": "=countdownFontSize",
+                            "weight": "=countdownWeight"
+                          },
+                          "color": "=countdownColor",
+                          "minimumScaleFactor": 0.62,
+                          "monospacedDigits": true,
+                          "verticalPadding": 2
+                        }
+                      ]
+                    },
+                    {
+                      "if": "=captionVisible",
+                      "runs": [
+                        {
+                          "text": "=centerMetric == \"time\" ? (valueDirection == \"remaining\" ? \"remaining\" : \"elapsed\") : (valueDirection == \"remaining\" ? \"distance left\" : \"distance\")",
+                          "font": {
+                            "family": "=captionFontFamily",
+                            "size": "=captionFontSize",
+                            "weight": "=captionWeight"
+                          },
+                          "color": "=captionColorMode == \"followGroupColor\" ? seg.groupColor : captionColor",
+                          "minimumScaleFactor": 0.64
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

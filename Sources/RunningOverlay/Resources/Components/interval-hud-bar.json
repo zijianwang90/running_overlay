@@ -1,0 +1,2557 @@
+{
+  "spec": "ros.component/0.1",
+  "id": "studio.interval-hud-bar",
+  "version": "1.0.0",
+  "name": {
+    "en": "Interval HUD Bar",
+    "zh-Hans": "间歇 HUD 条"
+  },
+  "description": {
+    "en": "Current rep, phase and live metrics in a compact broadcast strip.",
+    "zh-Hans": "当前组数、阶段和实时指标的紧凑信息条。"
+  },
+  "author": "Running Overlay Studio",
+  "license": "MIT",
+  "size": "content",
+  "padding": [
+    0,
+    0
+  ],
+  "minSize": [
+    80,
+    60
+  ],
+  "bindings": {
+    "segment": {
+      "signal": "structure.segment"
+    },
+    "recovery": {
+      "signal": "structure.recovery"
+    },
+    "hrZone": {
+      "signal": "zone.heartRate"
+    },
+    "zoneCurrent": {
+      "signal": "zone.current"
+    },
+    "paceZone": {
+      "signal": "zone.pace"
+    },
+    "hrThreshold": {
+      "signal": "zone.heartRateThreshold"
+    },
+    "paceThreshold": {
+      "signal": "zone.paceThreshold"
+    },
+    "hrZones": {
+      "list": "zone.heartRateZones"
+    },
+    "paceZones": {
+      "list": "zone.paceZones"
+    },
+    "S": {
+      "value": "=signal(\"host.scale\")"
+    },
+    "hasBar": {
+      "value": "=bottomBarMode != \"none\" ? 1 : 0"
+    },
+    "spacing": {
+      "value": "=hasBar ? bottomBarSpacing : 0"
+    },
+    "totalH": {
+      "value": "=barHeight + spacing"
+    },
+    "stackH": {
+      "value": "=max(primaryValueFontSize + labelFontSize + 4 / S, max(phaseFontSize + phaseDetailFontSize + 3 / S, metricValueFontSize + max(labelFontSize, metricUnitFontSize) + 4 / S))"
+    },
+    "minContent": {
+      "value": "=max(barHeight * 0.30, min(stackH + 4 / S, barHeight * 0.58))"
+    },
+    "bottomH": {
+      "value": "=hasBar ? 10 : 0"
+    },
+    "minPad": {
+      "value": "=max(barHeight * 0.025, 2 / S)"
+    },
+    "desiredTop": {
+      "value": "=barHeight * 0.06"
+    },
+    "desiredBottom": {
+      "value": "=barHeight * 0.12"
+    },
+    "compress": {
+      "value": "=hasBar && desiredTop + desiredBottom + minContent + bottomH > barHeight"
+    },
+    "availablePadding": {
+      "value": "=barHeight - minContent - bottomH"
+    },
+    "top": {
+      "value": "=!compress ? desiredTop : (availablePadding >= minPad * 2 ? max(minPad, availablePadding * desiredTop / max(desiredTop + desiredBottom, 1)) : minPad)"
+    },
+    "bottom": {
+      "value": "=!compress ? desiredBottom : (availablePadding >= minPad * 2 ? max(minPad, availablePadding - top) : minPad)"
+    },
+    "available": {
+      "value": "=max(totalH - top - bottom, 1 / S)"
+    },
+    "mainH": {
+      "value": "=hasBar ? max(available - bottomH - spacing, 1 / S) : available"
+    },
+    "contentW": {
+      "value": "=barWidth * 0.93"
+    },
+    "contentX": {
+      "value": "=barWidth * 0.035"
+    },
+    "dividerPad": {
+      "value": "=barWidth * 0.025"
+    },
+    "dividerLineW": {
+      "value": "=max(dividerThickness, 0.5 / S)"
+    },
+    "dividerOccupied": {
+      "value": "=dividerLineW + 2 * dividerPad"
+    },
+    "slot1On": {
+      "value": "=slot1Metric != \"none\" ? 1 : 0"
+    },
+    "slot2On": {
+      "value": "=slot2Metric != \"none\" ? 1 : 0"
+    },
+    "slot3On": {
+      "value": "=slot3Metric != \"none\" ? 1 : 0"
+    },
+    "slot4On": {
+      "value": "=slot4Metric != \"none\" ? 1 : 0"
+    },
+    "slot5On": {
+      "value": "=slot5Metric != \"none\" ? 1 : 0"
+    },
+    "metricCount": {
+      "value": "=slot1On + slot2On + slot3On + slot4On + slot5On"
+    },
+    "cellCount": {
+      "value": "=(showsRep ? 1 : 0) + (showsPhase ? 1 : 0) + (showsRemaining ? 1 : 0) + (showsZone ? 1 : 0) + metricCount"
+    },
+    "cellW": {
+      "value": "=(contentW - dividerOccupied * (cellCount - 1)) / max(cellCount, 1)"
+    },
+    "barY": {
+      "value": "=top + mainH + spacing"
+    },
+    "barCorner": {
+      "value": "=min(max(bottomBarCornerRadius, 0), 5)"
+    },
+    "barBorderW": {
+      "value": "=bottomBarBorderEnabled ? bottomBarBorderWidth : 0"
+    },
+    "isHRBar": {
+      "value": "=bottomBarMode == \"heartRateZones\""
+    },
+    "barSegments": {
+      "value": "=isHRBar ? hrZones : paceZones"
+    },
+    "barActive": {
+      "value": "=isHRBar ? field(hrZone, \"index\") : field(paceZone, \"index\")"
+    },
+    "barMarkerIndex": {
+      "value": "=isHRBar ? field(hrZone, \"index\") : field(paceZone, \"index\")"
+    },
+    "barMarkerFraction": {
+      "value": "=isHRBar ? field(hrZone, \"fraction\") : field(paceZone, \"fraction\")"
+    },
+    "barMarkerText": {
+      "value": "=isHRBar ? field(hrZone, \"valueText\") : field(paceZone, \"valueText\")"
+    },
+    "barMarkerColor": {
+      "value": "=isHRBar ? field(hrZone, \"color\") : field(paceZone, \"color\")"
+    },
+    "thresholdIndex": {
+      "value": "=isHRBar ? field(hrThreshold, \"index\") : field(paceThreshold, \"index\")"
+    },
+    "thresholdFraction": {
+      "value": "=isHRBar ? field(hrThreshold, \"fraction\") : field(paceThreshold, \"fraction\")"
+    },
+    "thresholdColor": {
+      "value": "=isHRBar ? field(hrThreshold, \"color\") : field(paceThreshold, \"color\")"
+    },
+    "zoneMode": {
+      "value": "=bottomBarMode == \"heartRateZones\" || bottomBarMode == \"paceZones\""
+    },
+    "laneOn": {
+      "value": "=progressMode == \"distance\" ? field(segment, \"distanceProgress\") : field(segment, \"timeProgress\")"
+    }
+  },
+  "params": [
+    {
+      "id": "barWidth",
+      "type": "number",
+      "label": {
+        "en": "Width"
+      },
+      "section": {
+        "en": "Layout"
+      },
+      "default": 760,
+      "min": 80,
+      "max": 2000,
+      "step": 1
+    },
+    {
+      "id": "barHeight",
+      "type": "number",
+      "label": {
+        "en": "Height"
+      },
+      "section": {
+        "en": "Layout"
+      },
+      "default": 116,
+      "min": 40,
+      "max": 600,
+      "step": 1
+    },
+    {
+      "id": "showsRep",
+      "type": "bool",
+      "label": {
+        "en": "Show Rep"
+      },
+      "section": {
+        "en": "HUD"
+      },
+      "default": true
+    },
+    {
+      "id": "showsPhase",
+      "type": "bool",
+      "label": {
+        "en": "Show Current Training"
+      },
+      "section": {
+        "en": "HUD"
+      },
+      "default": true
+    },
+    {
+      "id": "phaseDetailMode",
+      "type": "enum",
+      "label": {
+        "en": "Phase Detail"
+      },
+      "section": {
+        "en": "HUD"
+      },
+      "default": "distance",
+      "options": [
+        {
+          "value": "time",
+          "label": "Time Left"
+        },
+        {
+          "value": "distance",
+          "label": "Distance Left"
+        }
+      ]
+    },
+    {
+      "id": "restPhaseDetailMode",
+      "type": "enum",
+      "label": {
+        "en": "Rest Phase Detail"
+      },
+      "section": {
+        "en": "HUD"
+      },
+      "default": "distance",
+      "options": [
+        {
+          "value": "time",
+          "label": "Time Left"
+        },
+        {
+          "value": "distance",
+          "label": "Distance Left"
+        }
+      ]
+    },
+    {
+      "id": "showsRemaining",
+      "type": "bool",
+      "label": {
+        "en": "Show Remaining"
+      },
+      "section": {
+        "en": "HUD"
+      },
+      "default": true
+    },
+    {
+      "id": "remainingPrimary",
+      "type": "enum",
+      "label": {
+        "en": "Remaining Primary"
+      },
+      "section": {
+        "en": "HUD"
+      },
+      "default": "time",
+      "options": [
+        {
+          "value": "time",
+          "label": "Time"
+        },
+        {
+          "value": "distance",
+          "label": "Distance"
+        }
+      ]
+    },
+    {
+      "id": "showsZone",
+      "type": "bool",
+      "label": {
+        "en": "Show HR Zone"
+      },
+      "section": {
+        "en": "HUD"
+      },
+      "default": true
+    },
+    {
+      "id": "zoneDisplayMode",
+      "type": "enum",
+      "label": {
+        "en": "Zone Mode"
+      },
+      "section": {
+        "en": "HUD"
+      },
+      "default": "hrDropAtRest",
+      "options": [
+        {
+          "value": "heartRateZone",
+          "label": "HR Zone"
+        },
+        {
+          "value": "hrDropAtRest",
+          "label": "HR Drop at Rest"
+        }
+      ]
+    },
+    {
+      "id": "hrDropMode",
+      "type": "enum",
+      "label": {
+        "en": "HR Drop Units"
+      },
+      "section": {
+        "en": "HUD"
+      },
+      "default": "bpm",
+      "options": [
+        {
+          "value": "bpm",
+          "label": "bpm"
+        },
+        {
+          "value": "percent",
+          "label": "%"
+        }
+      ]
+    },
+    {
+      "id": "progressMode",
+      "type": "enum",
+      "label": {
+        "en": "Progress Mode"
+      },
+      "section": {
+        "en": "HUD"
+      },
+      "default": "distance",
+      "options": [
+        {
+          "value": "time",
+          "label": "Time"
+        },
+        {
+          "value": "distance",
+          "label": "Distance"
+        }
+      ]
+    },
+    {
+      "id": "slot1Metric",
+      "type": "enum",
+      "label": {
+        "en": "Metric 1"
+      },
+      "section": {
+        "en": "Metrics"
+      },
+      "default": "heartRate",
+      "options": [
+        {
+          "value": "heartRate",
+          "label": "Heart Rate"
+        },
+        {
+          "value": "pace",
+          "label": "Pace"
+        },
+        {
+          "value": "avgPace",
+          "label": "Avg Pace"
+        },
+        {
+          "value": "lapPace",
+          "label": "Lap Pace"
+        },
+        {
+          "value": "calories",
+          "label": "Calories"
+        },
+        {
+          "value": "elapsedTime",
+          "label": "Elapsed Time"
+        },
+        {
+          "value": "realTime",
+          "label": "Real Time"
+        },
+        {
+          "value": "distance",
+          "label": "Distance"
+        },
+        {
+          "value": "elevation",
+          "label": "Elevation"
+        },
+        {
+          "value": "cadence",
+          "label": "Cadence"
+        },
+        {
+          "value": "power",
+          "label": "Power"
+        },
+        {
+          "value": "verticalOscillation",
+          "label": "Vertical Oscillation"
+        },
+        {
+          "value": "groundContactTime",
+          "label": "Ground Contact Time"
+        },
+        {
+          "value": "strideLength",
+          "label": "Stride Length"
+        },
+        {
+          "value": "verticalRatio",
+          "label": "Vertical Ratio"
+        },
+        {
+          "value": "groundContactBalance",
+          "label": "GCT Balance"
+        },
+        {
+          "value": "temperature",
+          "label": "Temperature"
+        },
+        {
+          "value": "grade",
+          "label": "Grade"
+        },
+        {
+          "value": "none",
+          "label": "None"
+        }
+      ]
+    },
+    {
+      "id": "slot2Metric",
+      "type": "enum",
+      "label": {
+        "en": "Metric 2"
+      },
+      "section": {
+        "en": "Metrics"
+      },
+      "default": "pace",
+      "options": [
+        {
+          "value": "heartRate",
+          "label": "Heart Rate"
+        },
+        {
+          "value": "pace",
+          "label": "Pace"
+        },
+        {
+          "value": "avgPace",
+          "label": "Avg Pace"
+        },
+        {
+          "value": "lapPace",
+          "label": "Lap Pace"
+        },
+        {
+          "value": "calories",
+          "label": "Calories"
+        },
+        {
+          "value": "elapsedTime",
+          "label": "Elapsed Time"
+        },
+        {
+          "value": "realTime",
+          "label": "Real Time"
+        },
+        {
+          "value": "distance",
+          "label": "Distance"
+        },
+        {
+          "value": "elevation",
+          "label": "Elevation"
+        },
+        {
+          "value": "cadence",
+          "label": "Cadence"
+        },
+        {
+          "value": "power",
+          "label": "Power"
+        },
+        {
+          "value": "verticalOscillation",
+          "label": "Vertical Oscillation"
+        },
+        {
+          "value": "groundContactTime",
+          "label": "Ground Contact Time"
+        },
+        {
+          "value": "strideLength",
+          "label": "Stride Length"
+        },
+        {
+          "value": "verticalRatio",
+          "label": "Vertical Ratio"
+        },
+        {
+          "value": "groundContactBalance",
+          "label": "GCT Balance"
+        },
+        {
+          "value": "temperature",
+          "label": "Temperature"
+        },
+        {
+          "value": "grade",
+          "label": "Grade"
+        },
+        {
+          "value": "none",
+          "label": "None"
+        }
+      ]
+    },
+    {
+      "id": "slot3Metric",
+      "type": "enum",
+      "label": {
+        "en": "Metric 3"
+      },
+      "section": {
+        "en": "Metrics"
+      },
+      "default": "none",
+      "options": [
+        {
+          "value": "heartRate",
+          "label": "Heart Rate"
+        },
+        {
+          "value": "pace",
+          "label": "Pace"
+        },
+        {
+          "value": "avgPace",
+          "label": "Avg Pace"
+        },
+        {
+          "value": "lapPace",
+          "label": "Lap Pace"
+        },
+        {
+          "value": "calories",
+          "label": "Calories"
+        },
+        {
+          "value": "elapsedTime",
+          "label": "Elapsed Time"
+        },
+        {
+          "value": "realTime",
+          "label": "Real Time"
+        },
+        {
+          "value": "distance",
+          "label": "Distance"
+        },
+        {
+          "value": "elevation",
+          "label": "Elevation"
+        },
+        {
+          "value": "cadence",
+          "label": "Cadence"
+        },
+        {
+          "value": "power",
+          "label": "Power"
+        },
+        {
+          "value": "verticalOscillation",
+          "label": "Vertical Oscillation"
+        },
+        {
+          "value": "groundContactTime",
+          "label": "Ground Contact Time"
+        },
+        {
+          "value": "strideLength",
+          "label": "Stride Length"
+        },
+        {
+          "value": "verticalRatio",
+          "label": "Vertical Ratio"
+        },
+        {
+          "value": "groundContactBalance",
+          "label": "GCT Balance"
+        },
+        {
+          "value": "temperature",
+          "label": "Temperature"
+        },
+        {
+          "value": "grade",
+          "label": "Grade"
+        },
+        {
+          "value": "none",
+          "label": "None"
+        }
+      ]
+    },
+    {
+      "id": "slot4Metric",
+      "type": "enum",
+      "label": {
+        "en": "Metric 4"
+      },
+      "section": {
+        "en": "Metrics"
+      },
+      "default": "none",
+      "options": [
+        {
+          "value": "heartRate",
+          "label": "Heart Rate"
+        },
+        {
+          "value": "pace",
+          "label": "Pace"
+        },
+        {
+          "value": "avgPace",
+          "label": "Avg Pace"
+        },
+        {
+          "value": "lapPace",
+          "label": "Lap Pace"
+        },
+        {
+          "value": "calories",
+          "label": "Calories"
+        },
+        {
+          "value": "elapsedTime",
+          "label": "Elapsed Time"
+        },
+        {
+          "value": "realTime",
+          "label": "Real Time"
+        },
+        {
+          "value": "distance",
+          "label": "Distance"
+        },
+        {
+          "value": "elevation",
+          "label": "Elevation"
+        },
+        {
+          "value": "cadence",
+          "label": "Cadence"
+        },
+        {
+          "value": "power",
+          "label": "Power"
+        },
+        {
+          "value": "verticalOscillation",
+          "label": "Vertical Oscillation"
+        },
+        {
+          "value": "groundContactTime",
+          "label": "Ground Contact Time"
+        },
+        {
+          "value": "strideLength",
+          "label": "Stride Length"
+        },
+        {
+          "value": "verticalRatio",
+          "label": "Vertical Ratio"
+        },
+        {
+          "value": "groundContactBalance",
+          "label": "GCT Balance"
+        },
+        {
+          "value": "temperature",
+          "label": "Temperature"
+        },
+        {
+          "value": "grade",
+          "label": "Grade"
+        },
+        {
+          "value": "none",
+          "label": "None"
+        }
+      ]
+    },
+    {
+      "id": "slot5Metric",
+      "type": "enum",
+      "label": {
+        "en": "Metric 5"
+      },
+      "section": {
+        "en": "Metrics"
+      },
+      "default": "none",
+      "options": [
+        {
+          "value": "heartRate",
+          "label": "Heart Rate"
+        },
+        {
+          "value": "pace",
+          "label": "Pace"
+        },
+        {
+          "value": "avgPace",
+          "label": "Avg Pace"
+        },
+        {
+          "value": "lapPace",
+          "label": "Lap Pace"
+        },
+        {
+          "value": "calories",
+          "label": "Calories"
+        },
+        {
+          "value": "elapsedTime",
+          "label": "Elapsed Time"
+        },
+        {
+          "value": "realTime",
+          "label": "Real Time"
+        },
+        {
+          "value": "distance",
+          "label": "Distance"
+        },
+        {
+          "value": "elevation",
+          "label": "Elevation"
+        },
+        {
+          "value": "cadence",
+          "label": "Cadence"
+        },
+        {
+          "value": "power",
+          "label": "Power"
+        },
+        {
+          "value": "verticalOscillation",
+          "label": "Vertical Oscillation"
+        },
+        {
+          "value": "groundContactTime",
+          "label": "Ground Contact Time"
+        },
+        {
+          "value": "strideLength",
+          "label": "Stride Length"
+        },
+        {
+          "value": "verticalRatio",
+          "label": "Vertical Ratio"
+        },
+        {
+          "value": "groundContactBalance",
+          "label": "GCT Balance"
+        },
+        {
+          "value": "temperature",
+          "label": "Temperature"
+        },
+        {
+          "value": "grade",
+          "label": "Grade"
+        },
+        {
+          "value": "none",
+          "label": "None"
+        }
+      ]
+    },
+    {
+      "id": "bottomBarMode",
+      "type": "enum",
+      "label": {
+        "en": "Bottom Bar"
+      },
+      "section": {
+        "en": "Bottom Bar"
+      },
+      "default": "lapProgress",
+      "options": [
+        {
+          "value": "none",
+          "label": "None"
+        },
+        {
+          "value": "lapProgress",
+          "label": "Lap Progress"
+        },
+        {
+          "value": "heartRateZones",
+          "label": "HR Zones"
+        },
+        {
+          "value": "paceZones",
+          "label": "Pace Zones"
+        }
+      ]
+    },
+    {
+      "id": "bottomBarSpacing",
+      "type": "number",
+      "label": {
+        "en": "Spacing"
+      },
+      "default": 10,
+      "min": 0,
+      "max": 80,
+      "step": 0.5,
+      "advanced": true
+    },
+    {
+      "id": "trackColor",
+      "type": "color",
+      "label": {
+        "en": "Track Color"
+      },
+      "section": {
+        "en": "Bottom Bar"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "trackOpacity",
+      "type": "number",
+      "label": {
+        "en": "Track Opacity"
+      },
+      "section": {
+        "en": "Bottom Bar"
+      },
+      "default": 0.14,
+      "min": 0,
+      "max": 1,
+      "step": 0.01
+    },
+    {
+      "id": "bottomBarGlowEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Glow"
+      },
+      "section": {
+        "en": "Bottom Bar"
+      },
+      "default": false
+    },
+    {
+      "id": "bottomBarGlowIntensity",
+      "type": "number",
+      "label": {
+        "en": "Glow Intensity"
+      },
+      "section": {
+        "en": "Bottom Bar"
+      },
+      "default": 0.45,
+      "min": 0,
+      "max": 1,
+      "step": 0.01
+    },
+    {
+      "id": "activeZoneWidthShare",
+      "type": "number",
+      "label": {
+        "en": "Active Zone Width"
+      },
+      "section": {
+        "en": "Bottom Bar"
+      },
+      "default": 0,
+      "min": 0,
+      "max": 0.5,
+      "step": 0.01
+    },
+    {
+      "id": "activeZoneHeightScale",
+      "type": "number",
+      "label": {
+        "en": "Active Zone Height"
+      },
+      "section": {
+        "en": "Bottom Bar"
+      },
+      "default": 1,
+      "min": 1,
+      "max": 2,
+      "step": 0.01
+    },
+    {
+      "id": "zoneSegmentGap",
+      "type": "number",
+      "label": {
+        "en": "Zone Gap"
+      },
+      "default": 2,
+      "min": 0,
+      "max": 40,
+      "step": 0.5,
+      "advanced": true
+    },
+    {
+      "id": "bottomBarCornerRadius",
+      "type": "number",
+      "label": {
+        "en": "Corner Radius"
+      },
+      "section": {
+        "en": "Bottom Bar"
+      },
+      "default": 5,
+      "min": 0,
+      "max": 10,
+      "step": 0.5
+    },
+    {
+      "id": "bottomBarBorderEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Border"
+      },
+      "section": {
+        "en": "Bottom Bar"
+      },
+      "default": true
+    },
+    {
+      "id": "bottomBarBorderColor",
+      "type": "color",
+      "label": {
+        "en": "Border Color"
+      },
+      "section": {
+        "en": "Bottom Bar"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "bottomBarBorderOpacity",
+      "type": "number",
+      "label": {
+        "en": "Border Opacity"
+      },
+      "section": {
+        "en": "Bottom Bar"
+      },
+      "default": 0.12,
+      "min": 0,
+      "max": 1,
+      "step": 0.01
+    },
+    {
+      "id": "bottomBarBorderWidth",
+      "type": "number",
+      "label": {
+        "en": "Border Width"
+      },
+      "section": {
+        "en": "Bottom Bar"
+      },
+      "default": 1,
+      "min": 0,
+      "max": 20,
+      "step": 0.5
+    },
+    {
+      "id": "inactiveZoneOpacity",
+      "type": "number",
+      "label": {
+        "en": "Inactive Zone Opacity"
+      },
+      "section": {
+        "en": "Bottom Bar"
+      },
+      "default": 0.55,
+      "min": 0,
+      "max": 1,
+      "step": 0.01
+    },
+    {
+      "id": "zoneMarkerEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Current Marker"
+      },
+      "section": {
+        "en": "Markers"
+      },
+      "default": true
+    },
+    {
+      "id": "zoneMarkerPosition",
+      "type": "enum",
+      "label": {
+        "en": "Marker Position"
+      },
+      "default": "above",
+      "options": [
+        {
+          "value": "above",
+          "label": "Above"
+        },
+        {
+          "value": "below",
+          "label": "Below"
+        }
+      ],
+      "advanced": true
+    },
+    {
+      "id": "zoneMarkerShowsValue",
+      "type": "bool",
+      "label": {
+        "en": "Marker Value"
+      },
+      "section": {
+        "en": "Markers"
+      },
+      "default": true
+    },
+    {
+      "id": "thresholdZoneMarkerEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Threshold Marker"
+      },
+      "section": {
+        "en": "Markers"
+      },
+      "default": true
+    },
+    {
+      "id": "labelFontFamily",
+      "type": "font",
+      "label": {
+        "en": "Labels Font"
+      },
+      "default": "Menlo",
+      "advanced": true
+    },
+    {
+      "id": "labelFontSize",
+      "type": "number",
+      "label": {
+        "en": "Labels Size"
+      },
+      "default": 13.0,
+      "min": 6,
+      "max": 300,
+      "step": 1,
+      "advanced": true
+    },
+    {
+      "id": "labelFontWeight",
+      "type": "enum",
+      "label": {
+        "en": "Labels Weight"
+      },
+      "default": "bold",
+      "options": [
+        {
+          "value": "ultraLight",
+          "label": "Ultralight"
+        },
+        {
+          "value": "thin",
+          "label": "Thin"
+        },
+        {
+          "value": "light",
+          "label": "Light"
+        },
+        {
+          "value": "regular",
+          "label": "Regular"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semibold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        },
+        {
+          "value": "heavy",
+          "label": "Heavy"
+        },
+        {
+          "value": "black",
+          "label": "Black"
+        }
+      ],
+      "advanced": true
+    },
+    {
+      "id": "primaryValueFontFamily",
+      "type": "font",
+      "label": {
+        "en": "Primary Values Font"
+      },
+      "default": "Menlo",
+      "advanced": true
+    },
+    {
+      "id": "primaryValueFontSize",
+      "type": "number",
+      "label": {
+        "en": "Primary Values Size"
+      },
+      "default": 34.0,
+      "min": 6,
+      "max": 300,
+      "step": 1,
+      "advanced": true
+    },
+    {
+      "id": "primaryValueFontWeight",
+      "type": "enum",
+      "label": {
+        "en": "Primary Values Weight"
+      },
+      "default": "bold",
+      "options": [
+        {
+          "value": "ultraLight",
+          "label": "Ultralight"
+        },
+        {
+          "value": "thin",
+          "label": "Thin"
+        },
+        {
+          "value": "light",
+          "label": "Light"
+        },
+        {
+          "value": "regular",
+          "label": "Regular"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semibold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        },
+        {
+          "value": "heavy",
+          "label": "Heavy"
+        },
+        {
+          "value": "black",
+          "label": "Black"
+        }
+      ],
+      "advanced": true
+    },
+    {
+      "id": "phaseFontFamily",
+      "type": "font",
+      "label": {
+        "en": "Phase Font"
+      },
+      "default": "Menlo",
+      "advanced": true
+    },
+    {
+      "id": "phaseFontSize",
+      "type": "number",
+      "label": {
+        "en": "Phase Size"
+      },
+      "default": 30.0,
+      "min": 6,
+      "max": 300,
+      "step": 1,
+      "advanced": true
+    },
+    {
+      "id": "phaseFontWeight",
+      "type": "enum",
+      "label": {
+        "en": "Phase Weight"
+      },
+      "default": "bold",
+      "options": [
+        {
+          "value": "ultraLight",
+          "label": "Ultralight"
+        },
+        {
+          "value": "thin",
+          "label": "Thin"
+        },
+        {
+          "value": "light",
+          "label": "Light"
+        },
+        {
+          "value": "regular",
+          "label": "Regular"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semibold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        },
+        {
+          "value": "heavy",
+          "label": "Heavy"
+        },
+        {
+          "value": "black",
+          "label": "Black"
+        }
+      ],
+      "advanced": true
+    },
+    {
+      "id": "phaseDetailFontFamily",
+      "type": "font",
+      "label": {
+        "en": "Phase Detail Font"
+      },
+      "default": "Menlo",
+      "advanced": true
+    },
+    {
+      "id": "phaseDetailFontSize",
+      "type": "number",
+      "label": {
+        "en": "Phase Detail Size"
+      },
+      "default": 20.0,
+      "min": 6,
+      "max": 300,
+      "step": 1,
+      "advanced": true
+    },
+    {
+      "id": "phaseDetailFontWeight",
+      "type": "enum",
+      "label": {
+        "en": "Phase Detail Weight"
+      },
+      "default": "semibold",
+      "options": [
+        {
+          "value": "ultraLight",
+          "label": "Ultralight"
+        },
+        {
+          "value": "thin",
+          "label": "Thin"
+        },
+        {
+          "value": "light",
+          "label": "Light"
+        },
+        {
+          "value": "regular",
+          "label": "Regular"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semibold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        },
+        {
+          "value": "heavy",
+          "label": "Heavy"
+        },
+        {
+          "value": "black",
+          "label": "Black"
+        }
+      ],
+      "advanced": true
+    },
+    {
+      "id": "metricValueFontFamily",
+      "type": "font",
+      "label": {
+        "en": "Metric Values Font"
+      },
+      "default": "Menlo",
+      "advanced": true
+    },
+    {
+      "id": "metricValueFontSize",
+      "type": "number",
+      "label": {
+        "en": "Metric Values Size"
+      },
+      "default": 20.0,
+      "min": 6,
+      "max": 300,
+      "step": 1,
+      "advanced": true
+    },
+    {
+      "id": "metricValueFontWeight",
+      "type": "enum",
+      "label": {
+        "en": "Metric Values Weight"
+      },
+      "default": "bold",
+      "options": [
+        {
+          "value": "ultraLight",
+          "label": "Ultralight"
+        },
+        {
+          "value": "thin",
+          "label": "Thin"
+        },
+        {
+          "value": "light",
+          "label": "Light"
+        },
+        {
+          "value": "regular",
+          "label": "Regular"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semibold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        },
+        {
+          "value": "heavy",
+          "label": "Heavy"
+        },
+        {
+          "value": "black",
+          "label": "Black"
+        }
+      ],
+      "advanced": true
+    },
+    {
+      "id": "metricUnitFontFamily",
+      "type": "font",
+      "label": {
+        "en": "Metric Units Font"
+      },
+      "default": "Menlo",
+      "advanced": true
+    },
+    {
+      "id": "metricUnitFontSize",
+      "type": "number",
+      "label": {
+        "en": "Metric Units Size"
+      },
+      "default": 12.0,
+      "min": 6,
+      "max": 300,
+      "step": 1,
+      "advanced": true
+    },
+    {
+      "id": "metricUnitFontWeight",
+      "type": "enum",
+      "label": {
+        "en": "Metric Units Weight"
+      },
+      "default": "semibold",
+      "options": [
+        {
+          "value": "ultraLight",
+          "label": "Ultralight"
+        },
+        {
+          "value": "thin",
+          "label": "Thin"
+        },
+        {
+          "value": "light",
+          "label": "Light"
+        },
+        {
+          "value": "regular",
+          "label": "Regular"
+        },
+        {
+          "value": "medium",
+          "label": "Medium"
+        },
+        {
+          "value": "semibold",
+          "label": "Semibold"
+        },
+        {
+          "value": "bold",
+          "label": "Bold"
+        },
+        {
+          "value": "heavy",
+          "label": "Heavy"
+        },
+        {
+          "value": "black",
+          "label": "Black"
+        }
+      ],
+      "advanced": true
+    },
+    {
+      "id": "foregroundColor",
+      "type": "color",
+      "label": {
+        "en": "Value Color"
+      },
+      "section": {
+        "en": "Colors"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "labelColor",
+      "type": "color",
+      "label": {
+        "en": "Label Color"
+      },
+      "section": {
+        "en": "Colors"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "unitColor",
+      "type": "color",
+      "label": {
+        "en": "Unit Color"
+      },
+      "section": {
+        "en": "Colors"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "dividerEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Dividers",
+        "zh-Hans": "分隔线"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": true
+    },
+    {
+      "id": "dividerColor",
+      "type": "color",
+      "label": {
+        "en": "Divider Color",
+        "zh-Hans": "分隔线颜色"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "dividerOpacity",
+      "type": "number",
+      "label": {
+        "en": "Divider Opacity",
+        "zh-Hans": "分隔线不透明度"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 0.85,
+      "min": 0,
+      "max": 1,
+      "step": 0.01
+    },
+    {
+      "id": "dividerThickness",
+      "type": "number",
+      "label": {
+        "en": "Divider Thickness",
+        "zh-Hans": "分隔线粗细"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 2,
+      "min": 0,
+      "max": 40,
+      "step": 0.5
+    },
+    {
+      "id": "backgroundEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Background",
+        "zh-Hans": "背景"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": true
+    },
+    {
+      "id": "backgroundColor",
+      "type": "color",
+      "label": {
+        "en": "Background Color",
+        "zh-Hans": "背景颜色"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": "#000000"
+    },
+    {
+      "id": "backgroundOpacity",
+      "type": "number",
+      "label": {
+        "en": "Background Opacity",
+        "zh-Hans": "背景不透明度"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 0.22,
+      "min": 0,
+      "max": 1,
+      "step": 0.01
+    },
+    {
+      "id": "backgroundRadius",
+      "type": "number",
+      "label": {
+        "en": "Corner Radius",
+        "zh-Hans": "圆角"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 6,
+      "min": 0,
+      "max": 200,
+      "step": 0.5
+    },
+    {
+      "id": "paddingX",
+      "type": "number",
+      "label": {
+        "en": "Horizontal Padding",
+        "zh-Hans": "水平内边距"
+      },
+      "default": 10,
+      "min": 0,
+      "max": 200,
+      "step": 1,
+      "advanced": true
+    },
+    {
+      "id": "paddingY",
+      "type": "number",
+      "label": {
+        "en": "Vertical Padding",
+        "zh-Hans": "垂直内边距"
+      },
+      "default": 6,
+      "min": 0,
+      "max": 200,
+      "step": 1,
+      "advanced": true
+    },
+    {
+      "id": "borderEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Border",
+        "zh-Hans": "边框"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": false
+    },
+    {
+      "id": "borderColor",
+      "type": "color",
+      "label": {
+        "en": "Border Color",
+        "zh-Hans": "边框颜色"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": "#FFFFFF"
+    },
+    {
+      "id": "borderOpacity",
+      "type": "number",
+      "label": {
+        "en": "Border Opacity",
+        "zh-Hans": "边框不透明度"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 0.22,
+      "min": 0,
+      "max": 1,
+      "step": 0.01
+    },
+    {
+      "id": "borderWidth",
+      "type": "number",
+      "label": {
+        "en": "Border Width",
+        "zh-Hans": "边框粗细"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
+      },
+      "default": 1,
+      "min": 0.5,
+      "max": 20,
+      "step": 0.5
+    }
+  ],
+  "nodes": [
+    {
+      "type": "rect",
+      "frame": [
+        0,
+        0,
+        "=barWidth + paddingX * 2",
+        "=totalH + paddingY * 2"
+      ],
+      "radius": 0,
+      "fill": "#00000000"
+    },
+    {
+      "type": "group",
+      "if": "=backgroundEnabled",
+      "frame": [
+        0,
+        0,
+        "=barWidth + paddingX * 2",
+        "=totalH + paddingY * 2"
+      ],
+      "children": [
+        {
+          "type": "rect",
+          "frame": [
+            0,
+            0,
+            "=barWidth + paddingX * 2",
+            "=totalH + paddingY * 2"
+          ],
+          "radius": "=backgroundRadius",
+          "fill": "=backgroundColor",
+          "opacity": "=backgroundOpacity"
+        }
+      ]
+    },
+    {
+      "type": "stack",
+      "frame": [
+        "=paddingX + contentX",
+        "=paddingY + top",
+        "=contentW",
+        "=mainH"
+      ],
+      "direction": "horizontal",
+      "spacing": "=dividerOccupied",
+      "crossAlign": "center",
+      "children": [
+        {
+          "type": "textRows",
+          "frame": [
+            0,
+            0,
+            "=cellW",
+            "=mainH"
+          ],
+          "spacing": "=4 / S",
+          "rows": [
+            {
+              "runs": [
+                {
+                  "text": "REP",
+                  "font": {
+                    "family": "=labelFontFamily",
+                    "size": "=labelFontSize",
+                    "weight": "=labelFontWeight"
+                  },
+                  "color": "=labelColor",
+                  "opacity": 0.66,
+                  "minimumScaleFactor": 0.7
+                }
+              ]
+            },
+            {
+              "runs": [
+                {
+                  "text": "=segment.repText",
+                  "font": {
+                    "family": "=primaryValueFontFamily",
+                    "size": "=primaryValueFontSize * 0.86",
+                    "weight": "=primaryValueFontWeight"
+                  },
+                  "color": "=foregroundColor",
+                  "minimumScaleFactor": 0.7,
+                  "monospacedDigits": true
+                }
+              ]
+            }
+          ],
+          "if": "=showsRep"
+        },
+        {
+          "type": "textRows",
+          "frame": [
+            0,
+            0,
+            "=cellW",
+            "=mainH"
+          ],
+          "spacing": "=3 / S",
+          "rows": [
+            {
+              "runs": [
+                {
+                  "text": "=segment.phaseText",
+                  "font": {
+                    "family": "=phaseFontFamily",
+                    "size": "=phaseFontSize",
+                    "weight": "=phaseFontWeight"
+                  },
+                  "color": "=segment.phaseColor",
+                  "minimumScaleFactor": 0.72,
+                  "monospacedDigits": true
+                }
+              ]
+            },
+            {
+              "runs": [
+                {
+                  "text": "=!exists(segment.index) ? \"\" : (segment.phaseText == \"REST\" ? (restPhaseDetailMode == \"distance\" ? segment.remainingDistanceText : segment.remainingText) : (phaseDetailMode == \"distance\" ? segment.remainingDistanceText : segment.remainingText))",
+                  "font": {
+                    "family": "=phaseDetailFontFamily",
+                    "size": "=phaseDetailFontSize",
+                    "weight": "=phaseDetailFontWeight"
+                  },
+                  "color": "=foregroundColor",
+                  "opacity": 0.88,
+                  "minimumScaleFactor": 0.72,
+                  "monospacedDigits": true
+                }
+              ]
+            }
+          ],
+          "if": "=showsPhase"
+        },
+        {
+          "type": "textRows",
+          "frame": [
+            0,
+            0,
+            "=cellW",
+            "=mainH"
+          ],
+          "spacing": "=3 / S",
+          "rows": [
+            {
+              "runs": [
+                {
+                  "text": "=remainingPrimary == \"time\" ? segment.remainingText : segment.remainingDistanceText",
+                  "font": {
+                    "family": "=primaryValueFontFamily",
+                    "size": "=primaryValueFontSize",
+                    "weight": "=primaryValueFontWeight"
+                  },
+                  "color": "=foregroundColor",
+                  "minimumScaleFactor": 0.7,
+                  "monospacedDigits": true
+                }
+              ]
+            },
+            {
+              "runs": [
+                {
+                  "text": "LEFT",
+                  "font": {
+                    "family": "=labelFontFamily",
+                    "size": "=labelFontSize",
+                    "weight": "=labelFontWeight"
+                  },
+                  "color": "=labelColor",
+                  "opacity": 0.72,
+                  "minimumScaleFactor": 0.7
+                },
+                {
+                  "text": "=remainingPrimary == \"time\" ? segment.remainingDistanceText : segment.remainingText",
+                  "font": {
+                    "family": "=metricUnitFontFamily",
+                    "size": "=metricUnitFontSize",
+                    "weight": "=metricUnitFontWeight"
+                  },
+                  "color": "=labelColor",
+                  "opacity": 0.72,
+                  "minimumScaleFactor": 0.7,
+                  "monospacedDigits": true
+                }
+              ],
+              "spacing": "=6 / S"
+            }
+          ],
+          "if": "=showsRemaining"
+        },
+        {
+          "type": "textRows",
+          "frame": [
+            0,
+            0,
+            "=cellW",
+            "=mainH"
+          ],
+          "spacing": "=4 / S",
+          "rows": [
+            {
+              "runs": [
+                {
+                  "text": "ZONE",
+                  "font": {
+                    "family": "=labelFontFamily",
+                    "size": "=labelFontSize",
+                    "weight": "=labelFontWeight"
+                  },
+                  "color": "=labelColor",
+                  "opacity": 0.66,
+                  "minimumScaleFactor": 1
+                }
+              ]
+            },
+            {
+              "runs": [
+                {
+                  "text": "=coalesce(concat(\"Z\", field(zoneCurrent, \"index\")), \"--\")",
+                  "font": {
+                    "family": "=metricValueFontFamily",
+                    "size": "=metricValueFontSize",
+                    "weight": "=metricValueFontWeight"
+                  },
+                  "color": "=coalesce(field(zoneCurrent, \"color\"), foregroundColor)",
+                  "minimumScaleFactor": 0.68,
+                  "monospacedDigits": true
+                }
+              ]
+            }
+          ],
+          "if": "=showsZone && !(zoneDisplayMode == \"hrDropAtRest\" && segment.phaseText == \"REST\")"
+        },
+        {
+          "type": "textRows",
+          "frame": [
+            0,
+            0,
+            "=cellW",
+            "=mainH"
+          ],
+          "spacing": "=4 / S",
+          "rows": [
+            {
+              "runs": [
+                {
+                  "text": "HR DROP",
+                  "font": {
+                    "family": "=labelFontFamily",
+                    "size": "=labelFontSize",
+                    "weight": "=labelFontWeight"
+                  },
+                  "color": "=labelColor",
+                  "opacity": 0.66,
+                  "minimumScaleFactor": 1
+                }
+              ]
+            },
+            {
+              "runs": [
+                {
+                  "text": "=hrDropMode == \"bpm\" ? coalesce(format(field(recovery, \"drop\"), \"integer\"), \"--\") : coalesce(format(field(recovery, \"dropPercent\"), \"integer\"), \"--\")",
+                  "font": {
+                    "family": "=metricValueFontFamily",
+                    "size": "=metricValueFontSize",
+                    "weight": "=metricValueFontWeight"
+                  },
+                  "color": "=foregroundColor",
+                  "minimumScaleFactor": 0.68,
+                  "monospacedDigits": true
+                },
+                {
+                  "text": "=hrDropMode == \"bpm\" ? \"bpm\" : \"%\"",
+                  "font": {
+                    "family": "=metricUnitFontFamily",
+                    "size": "=metricUnitFontSize",
+                    "weight": "=metricUnitFontWeight"
+                  },
+                  "color": "=unitColor",
+                  "opacity": 0.76,
+                  "minimumScaleFactor": 0.68
+                }
+              ],
+              "alignment": "firstTextBaseline",
+              "spacing": "=3 / S"
+            }
+          ],
+          "if": "=showsZone && zoneDisplayMode == \"hrDropAtRest\" && segment.phaseText == \"REST\""
+        },
+        {
+          "type": "textRows",
+          "frame": [
+            0,
+            0,
+            "=cellW",
+            "=mainH"
+          ],
+          "spacing": "=4 / S",
+          "rows": [
+            {
+              "runs": [
+                {
+                  "text": "=upper(field(metric(slot1Metric), \"shortLabel\"))",
+                  "font": {
+                    "family": "=labelFontFamily",
+                    "size": "=labelFontSize",
+                    "weight": "=labelFontWeight"
+                  },
+                  "color": "=labelColor",
+                  "opacity": 0.66,
+                  "minimumScaleFactor": 1
+                }
+              ]
+            },
+            {
+              "runs": [
+                {
+                  "text": "=field(metric(slot1Metric), \"value\")",
+                  "font": {
+                    "family": "=metricValueFontFamily",
+                    "size": "=metricValueFontSize",
+                    "weight": "=metricValueFontWeight"
+                  },
+                  "color": "=foregroundColor",
+                  "minimumScaleFactor": 0.68,
+                  "monospacedDigits": true
+                },
+                {
+                  "text": "=field(metric(slot1Metric), \"unit\")",
+                  "font": {
+                    "family": "=metricUnitFontFamily",
+                    "size": "=metricUnitFontSize",
+                    "weight": "=metricUnitFontWeight"
+                  },
+                  "color": "=unitColor",
+                  "opacity": 0.76,
+                  "minimumScaleFactor": 0.68
+                }
+              ],
+              "alignment": "firstTextBaseline",
+              "spacing": "=3 / S"
+            }
+          ],
+          "if": "=slot1Metric != \"none\""
+        },
+        {
+          "type": "textRows",
+          "frame": [
+            0,
+            0,
+            "=cellW",
+            "=mainH"
+          ],
+          "spacing": "=4 / S",
+          "rows": [
+            {
+              "runs": [
+                {
+                  "text": "=upper(field(metric(slot2Metric), \"shortLabel\"))",
+                  "font": {
+                    "family": "=labelFontFamily",
+                    "size": "=labelFontSize",
+                    "weight": "=labelFontWeight"
+                  },
+                  "color": "=labelColor",
+                  "opacity": 0.66,
+                  "minimumScaleFactor": 1
+                }
+              ]
+            },
+            {
+              "runs": [
+                {
+                  "text": "=field(metric(slot2Metric), \"value\")",
+                  "font": {
+                    "family": "=metricValueFontFamily",
+                    "size": "=metricValueFontSize",
+                    "weight": "=metricValueFontWeight"
+                  },
+                  "color": "=foregroundColor",
+                  "minimumScaleFactor": 0.68,
+                  "monospacedDigits": true
+                },
+                {
+                  "text": "=field(metric(slot2Metric), \"unit\")",
+                  "font": {
+                    "family": "=metricUnitFontFamily",
+                    "size": "=metricUnitFontSize",
+                    "weight": "=metricUnitFontWeight"
+                  },
+                  "color": "=unitColor",
+                  "opacity": 0.76,
+                  "minimumScaleFactor": 0.68
+                }
+              ],
+              "alignment": "firstTextBaseline",
+              "spacing": "=3 / S"
+            }
+          ],
+          "if": "=slot2Metric != \"none\""
+        },
+        {
+          "type": "textRows",
+          "frame": [
+            0,
+            0,
+            "=cellW",
+            "=mainH"
+          ],
+          "spacing": "=4 / S",
+          "rows": [
+            {
+              "runs": [
+                {
+                  "text": "=upper(field(metric(slot3Metric), \"shortLabel\"))",
+                  "font": {
+                    "family": "=labelFontFamily",
+                    "size": "=labelFontSize",
+                    "weight": "=labelFontWeight"
+                  },
+                  "color": "=labelColor",
+                  "opacity": 0.66,
+                  "minimumScaleFactor": 1
+                }
+              ]
+            },
+            {
+              "runs": [
+                {
+                  "text": "=field(metric(slot3Metric), \"value\")",
+                  "font": {
+                    "family": "=metricValueFontFamily",
+                    "size": "=metricValueFontSize",
+                    "weight": "=metricValueFontWeight"
+                  },
+                  "color": "=foregroundColor",
+                  "minimumScaleFactor": 0.68,
+                  "monospacedDigits": true
+                },
+                {
+                  "text": "=field(metric(slot3Metric), \"unit\")",
+                  "font": {
+                    "family": "=metricUnitFontFamily",
+                    "size": "=metricUnitFontSize",
+                    "weight": "=metricUnitFontWeight"
+                  },
+                  "color": "=unitColor",
+                  "opacity": 0.76,
+                  "minimumScaleFactor": 0.68
+                }
+              ],
+              "alignment": "firstTextBaseline",
+              "spacing": "=3 / S"
+            }
+          ],
+          "if": "=slot3Metric != \"none\""
+        },
+        {
+          "type": "textRows",
+          "frame": [
+            0,
+            0,
+            "=cellW",
+            "=mainH"
+          ],
+          "spacing": "=4 / S",
+          "rows": [
+            {
+              "runs": [
+                {
+                  "text": "=upper(field(metric(slot4Metric), \"shortLabel\"))",
+                  "font": {
+                    "family": "=labelFontFamily",
+                    "size": "=labelFontSize",
+                    "weight": "=labelFontWeight"
+                  },
+                  "color": "=labelColor",
+                  "opacity": 0.66,
+                  "minimumScaleFactor": 1
+                }
+              ]
+            },
+            {
+              "runs": [
+                {
+                  "text": "=field(metric(slot4Metric), \"value\")",
+                  "font": {
+                    "family": "=metricValueFontFamily",
+                    "size": "=metricValueFontSize",
+                    "weight": "=metricValueFontWeight"
+                  },
+                  "color": "=foregroundColor",
+                  "minimumScaleFactor": 0.68,
+                  "monospacedDigits": true
+                },
+                {
+                  "text": "=field(metric(slot4Metric), \"unit\")",
+                  "font": {
+                    "family": "=metricUnitFontFamily",
+                    "size": "=metricUnitFontSize",
+                    "weight": "=metricUnitFontWeight"
+                  },
+                  "color": "=unitColor",
+                  "opacity": 0.76,
+                  "minimumScaleFactor": 0.68
+                }
+              ],
+              "alignment": "firstTextBaseline",
+              "spacing": "=3 / S"
+            }
+          ],
+          "if": "=slot4Metric != \"none\""
+        },
+        {
+          "type": "textRows",
+          "frame": [
+            0,
+            0,
+            "=cellW",
+            "=mainH"
+          ],
+          "spacing": "=4 / S",
+          "rows": [
+            {
+              "runs": [
+                {
+                  "text": "=upper(field(metric(slot5Metric), \"shortLabel\"))",
+                  "font": {
+                    "family": "=labelFontFamily",
+                    "size": "=labelFontSize",
+                    "weight": "=labelFontWeight"
+                  },
+                  "color": "=labelColor",
+                  "opacity": 0.66,
+                  "minimumScaleFactor": 1
+                }
+              ]
+            },
+            {
+              "runs": [
+                {
+                  "text": "=field(metric(slot5Metric), \"value\")",
+                  "font": {
+                    "family": "=metricValueFontFamily",
+                    "size": "=metricValueFontSize",
+                    "weight": "=metricValueFontWeight"
+                  },
+                  "color": "=foregroundColor",
+                  "minimumScaleFactor": 0.68,
+                  "monospacedDigits": true
+                },
+                {
+                  "text": "=field(metric(slot5Metric), \"unit\")",
+                  "font": {
+                    "family": "=metricUnitFontFamily",
+                    "size": "=metricUnitFontSize",
+                    "weight": "=metricUnitFontWeight"
+                  },
+                  "color": "=unitColor",
+                  "opacity": 0.76,
+                  "minimumScaleFactor": 0.68
+                }
+              ],
+              "alignment": "firstTextBaseline",
+              "spacing": "=3 / S"
+            }
+          ],
+          "if": "=slot5Metric != \"none\""
+        }
+      ]
+    },
+    {
+      "type": "rect",
+      "if": "=dividerEnabled && (showsRep) && ((showsPhase) || (showsRemaining) || (showsZone && !(zoneDisplayMode == \"hrDropAtRest\" && segment.phaseText == \"REST\")) || (showsZone && zoneDisplayMode == \"hrDropAtRest\" && segment.phaseText == \"REST\") || (slot1Metric != \"none\") || (slot2Metric != \"none\") || (slot3Metric != \"none\") || (slot4Metric != \"none\") || (slot5Metric != \"none\"))",
+      "frame": [
+        "=paddingX + contentX + (((showsRep) ? 1 : 0)) * (cellW + dividerOccupied) - dividerPad - dividerLineW",
+        "=paddingY + top + mainH / 2 - barHeight * 0.24",
+        "=dividerLineW",
+        "=barHeight * 0.48"
+      ],
+      "radius": "=dividerLineW / 2",
+      "fill": "=dividerColor",
+      "opacity": "=dividerOpacity"
+    },
+    {
+      "type": "rect",
+      "if": "=dividerEnabled && (showsPhase) && ((showsRemaining) || (showsZone && !(zoneDisplayMode == \"hrDropAtRest\" && segment.phaseText == \"REST\")) || (showsZone && zoneDisplayMode == \"hrDropAtRest\" && segment.phaseText == \"REST\") || (slot1Metric != \"none\") || (slot2Metric != \"none\") || (slot3Metric != \"none\") || (slot4Metric != \"none\") || (slot5Metric != \"none\"))",
+      "frame": [
+        "=paddingX + contentX + (((showsRep) ? 1 : 0) + ((showsPhase) ? 1 : 0)) * (cellW + dividerOccupied) - dividerPad - dividerLineW",
+        "=paddingY + top + mainH / 2 - barHeight * 0.24",
+        "=dividerLineW",
+        "=barHeight * 0.48"
+      ],
+      "radius": "=dividerLineW / 2",
+      "fill": "=dividerColor",
+      "opacity": "=dividerOpacity"
+    },
+    {
+      "type": "rect",
+      "if": "=dividerEnabled && (showsRemaining) && ((showsZone && !(zoneDisplayMode == \"hrDropAtRest\" && segment.phaseText == \"REST\")) || (showsZone && zoneDisplayMode == \"hrDropAtRest\" && segment.phaseText == \"REST\") || (slot1Metric != \"none\") || (slot2Metric != \"none\") || (slot3Metric != \"none\") || (slot4Metric != \"none\") || (slot5Metric != \"none\"))",
+      "frame": [
+        "=paddingX + contentX + (((showsRep) ? 1 : 0) + ((showsPhase) ? 1 : 0) + ((showsRemaining) ? 1 : 0)) * (cellW + dividerOccupied) - dividerPad - dividerLineW",
+        "=paddingY + top + mainH / 2 - barHeight * 0.24",
+        "=dividerLineW",
+        "=barHeight * 0.48"
+      ],
+      "radius": "=dividerLineW / 2",
+      "fill": "=dividerColor",
+      "opacity": "=dividerOpacity"
+    },
+    {
+      "type": "rect",
+      "if": "=dividerEnabled && (showsZone && !(zoneDisplayMode == \"hrDropAtRest\" && segment.phaseText == \"REST\")) && ((showsZone && zoneDisplayMode == \"hrDropAtRest\" && segment.phaseText == \"REST\") || (slot1Metric != \"none\") || (slot2Metric != \"none\") || (slot3Metric != \"none\") || (slot4Metric != \"none\") || (slot5Metric != \"none\"))",
+      "frame": [
+        "=paddingX + contentX + (((showsRep) ? 1 : 0) + ((showsPhase) ? 1 : 0) + ((showsRemaining) ? 1 : 0) + ((showsZone && !(zoneDisplayMode == \"hrDropAtRest\" && segment.phaseText == \"REST\")) ? 1 : 0)) * (cellW + dividerOccupied) - dividerPad - dividerLineW",
+        "=paddingY + top + mainH / 2 - barHeight * 0.24",
+        "=dividerLineW",
+        "=barHeight * 0.48"
+      ],
+      "radius": "=dividerLineW / 2",
+      "fill": "=dividerColor",
+      "opacity": "=dividerOpacity"
+    },
+    {
+      "type": "rect",
+      "if": "=dividerEnabled && (showsZone && zoneDisplayMode == \"hrDropAtRest\" && segment.phaseText == \"REST\") && ((slot1Metric != \"none\") || (slot2Metric != \"none\") || (slot3Metric != \"none\") || (slot4Metric != \"none\") || (slot5Metric != \"none\"))",
+      "frame": [
+        "=paddingX + contentX + (((showsRep) ? 1 : 0) + ((showsPhase) ? 1 : 0) + ((showsRemaining) ? 1 : 0) + ((showsZone && !(zoneDisplayMode == \"hrDropAtRest\" && segment.phaseText == \"REST\")) ? 1 : 0) + ((showsZone && zoneDisplayMode == \"hrDropAtRest\" && segment.phaseText == \"REST\") ? 1 : 0)) * (cellW + dividerOccupied) - dividerPad - dividerLineW",
+        "=paddingY + top + mainH / 2 - barHeight * 0.24",
+        "=dividerLineW",
+        "=barHeight * 0.48"
+      ],
+      "radius": "=dividerLineW / 2",
+      "fill": "=dividerColor",
+      "opacity": "=dividerOpacity"
+    },
+    {
+      "type": "rect",
+      "if": "=dividerEnabled && (slot1Metric != \"none\") && ((slot2Metric != \"none\") || (slot3Metric != \"none\") || (slot4Metric != \"none\") || (slot5Metric != \"none\"))",
+      "frame": [
+        "=paddingX + contentX + (((showsRep) ? 1 : 0) + ((showsPhase) ? 1 : 0) + ((showsRemaining) ? 1 : 0) + ((showsZone && !(zoneDisplayMode == \"hrDropAtRest\" && segment.phaseText == \"REST\")) ? 1 : 0) + ((showsZone && zoneDisplayMode == \"hrDropAtRest\" && segment.phaseText == \"REST\") ? 1 : 0) + ((slot1Metric != \"none\") ? 1 : 0)) * (cellW + dividerOccupied) - dividerPad - dividerLineW",
+        "=paddingY + top + mainH / 2 - barHeight * 0.24",
+        "=dividerLineW",
+        "=barHeight * 0.48"
+      ],
+      "radius": "=dividerLineW / 2",
+      "fill": "=dividerColor",
+      "opacity": "=dividerOpacity"
+    },
+    {
+      "type": "rect",
+      "if": "=dividerEnabled && (slot2Metric != \"none\") && ((slot3Metric != \"none\") || (slot4Metric != \"none\") || (slot5Metric != \"none\"))",
+      "frame": [
+        "=paddingX + contentX + (((showsRep) ? 1 : 0) + ((showsPhase) ? 1 : 0) + ((showsRemaining) ? 1 : 0) + ((showsZone && !(zoneDisplayMode == \"hrDropAtRest\" && segment.phaseText == \"REST\")) ? 1 : 0) + ((showsZone && zoneDisplayMode == \"hrDropAtRest\" && segment.phaseText == \"REST\") ? 1 : 0) + ((slot1Metric != \"none\") ? 1 : 0) + ((slot2Metric != \"none\") ? 1 : 0)) * (cellW + dividerOccupied) - dividerPad - dividerLineW",
+        "=paddingY + top + mainH / 2 - barHeight * 0.24",
+        "=dividerLineW",
+        "=barHeight * 0.48"
+      ],
+      "radius": "=dividerLineW / 2",
+      "fill": "=dividerColor",
+      "opacity": "=dividerOpacity"
+    },
+    {
+      "type": "rect",
+      "if": "=dividerEnabled && (slot3Metric != \"none\") && ((slot4Metric != \"none\") || (slot5Metric != \"none\"))",
+      "frame": [
+        "=paddingX + contentX + (((showsRep) ? 1 : 0) + ((showsPhase) ? 1 : 0) + ((showsRemaining) ? 1 : 0) + ((showsZone && !(zoneDisplayMode == \"hrDropAtRest\" && segment.phaseText == \"REST\")) ? 1 : 0) + ((showsZone && zoneDisplayMode == \"hrDropAtRest\" && segment.phaseText == \"REST\") ? 1 : 0) + ((slot1Metric != \"none\") ? 1 : 0) + ((slot2Metric != \"none\") ? 1 : 0) + ((slot3Metric != \"none\") ? 1 : 0)) * (cellW + dividerOccupied) - dividerPad - dividerLineW",
+        "=paddingY + top + mainH / 2 - barHeight * 0.24",
+        "=dividerLineW",
+        "=barHeight * 0.48"
+      ],
+      "radius": "=dividerLineW / 2",
+      "fill": "=dividerColor",
+      "opacity": "=dividerOpacity"
+    },
+    {
+      "type": "rect",
+      "if": "=dividerEnabled && (slot4Metric != \"none\") && ((slot5Metric != \"none\"))",
+      "frame": [
+        "=paddingX + contentX + (((showsRep) ? 1 : 0) + ((showsPhase) ? 1 : 0) + ((showsRemaining) ? 1 : 0) + ((showsZone && !(zoneDisplayMode == \"hrDropAtRest\" && segment.phaseText == \"REST\")) ? 1 : 0) + ((showsZone && zoneDisplayMode == \"hrDropAtRest\" && segment.phaseText == \"REST\") ? 1 : 0) + ((slot1Metric != \"none\") ? 1 : 0) + ((slot2Metric != \"none\") ? 1 : 0) + ((slot3Metric != \"none\") ? 1 : 0) + ((slot4Metric != \"none\") ? 1 : 0)) * (cellW + dividerOccupied) - dividerPad - dividerLineW",
+        "=paddingY + top + mainH / 2 - barHeight * 0.24",
+        "=dividerLineW",
+        "=barHeight * 0.48"
+      ],
+      "radius": "=dividerLineW / 2",
+      "fill": "=dividerColor",
+      "opacity": "=dividerOpacity"
+    },
+    {
+      "type": "rect",
+      "if": "=bottomBarMode == \"lapProgress\"",
+      "frame": [
+        "=paddingX + contentX",
+        "=paddingY + barY",
+        "=contentW",
+        10
+      ],
+      "radius": "=barCorner",
+      "fill": "=trackColor",
+      "opacity": "=trackOpacity"
+    },
+    {
+      "type": "group",
+      "if": "=bottomBarMode == \"lapProgress\" && laneOn > 0",
+      "frame": [
+        "=paddingX + contentX",
+        "=paddingY + barY",
+        "=max(contentW * laneOn, 10)",
+        10
+      ],
+      "shadow": {
+        "sigma": "=12",
+        "dx": 0,
+        "dy": 0,
+        "color": "=field(segment, \"phaseColor\")",
+        "opacity": "=bottomBarGlowEnabled ? bottomBarGlowIntensity : 0"
+      },
+      "shadowBounds": [
+        "=paddingX + contentX - 20",
+        "=paddingY + barY - 20",
+        "=max(contentW * laneOn, 10) + 40",
+        50
+      ],
+      "children": [
+        {
+          "type": "rect",
+          "frame": [
+            "=paddingX + contentX",
+            "=paddingY + barY",
+            "=max(contentW * laneOn, 10)",
+            10
+          ],
+          "radius": "=min(barCorner, max(contentW * laneOn, 10) / 2)",
+          "fill": "=field(segment, \"phaseColor\")"
+        }
+      ]
+    },
+    {
+      "type": "segmentedBar",
+      "if": "=zoneMode",
+      "frame": [
+        "=paddingX + contentX",
+        "=paddingY + barY",
+        "=contentW",
+        10
+      ],
+      "segments": "=barSegments",
+      "activeIndex": "=barActive",
+      "activeWidthShare": "=activeZoneWidthShare",
+      "activeThicknessScale": "=activeZoneHeightScale",
+      "gap": "=zoneSegmentGap",
+      "radius": "=barCorner",
+      "inactiveOpacity": "=inactiveZoneOpacity",
+      "glow": {
+        "opacity": "=bottomBarGlowEnabled ? bottomBarGlowIntensity : 0",
+        "sigma": "=8"
+      },
+      "border": {
+        "color": "=bottomBarBorderColor",
+        "opacity": "=bottomBarBorderOpacity",
+        "width": "=barBorderW"
+      },
+      "markers": [
+        {
+          "role": "current",
+          "if": "=zoneMarkerEnabled && ((isHRBar && exists(hrZone)) || (!isHRBar && exists(paceZone)))",
+          "index": "=barMarkerIndex",
+          "fraction": "=barMarkerFraction",
+          "text": "=barMarkerText",
+          "color": "=barMarkerColor",
+          "position": "=zoneMarkerPosition",
+          "showsValue": "=zoneMarkerShowsValue ? 1 : 0",
+          "font": {
+            "family": "=metricUnitFontFamily",
+            "size": "=metricUnitFontSize",
+            "weight": "=metricUnitFontWeight"
+          }
+        },
+        {
+          "role": "threshold",
+          "if": "=thresholdZoneMarkerEnabled && ((isHRBar && exists(hrThreshold)) || (!isHRBar && exists(paceThreshold)))",
+          "index": "=thresholdIndex",
+          "fraction": "=thresholdFraction",
+          "text": "T",
+          "color": "=thresholdColor",
+          "font": {
+            "family": "=metricUnitFontFamily",
+            "size": "=metricUnitFontSize",
+            "weight": "=metricUnitFontWeight"
+          }
+        }
+      ]
+    },
+    {
+      "type": "rect",
+      "if": "=bottomBarMode == \"lapProgress\" && barBorderW > 0 && bottomBarBorderOpacity > 0",
+      "frame": [
+        "=paddingX + contentX",
+        "=paddingY + barY",
+        "=contentW",
+        10
+      ],
+      "radius": "=barCorner",
+      "fill": "#00000000",
+      "stroke": "=bottomBarBorderColor",
+      "strokeWidth": "=barBorderW",
+      "opacity": "=bottomBarBorderOpacity"
+    },
+    {
+      "type": "rect",
+      "if": "=borderEnabled",
+      "frame": [
+        0,
+        0,
+        "=barWidth + paddingX * 2",
+        "=totalH + paddingY * 2"
+      ],
+      "radius": "=backgroundRadius",
+      "fill": "#00000000",
+      "stroke": "=borderColor",
+      "strokeWidth": "=max(borderWidth, 0.5 / S)",
+      "opacity": "=borderOpacity"
+    }
+  ]
+}
