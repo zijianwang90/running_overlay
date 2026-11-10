@@ -734,9 +734,6 @@ struct OverlayComponentRunningGauge: Equatable {
 /// current/total distance, axis labels and stats bar; the node owns the track,
 /// marker, labels and appearance, matching the native Distance Timeline module.
 struct OverlayComponentDistanceTimeline: Equatable {
-    /// `minimal`, `dense`, `sport`, `splits`, `glass`, `neon`, `lowerThird` or
-    /// `route`; selects the native preset defaults for any omitted field.
-    var preset: OverlayComponentStringSource?
     /// Value text size in design units (native element `fontSize`).
     var valueFontSize: OverlayComponentNumberSource?
     /// `metric` or `imperial`.
@@ -809,8 +806,6 @@ struct OverlayComponentDistanceTimeline: Equatable {
 /// sample series, smoothing, axis and stats-bar data; the node owns the card,
 /// line, fill, marker and typography, matching the native Elevation Chart.
 struct OverlayComponentElevationChart: Equatable {
-    /// `gradientArea`, `dualArea`, `techGlow`, `minimalWhite` or `bigNumbers`.
-    var preset: OverlayComponentStringSource?
     /// `area` or `lineOnly`.
     var chartStyle: OverlayComponentStringSource?
     var smoothingEnabled: OverlayComponentNumberSource?
@@ -903,16 +898,12 @@ struct OverlayComponentWeatherWidget: Equatable {
     var humidityMetricLabel: OverlayComponentStringSource?
     var windMetricLabel: OverlayComponentStringSource?
     var feelsLikeMetricLabel: OverlayComponentStringSource?
-    var cardBackgroundColor: OverlayComponentColorSource?
     var cardBackgroundOpacity: OverlayComponentNumberSource?
     var cardCornerRadius: OverlayComponentNumberSource?
     var dividerEnabled: OverlayComponentNumberSource?
     var dividerColor: OverlayComponentColorSource?
     var dividerThickness: OverlayComponentNumberSource?
     var dividerOpacity: OverlayComponentNumberSource?
-    /// `presetDefault`, `blueGlass`, `lightGlass`, `graphite` or
-    /// `minimalWhite`.
-    var palette: OverlayComponentStringSource?
     var iconSize: OverlayComponentNumberSource?
     var slotBackgroundColor: OverlayComponentColorSource?
     var slotBackgroundOpacity: OverlayComponentNumberSource?

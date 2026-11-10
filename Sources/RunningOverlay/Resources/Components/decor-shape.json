@@ -2,28 +2,162 @@
   "spec": "ros.component/0.1",
   "id": "studio.decor-shape",
   "version": "1.0.0",
-  "name": { "en": "Shape", "zh-Hans": "形状" },
-  "description": { "en": "A solid shape with editable dimensions, fill and border.", "zh-Hans": "可编辑尺寸、填充和边框的纯色形状。" },
+  "name": {
+    "en": "Shape",
+    "zh-Hans": "形状"
+  },
+  "description": {
+    "en": "A solid shape with editable dimensions, fill and border.",
+    "zh-Hans": "可编辑尺寸、填充和边框的纯色形状。"
+  },
   "license": "MIT",
   "size": "content",
   "params": [
-    { "id": "shape", "type": "enum", "label": "Shape", "default": "rectangle", "options": [
-      { "value": "rectangle", "label": "Rectangle" }, { "value": "roundedRectangle", "label": "Rounded Rectangle" },
-      { "value": "circle", "label": "Circle" }, { "value": "capsule", "label": "Capsule" }
-    ] },
-    { "id": "shapeWidth", "type": "number", "label": "Width", "section": "Shape", "min": 8, "max": 2048, "step": 1, "default": 240 },
-    { "id": "shapeHeight", "type": "number", "label": "Height", "section": "Shape", "min": 8, "max": 2048, "step": 1, "default": 80 },
-    { "id": "cornerRadius", "type": "number", "label": "Corner Radius", "section": "Shape", "when": "=shape == \"roundedRectangle\"", "min": 0, "max": 256, "step": 1, "default": 12 },
-    { "id": "fill", "type": "color", "label": "Fill", "section": "Appearance", "default": "#FFFFFFFF" },
-    { "id": "borderEnabled", "type": "bool", "label": "Border", "section": "Appearance", "default": false },
-    { "id": "borderColor", "type": "color", "label": "Border Color", "section": "Appearance", "when": "=borderEnabled", "default": "#FFFFFFFF" },
-    { "id": "borderWidth", "type": "number", "label": "Border Width", "section": "Appearance", "when": "=borderEnabled", "min": 0, "max": 32, "step": 0.5, "default": 1 }
+    {
+      "id": "shape",
+      "type": "enum",
+      "label": "Shape",
+      "default": "rectangle",
+      "options": [
+        {
+          "value": "rectangle",
+          "label": "Rectangle"
+        },
+        {
+          "value": "roundedRectangle",
+          "label": "Rounded Rectangle"
+        },
+        {
+          "value": "circle",
+          "label": "Circle"
+        },
+        {
+          "value": "capsule",
+          "label": "Capsule"
+        }
+      ]
+    },
+    {
+      "id": "shapeWidth",
+      "type": "number",
+      "label": "Width",
+      "section": "Shape",
+      "min": 8,
+      "max": 2048,
+      "step": 1,
+      "default": 240
+    },
+    {
+      "id": "shapeHeight",
+      "type": "number",
+      "label": "Height",
+      "section": "Shape",
+      "min": 8,
+      "max": 2048,
+      "step": 1,
+      "default": 80
+    },
+    {
+      "id": "cornerRadius",
+      "type": "number",
+      "label": "Corner Radius",
+      "section": "Shape",
+      "when": "=shape == \"roundedRectangle\"",
+      "min": 0,
+      "max": 256,
+      "step": 1,
+      "default": 12
+    },
+    {
+      "id": "fill",
+      "type": "color",
+      "label": "Fill",
+      "section": "Appearance",
+      "default": "#FFFFFFFF"
+    },
+    {
+      "id": "borderEnabled",
+      "type": "bool",
+      "label": {
+        "en": "Border",
+        "zh-Hans": "边框"
+      },
+      "section": "Appearance",
+      "default": false
+    },
+    {
+      "id": "borderColor",
+      "type": "color",
+      "label": {
+        "en": "Border Color",
+        "zh-Hans": "边框颜色"
+      },
+      "section": "Appearance",
+      "when": "=borderEnabled",
+      "default": "#FFFFFFFF"
+    },
+    {
+      "id": "borderWidth",
+      "type": "number",
+      "label": {
+        "en": "Border Width",
+        "zh-Hans": "边框粗细"
+      },
+      "section": "Appearance",
+      "when": "=borderEnabled",
+      "min": 0,
+      "max": 32,
+      "step": 0.5,
+      "default": 1
+    }
   ],
   "nodes": [
-    { "type": "group", "frame": [0, 0, "=shape == \"circle\" ? min(shapeWidth, shapeHeight) : shapeWidth", "=shape == \"circle\" ? min(shapeWidth, shapeHeight) : shapeHeight"], "children": [
-      { "type": "rect", "if": "=shape != \"circle\"", "frame": [0, 0, "=shapeWidth", "=shapeHeight"], "fill": "=fill", "radius": "=shape == \"roundedRectangle\" ? cornerRadius : (shape == \"capsule\" ? min(shapeWidth, shapeHeight) / 2 : 0)" },
-      { "type": "circle", "if": "=shape == \"circle\"", "center": ["=min(shapeWidth, shapeHeight) / 2", "=min(shapeWidth, shapeHeight) / 2"], "radius": "=min(shapeWidth, shapeHeight) / 2", "fill": "=fill" },
-      { "type": "rect", "if": "=borderEnabled", "frame": [0, 0, "=shape == \"circle\" ? min(shapeWidth, shapeHeight) : shapeWidth", "=shape == \"circle\" ? min(shapeWidth, shapeHeight) : shapeHeight"], "fill": "transparent", "radius": "=shape == \"rectangle\" ? 0 : (shape == \"roundedRectangle\" ? cornerRadius : min(shapeWidth, shapeHeight) / 2)", "stroke": "=borderColor", "strokeWidth": "=borderWidth" }
-    ] }
+    {
+      "type": "group",
+      "frame": [
+        0,
+        0,
+        "=shape == \"circle\" ? min(shapeWidth, shapeHeight) : shapeWidth",
+        "=shape == \"circle\" ? min(shapeWidth, shapeHeight) : shapeHeight"
+      ],
+      "children": [
+        {
+          "type": "rect",
+          "if": "=shape != \"circle\"",
+          "frame": [
+            0,
+            0,
+            "=shapeWidth",
+            "=shapeHeight"
+          ],
+          "fill": "=fill",
+          "radius": "=shape == \"roundedRectangle\" ? cornerRadius : (shape == \"capsule\" ? min(shapeWidth, shapeHeight) / 2 : 0)"
+        },
+        {
+          "type": "circle",
+          "if": "=shape == \"circle\"",
+          "center": [
+            "=min(shapeWidth, shapeHeight) / 2",
+            "=min(shapeWidth, shapeHeight) / 2"
+          ],
+          "radius": "=min(shapeWidth, shapeHeight) / 2",
+          "fill": "=fill"
+        },
+        {
+          "type": "rect",
+          "if": "=borderEnabled",
+          "frame": [
+            0,
+            0,
+            "=shape == \"circle\" ? min(shapeWidth, shapeHeight) : shapeWidth",
+            "=shape == \"circle\" ? min(shapeWidth, shapeHeight) : shapeHeight"
+          ],
+          "fill": "transparent",
+          "radius": "=shape == \"rectangle\" ? 0 : (shape == \"roundedRectangle\" ? cornerRadius : min(shapeWidth, shapeHeight) / 2)",
+          "stroke": "=borderColor",
+          "strokeWidth": "=borderWidth"
+        }
+      ]
+    }
   ]
 }

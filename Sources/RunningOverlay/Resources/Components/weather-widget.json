@@ -457,28 +457,15 @@
       "maxLength": 24
     },
     {
-      "id": "cardBackgroundColor",
-      "type": "color",
-      "label": {
-        "en": "Card Color",
-        "zh-Hans": "Card Color"
-      },
-      "section": {
-        "en": "Card",
-        "zh-Hans": "Card"
-      },
-      "default": "#4D9EFF"
-    },
-    {
-      "id": "cardBackgroundOpacity",
+      "id": "backgroundOpacity",
       "type": "number",
       "label": {
-        "en": "Card Opacity",
-        "zh-Hans": "Card Opacity"
+        "en": "Background Opacity",
+        "zh-Hans": "背景不透明度"
       },
       "section": {
-        "en": "Card",
-        "zh-Hans": "Card"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 0.92,
       "min": 0,
@@ -486,15 +473,15 @@
       "step": 0.01
     },
     {
-      "id": "cardCornerRadius",
+      "id": "backgroundRadius",
       "type": "number",
       "label": {
         "en": "Corner Radius",
-        "zh-Hans": "Corner Radius"
+        "zh-Hans": "圆角"
       },
       "section": {
-        "en": "Card",
-        "zh-Hans": "Card"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 10,
       "min": 0,
@@ -505,12 +492,12 @@
       "id": "dividerEnabled",
       "type": "bool",
       "label": {
-        "en": "Divider",
-        "zh-Hans": "Divider"
+        "en": "Dividers",
+        "zh-Hans": "分隔线"
       },
       "section": {
-        "en": "Card",
-        "zh-Hans": "Card"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": true
     },
@@ -519,11 +506,11 @@
       "type": "color",
       "label": {
         "en": "Divider Color",
-        "zh-Hans": "Divider Color"
+        "zh-Hans": "分隔线颜色"
       },
       "section": {
-        "en": "Card",
-        "zh-Hans": "Card"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": "#FFFFFF"
     },
@@ -531,12 +518,12 @@
       "id": "dividerThickness",
       "type": "number",
       "label": {
-        "en": "Divider Width",
-        "zh-Hans": "Divider Width"
+        "en": "Divider Thickness",
+        "zh-Hans": "分隔线粗细"
       },
       "section": {
-        "en": "Card",
-        "zh-Hans": "Card"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 1,
       "min": 0,
@@ -548,47 +535,16 @@
       "type": "number",
       "label": {
         "en": "Divider Opacity",
-        "zh-Hans": "Divider Opacity"
+        "zh-Hans": "分隔线不透明度"
       },
       "section": {
-        "en": "Card",
-        "zh-Hans": "Card"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 0.34,
       "min": 0,
       "max": 1,
       "step": 0.01
-    },
-    {
-      "id": "palette",
-      "type": "enum",
-      "label": {
-        "en": "Palette",
-        "zh-Hans": "Palette"
-      },
-      "section": {
-        "en": "Card",
-        "zh-Hans": "Card"
-      },
-      "default": "blueGlass",
-      "options": [
-        {
-          "value": "blueGlass",
-          "label": "Blue Glass"
-        },
-        {
-          "value": "lightGlass",
-          "label": "Light Glass"
-        },
-        {
-          "value": "graphite",
-          "label": "Graphite"
-        },
-        {
-          "value": "minimalWhite",
-          "label": "Minimal White"
-        }
-      ]
     },
     {
       "id": "iconSize",
@@ -598,8 +554,8 @@
         "zh-Hans": "Icon Size"
       },
       "section": {
-        "en": "Card",
-        "zh-Hans": "Card"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 54,
       "min": 8,
@@ -642,14 +598,11 @@
         "en": "Slot Spacing",
         "zh-Hans": "Slot Spacing"
       },
-      "section": {
-        "en": "Slots",
-        "zh-Hans": "Slots"
-      },
       "default": 10,
       "min": 0,
       "max": 40,
-      "step": 0.5
+      "step": 0.5,
+      "advanced": true
     },
     {
       "id": "fontFamily",
@@ -658,12 +611,9 @@
         "en": "Font Family",
         "zh-Hans": "Font Family"
       },
-      "section": {
-        "en": "Text",
-        "zh-Hans": "Text"
-      },
       "default": "",
-      "maxLength": 128
+      "maxLength": 128,
+      "advanced": true
     },
     {
       "id": "locationFontSize",
@@ -672,14 +622,11 @@
         "en": "Size",
         "zh-Hans": "Size"
       },
-      "section": {
-        "en": "Location Text",
-        "zh-Hans": "Location Text"
-      },
       "default": 19,
       "min": 6,
       "max": 300,
-      "step": 1
+      "step": 1,
+      "advanced": true
     },
     {
       "id": "locationFontWeight",
@@ -687,10 +634,6 @@
       "label": {
         "en": "Weight",
         "zh-Hans": "Weight"
-      },
-      "section": {
-        "en": "Location Text",
-        "zh-Hans": "Location Text"
       },
       "default": "bold",
       "options": [
@@ -710,7 +653,8 @@
           "value": "bold",
           "label": "Bold"
         }
-      ]
+      ],
+      "advanced": true
     },
     {
       "id": "locationColor",
@@ -732,14 +676,11 @@
         "en": "Size",
         "zh-Hans": "Size"
       },
-      "section": {
-        "en": "Condition Text",
-        "zh-Hans": "Condition Text"
-      },
       "default": 26,
       "min": 6,
       "max": 300,
-      "step": 1
+      "step": 1,
+      "advanced": true
     },
     {
       "id": "conditionFontWeight",
@@ -747,10 +688,6 @@
       "label": {
         "en": "Weight",
         "zh-Hans": "Weight"
-      },
-      "section": {
-        "en": "Condition Text",
-        "zh-Hans": "Condition Text"
       },
       "default": "semibold",
       "options": [
@@ -770,7 +707,8 @@
           "value": "bold",
           "label": "Bold"
         }
-      ]
+      ],
+      "advanced": true
     },
     {
       "id": "conditionColor",
@@ -792,14 +730,11 @@
         "en": "Size",
         "zh-Hans": "Size"
       },
-      "section": {
-        "en": "Temperature Text",
-        "zh-Hans": "Temperature Text"
-      },
       "default": 33,
       "min": 6,
       "max": 300,
-      "step": 1
+      "step": 1,
+      "advanced": true
     },
     {
       "id": "temperatureFontWeight",
@@ -807,10 +742,6 @@
       "label": {
         "en": "Weight",
         "zh-Hans": "Weight"
-      },
-      "section": {
-        "en": "Temperature Text",
-        "zh-Hans": "Temperature Text"
       },
       "default": "bold",
       "options": [
@@ -830,7 +761,8 @@
           "value": "bold",
           "label": "Bold"
         }
-      ]
+      ],
+      "advanced": true
     },
     {
       "id": "temperatureColor",
@@ -852,14 +784,11 @@
         "en": "Size",
         "zh-Hans": "Size"
       },
-      "section": {
-        "en": "Slot Title Text",
-        "zh-Hans": "Slot Title Text"
-      },
       "default": 15,
       "min": 6,
       "max": 300,
-      "step": 1
+      "step": 1,
+      "advanced": true
     },
     {
       "id": "slotTitleFontWeight",
@@ -867,10 +796,6 @@
       "label": {
         "en": "Weight",
         "zh-Hans": "Weight"
-      },
-      "section": {
-        "en": "Slot Title Text",
-        "zh-Hans": "Slot Title Text"
       },
       "default": "semibold",
       "options": [
@@ -890,7 +815,8 @@
           "value": "bold",
           "label": "Bold"
         }
-      ]
+      ],
+      "advanced": true
     },
     {
       "id": "slotTitleColor",
@@ -912,14 +838,11 @@
         "en": "Size",
         "zh-Hans": "Size"
       },
-      "section": {
-        "en": "Slot Label Text",
-        "zh-Hans": "Slot Label Text"
-      },
       "default": 15,
       "min": 6,
       "max": 300,
-      "step": 1
+      "step": 1,
+      "advanced": true
     },
     {
       "id": "slotLabelFontWeight",
@@ -927,10 +850,6 @@
       "label": {
         "en": "Weight",
         "zh-Hans": "Weight"
-      },
-      "section": {
-        "en": "Slot Label Text",
-        "zh-Hans": "Slot Label Text"
       },
       "default": "semibold",
       "options": [
@@ -950,7 +869,8 @@
           "value": "bold",
           "label": "Bold"
         }
-      ]
+      ],
+      "advanced": true
     },
     {
       "id": "slotLabelColor",
@@ -999,14 +919,12 @@
       "humidityMetricLabel": "=humidityMetricLabel",
       "windMetricLabel": "=windMetricLabel",
       "feelsLikeMetricLabel": "=feelsLikeMetricLabel",
-      "cardBackgroundColor": "=cardBackgroundColor",
-      "cardBackgroundOpacity": "=cardBackgroundOpacity",
-      "cardCornerRadius": "=cardCornerRadius",
+      "cardBackgroundOpacity": "=backgroundOpacity",
+      "cardCornerRadius": "=backgroundRadius",
       "dividerEnabled": "=dividerEnabled ? 1 : 0",
       "dividerColor": "=dividerColor",
       "dividerThickness": "=dividerThickness",
       "dividerOpacity": "=dividerOpacity",
-      "palette": "=palette",
       "iconSize": "=iconSize",
       "slotBackgroundColor": "=slotBackgroundColor",
       "slotBackgroundOpacity": "=slotBackgroundOpacity",

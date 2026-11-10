@@ -106,7 +106,12 @@ or rendering errors return a nonzero exit status.
 3. Declare editable values in `params`: number, bool, color, enum, string,
    font or metric. Provide defaults and labels; use sections, descriptions,
    `advanced` and `when` for larger Inspectors. Node fields reference parameter
-   IDs directly, for example `"color": "=accent"`.
+   IDs directly, for example `"color": "=accent"`. Keep the default Inspector
+   semantic: expose metric, unit and text choices. Omit positional, alignment,
+   spacing and per-role typography controls, or mark them `advanced` and drop
+   their `section`, because a parameter with a section never renders under
+   Advanced. Do not add preset or style selectors; ship an alternative look as
+   a separate component.
 4. Read data through bindings: `signal` for a scalar/record, `series` for a
    sampled window, `list` for laps/intervals. Use `metric("pace").value` and
    `.unit` for host formatting; use raw `activity.pace` when doing arithmetic.
@@ -154,7 +159,7 @@ traces, credentials, downloads or API calls.
 | [Metric Card](examples/metric-card.rocomponent.json) | Host formatting, content sizing, stacked text | Pace and a longer title |
 | [Heart Rate Pill](examples/hr-pill.rocomponent.json) | Scalar, zone fallback, a recent series | Accent, radius, trend visibility |
 | [Lap Splits](examples/lap-splits.rocomponent.json) | List binding, bounded repeat, row offsets | Title and visible row count |
-| [Weather Card](examples/weather-card.rocomponent.json) | Host-drawn `weatherWidget` capability node with a data-source selector | Preset, unit, palette and metric slots |
+| [Weather Card](examples/weather-card.rocomponent.json) | Host-drawn `weatherWidget` capability node with a data-source selector | Unit, card opacity and visibility toggles |
 
 The larger bundled [Numeric component](../../Sources/RunningOverlay/Resources/Components/numeric.json)
 shows production parameter sections, unit families, conditional controls and

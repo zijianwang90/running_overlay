@@ -370,10 +370,12 @@
       "id": "dividerEnabled",
       "type": "bool",
       "label": {
-        "en": "Dividers"
+        "en": "Dividers",
+        "zh-Hans": "分隔线"
       },
       "section": {
-        "en": "Divider"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": true
     },
@@ -381,10 +383,12 @@
       "id": "dividerOpacity",
       "type": "number",
       "label": {
-        "en": "Divider Opacity"
+        "en": "Divider Opacity",
+        "zh-Hans": "分隔线不透明度"
       },
       "section": {
-        "en": "Divider"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 0.18,
       "min": 0,
@@ -392,13 +396,15 @@
       "step": 0.01
     },
     {
-      "id": "dividerWidth",
+      "id": "dividerThickness",
       "type": "number",
       "label": {
-        "en": "Divider Width"
+        "en": "Divider Thickness",
+        "zh-Hans": "分隔线粗细"
       },
       "section": {
-        "en": "Divider"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 1,
       "min": 0,
@@ -443,11 +449,9 @@
       "label": {
         "en": "Summary Label Text Font"
       },
-      "section": {
-        "en": "Text"
-      },
       "default": "Menlo",
-      "maxLength": 128
+      "maxLength": 128,
+      "advanced": true
     },
     {
       "id": "componentLabelFontSize",
@@ -455,22 +459,17 @@
       "label": {
         "en": "Summary Label Text Size"
       },
-      "section": {
-        "en": "Text"
-      },
       "default": 18.0,
       "min": 6,
       "max": 300,
-      "step": 1
+      "step": 1,
+      "advanced": true
     },
     {
       "id": "componentLabelFontWeight",
       "type": "enum",
       "label": {
         "en": "Summary Label Text Weight"
-      },
-      "section": {
-        "en": "Text"
       },
       "default": "bold",
       "options": [
@@ -510,7 +509,8 @@
           "value": "black",
           "label": "Black"
         }
-      ]
+      ],
+      "advanced": true
     },
     {
       "id": "componentLabelColorMode",
@@ -550,11 +550,9 @@
       "label": {
         "en": "Primary Value Font"
       },
-      "section": {
-        "en": "Text"
-      },
       "default": "Menlo",
-      "maxLength": 128
+      "maxLength": 128,
+      "advanced": true
     },
     {
       "id": "primaryValueFontSize",
@@ -562,22 +560,17 @@
       "label": {
         "en": "Primary Value Size"
       },
-      "section": {
-        "en": "Text"
-      },
       "default": 88.0,
       "min": 6,
       "max": 300,
-      "step": 1
+      "step": 1,
+      "advanced": true
     },
     {
       "id": "primaryValueFontWeight",
       "type": "enum",
       "label": {
         "en": "Primary Value Weight"
-      },
-      "section": {
-        "en": "Text"
       },
       "default": "bold",
       "options": [
@@ -617,7 +610,8 @@
           "value": "black",
           "label": "Black"
         }
-      ]
+      ],
+      "advanced": true
     },
     {
       "id": "primaryValueColorMode",
@@ -657,11 +651,9 @@
       "label": {
         "en": "Primary Label Font"
       },
-      "section": {
-        "en": "Text"
-      },
       "default": "Menlo",
-      "maxLength": 128
+      "maxLength": 128,
+      "advanced": true
     },
     {
       "id": "primaryLabelFontSize",
@@ -669,22 +661,17 @@
       "label": {
         "en": "Primary Label Size"
       },
-      "section": {
-        "en": "Text"
-      },
       "default": 20.0,
       "min": 6,
       "max": 300,
-      "step": 1
+      "step": 1,
+      "advanced": true
     },
     {
       "id": "primaryLabelFontWeight",
       "type": "enum",
       "label": {
         "en": "Primary Label Weight"
-      },
-      "section": {
-        "en": "Text"
       },
       "default": "bold",
       "options": [
@@ -724,7 +711,8 @@
           "value": "black",
           "label": "Black"
         }
-      ]
+      ],
+      "advanced": true
     },
     {
       "id": "primaryLabelColorMode",
@@ -764,11 +752,9 @@
       "label": {
         "en": "Column Value Font"
       },
-      "section": {
-        "en": "Text"
-      },
       "default": "Menlo",
-      "maxLength": 128
+      "maxLength": 128,
+      "advanced": true
     },
     {
       "id": "secondaryValueFontSize",
@@ -776,22 +762,17 @@
       "label": {
         "en": "Column Value Size"
       },
-      "section": {
-        "en": "Text"
-      },
       "default": 32.0,
       "min": 6,
       "max": 300,
-      "step": 1
+      "step": 1,
+      "advanced": true
     },
     {
       "id": "secondaryValueFontWeight",
       "type": "enum",
       "label": {
         "en": "Column Value Weight"
-      },
-      "section": {
-        "en": "Text"
       },
       "default": "bold",
       "options": [
@@ -831,7 +812,8 @@
           "value": "black",
           "label": "Black"
         }
-      ]
+      ],
+      "advanced": true
     },
     {
       "id": "secondaryValueColorMode",
@@ -871,11 +853,9 @@
       "label": {
         "en": "Column Label Font"
       },
-      "section": {
-        "en": "Text"
-      },
       "default": "Menlo",
-      "maxLength": 128
+      "maxLength": 128,
+      "advanced": true
     },
     {
       "id": "secondaryLabelFontSize",
@@ -883,22 +863,17 @@
       "label": {
         "en": "Column Label Size"
       },
-      "section": {
-        "en": "Text"
-      },
       "default": 14.0,
       "min": 6,
       "max": 300,
-      "step": 1
+      "step": 1,
+      "advanced": true
     },
     {
       "id": "secondaryLabelFontWeight",
       "type": "enum",
       "label": {
         "en": "Column Label Weight"
-      },
-      "section": {
-        "en": "Text"
       },
       "default": "bold",
       "options": [
@@ -938,7 +913,8 @@
           "value": "black",
           "label": "Black"
         }
-      ]
+      ],
+      "advanced": true
     },
     {
       "id": "secondaryLabelColorMode",
@@ -987,10 +963,12 @@
       "id": "backgroundEnabled",
       "type": "bool",
       "label": {
-        "en": "Background"
+        "en": "Background",
+        "zh-Hans": "背景"
       },
       "section": {
-        "en": "Background"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": true
     },
@@ -998,10 +976,12 @@
       "id": "backgroundColor",
       "type": "color",
       "label": {
-        "en": "Background Color"
+        "en": "Background Color",
+        "zh-Hans": "背景颜色"
       },
       "section": {
-        "en": "Background"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": "#0A121F"
     },
@@ -1009,10 +989,12 @@
       "id": "backgroundOpacity",
       "type": "number",
       "label": {
-        "en": "Background Opacity"
+        "en": "Background Opacity",
+        "zh-Hans": "背景不透明度"
       },
       "section": {
-        "en": "Background"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 0.22,
       "min": 0,
@@ -1023,10 +1005,12 @@
       "id": "backgroundRadius",
       "type": "number",
       "label": {
-        "en": "Corner Radius"
+        "en": "Corner Radius",
+        "zh-Hans": "圆角"
       },
       "section": {
-        "en": "Background"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 6,
       "min": 0,
@@ -1034,41 +1018,41 @@
       "step": 0.5
     },
     {
-      "id": "backgroundPaddingX",
+      "id": "paddingX",
       "type": "number",
       "label": {
-        "en": "Padding X"
-      },
-      "section": {
-        "en": "Background"
+        "en": "Horizontal Padding",
+        "zh-Hans": "水平内边距"
       },
       "default": 10,
       "min": 0,
       "max": 200,
-      "step": 1
+      "step": 1,
+      "advanced": true
     },
     {
-      "id": "backgroundPaddingY",
+      "id": "paddingY",
       "type": "number",
       "label": {
-        "en": "Padding Y"
-      },
-      "section": {
-        "en": "Background"
+        "en": "Vertical Padding",
+        "zh-Hans": "垂直内边距"
       },
       "default": 6,
       "min": 0,
       "max": 200,
-      "step": 1
+      "step": 1,
+      "advanced": true
     },
     {
       "id": "borderEnabled",
       "type": "bool",
       "label": {
-        "en": "Border"
+        "en": "Border",
+        "zh-Hans": "边框"
       },
       "section": {
-        "en": "Border"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": false
     },
@@ -1076,10 +1060,12 @@
       "id": "borderOpacity",
       "type": "number",
       "label": {
-        "en": "Border Opacity"
+        "en": "Border Opacity",
+        "zh-Hans": "边框不透明度"
       },
       "section": {
-        "en": "Border"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 0.22,
       "min": 0,
@@ -1090,10 +1076,12 @@
       "id": "borderWidth",
       "type": "number",
       "label": {
-        "en": "Border Width"
+        "en": "Border Width",
+        "zh-Hans": "边框粗细"
       },
       "section": {
-        "en": "Border"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 1,
       "min": 0.5,
@@ -1164,10 +1152,10 @@
         {
           "type": "stack",
           "frame": [
-            "=backgroundPaddingX",
-            "=backgroundPaddingY",
-            "=(summaryWidth - 2 * backgroundPaddingX)",
-            "=summaryHeight - 2 * backgroundPaddingY"
+            "=paddingX",
+            "=paddingY",
+            "=(summaryWidth - 2 * paddingX)",
+            "=summaryHeight - 2 * paddingY"
           ],
           "direction": "vertical",
           "spacing": 0,
@@ -1184,7 +1172,7 @@
               },
               "color": "=componentLabelColorMode == \"followGroupColor\" ? (accentColorMode == \"followGroupColor\" ? work.groupColor : accentColor) : componentLabelCustomColor",
               "align": "center",
-              "maxWidth": "=(summaryWidth - 2 * backgroundPaddingX)"
+              "maxWidth": "=(summaryWidth - 2 * paddingX)"
             },
             {
               "type": "spacer",
@@ -1196,7 +1184,7 @@
             },
             {
               "type": "textRows",
-              "maxWidth": "=(summaryWidth - 2 * backgroundPaddingX)",
+              "maxWidth": "=(summaryWidth - 2 * paddingX)",
               "spacing": 0,
               "rows": [
                 {
@@ -1246,7 +1234,7 @@
               },
               "color": "=primaryLabelColorMode == \"followGroupColor\" ? (accentColorMode == \"followGroupColor\" ? work.groupColor : accentColor) : primaryLabelCustomColor",
               "align": "center",
-              "maxWidth": "=(summaryWidth - 2 * backgroundPaddingX)"
+              "maxWidth": "=(summaryWidth - 2 * paddingX)"
             },
             {
               "type": "spacer",
@@ -1255,9 +1243,9 @@
             {
               "type": "columns",
               "if": "=slot1Visible || slot2Visible || slot3Visible",
-              "width": "=(summaryWidth - 2 * backgroundPaddingX)",
+              "width": "=(summaryWidth - 2 * paddingX)",
               "divider": {
-                "width": "=dividerEnabled ? max(dividerWidth, 0.5) / signal(\"host.scale\") : 0",
+                "width": "=dividerEnabled ? max(dividerThickness, 0.5) / signal(\"host.scale\") : 0",
                 "color": "#FFFFFF",
                 "opacity": "=dividerOpacity",
                 "height": "=dividerEnabled ? summaryHeight * 0.26 : 0"
@@ -1265,7 +1253,7 @@
               "children": [
                 {
                   "type": "textRows",
-                  "maxWidth": "=((summaryWidth - 2 * backgroundPaddingX) / 3 - 16 / signal(\"host.scale\"))",
+                  "maxWidth": "=((summaryWidth - 2 * paddingX) / 3 - 16 / signal(\"host.scale\"))",
                   "spacing": "=4 / signal(\"host.scale\")",
                   "rows": [
                     {
@@ -1319,7 +1307,7 @@
                 },
                 {
                   "type": "textRows",
-                  "maxWidth": "=((summaryWidth - 2 * backgroundPaddingX) / 3 - 16 / signal(\"host.scale\"))",
+                  "maxWidth": "=((summaryWidth - 2 * paddingX) / 3 - 16 / signal(\"host.scale\"))",
                   "spacing": "=4 / signal(\"host.scale\")",
                   "rows": [
                     {
@@ -1373,7 +1361,7 @@
                 },
                 {
                   "type": "textRows",
-                  "maxWidth": "=((summaryWidth - 2 * backgroundPaddingX) / 3 - 16 / signal(\"host.scale\"))",
+                  "maxWidth": "=((summaryWidth - 2 * paddingX) / 3 - 16 / signal(\"host.scale\"))",
                   "spacing": "=4 / signal(\"host.scale\")",
                   "rows": [
                     {

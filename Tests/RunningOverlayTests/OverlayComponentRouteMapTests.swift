@@ -98,7 +98,7 @@ struct OverlayComponentRouteMapParityTests {
         [
             "shape": .string(style.routeMapShape.rawValue),
             "backgroundStyle": .string(style.routeMapBackgroundStyle.rawValue),
-            "cornerRadius": .number(style.routeMapCornerRadius),
+            "backgroundRadius": .number(style.routeMapCornerRadius),
             "backgroundOpacity": .number(style.backgroundOpacity),
             "startMarkerStyle": .string(style.routeMapStartMarkerStyle.rawValue),
             "endMarkerStyle": .string(style.routeMapEndMarkerStyle.rawValue),

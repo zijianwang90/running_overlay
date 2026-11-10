@@ -3,7 +3,7 @@
   "elements" : [
     {
       "component" : {
-        "digest" : "sha256:139193d84c61b234563931df92820e62774fcadb812d44fa15257ab22a94c0d2",
+        "digest" : "sha256:14789374c73b4435d4c58288a16e2dd5aea63189f128d391c4e2f7974dec2819",
         "id" : "studio.numeric",
         "source" : "bundled",
         "version" : "1.0.0"
@@ -1303,7 +1303,7 @@
     },
     {
       "component" : {
-        "digest" : "sha256:139193d84c61b234563931df92820e62774fcadb812d44fa15257ab22a94c0d2",
+        "digest" : "sha256:14789374c73b4435d4c58288a16e2dd5aea63189f128d391c4e2f7974dec2819",
         "id" : "studio.numeric",
         "source" : "bundled",
         "version" : "1.0.0"
@@ -2603,7 +2603,7 @@
     },
     {
       "component" : {
-        "digest" : "sha256:139193d84c61b234563931df92820e62774fcadb812d44fa15257ab22a94c0d2",
+        "digest" : "sha256:14789374c73b4435d4c58288a16e2dd5aea63189f128d391c4e2f7974dec2819",
         "id" : "studio.numeric",
         "source" : "bundled",
         "version" : "1.0.0"
@@ -3903,7 +3903,7 @@
     },
     {
       "component" : {
-        "digest" : "sha256:4702e69c4d10889b6f2595a7d2acd9e473f0682e19fb779cabec026396dc7604",
+        "digest" : "sha256:5903dc2b2e98b6d2239a21c8c54356d826439affbaa0f16353518e424009f4cb",
         "id" : "studio.route-map",
         "source" : "bundled",
         "version" : "1.0.0"
@@ -3913,13 +3913,13 @@
       "opacity" : 1,
       "params" : {
         "backgroundOpacity" : 0.0,
+        "backgroundRadius" : 12.0,
         "backgroundStyle" : "dark",
         "borderColor" : "#FFFFFF",
         "borderEnabled" : false,
         "borderOpacity" : 0.22,
         "borderWidth" : 1.0,
         "colorMode" : "solid",
-        "cornerRadius" : 12.0,
         "edgeFade" : "solid",
         "endMarkerColor" : "#FFFFFF",
         "endMarkerStyle" : "hidden",
@@ -5195,7 +5195,7 @@
     },
     {
       "component" : {
-        "digest" : "sha256:43d51e3022699150d16d0a6feaa426561a4af30a9017cd79cf5cdd5535b18a88",
+        "digest" : "sha256:05c82ff7b1ce251685a27e494b7bcd7bf942243fe3397f690e0a5b1caa3d5b53",
         "id" : "studio.distance-timeline",
         "source" : "bundled",
         "version" : "1.0.0"
@@ -5215,11 +5215,11 @@
         "backgroundColor" : "#000000",
         "backgroundEnabled" : false,
         "backgroundOpacity" : 0.0,
+        "backgroundRadius" : 9.0,
         "borderColor" : "#FFFFFF",
         "borderEnabled" : false,
         "borderOpacity" : 0.18,
         "borderWidth" : 1.0,
-        "cornerRadius" : 9.0,
         "currentMarkerColor" : "#40D161",
         "currentMarkerEnabled" : true,
         "currentMarkerSizeMultiplier" : 1.0,
@@ -5248,7 +5248,6 @@
         "midpointAxisLabelOffset" : 14.12300145348837,
         "paddingX" : 14.0,
         "paddingY" : 10.0,
-        "preset" : "minimal",
         "showAxisLabels" : true,
         "showDistancePoints" : true,
         "showLabel" : false,
@@ -6515,7 +6514,7 @@
     },
     {
       "component" : {
-        "digest" : "sha256:139193d84c61b234563931df92820e62774fcadb812d44fa15257ab22a94c0d2",
+        "digest" : "sha256:14789374c73b4435d4c58288a16e2dd5aea63189f128d391c4e2f7974dec2819",
         "id" : "studio.numeric",
         "source" : "bundled",
         "version" : "1.0.0"
@@ -7816,7 +7815,7 @@
     },
     {
       "component" : {
-        "digest" : "sha256:139193d84c61b234563931df92820e62774fcadb812d44fa15257ab22a94c0d2",
+        "digest" : "sha256:14789374c73b4435d4c58288a16e2dd5aea63189f128d391c4e2f7974dec2819",
         "id" : "studio.numeric",
         "source" : "bundled",
         "version" : "1.0.0"
@@ -9117,7 +9116,7 @@
     },
     {
       "component" : {
-        "digest" : "sha256:139193d84c61b234563931df92820e62774fcadb812d44fa15257ab22a94c0d2",
+        "digest" : "sha256:14789374c73b4435d4c58288a16e2dd5aea63189f128d391c4e2f7974dec2819",
         "id" : "studio.numeric",
         "source" : "bundled",
         "version" : "1.0.0"
@@ -10417,7 +10416,7 @@
     },
     {
       "component" : {
-        "digest" : "sha256:5021a64fc334f23db3e3aae63e27f1561af33d303c5d5d13dbdf17cce5ce2b3c",
+        "digest" : "sha256:c66ee84392ca645eae6509281f748a783e4589a79ce33e4e415fde89c80485bf",
         "id" : "studio.weather-widget",
         "source" : "bundled",
         "version" : "1.0.0"
@@ -10426,9 +10425,8 @@
       "isVisible" : true,
       "opacity" : 1,
       "params" : {
-        "cardBackgroundColor" : "#4C9EFF",
-        "cardBackgroundOpacity" : 0.92,
-        "cardCornerRadius" : 10.0,
+        "backgroundOpacity" : 0.92,
+        "backgroundRadius" : 10.0,
         "componentHeight" : 110.0,
         "componentWidth" : 300.0,
         "condition" : "sunny",
@@ -10454,7 +10452,6 @@
         "locationFontWeight" : "bold",
         "locationText" : "",
         "lowC" : 11.0,
-        "palette" : "blueGlass",
         "showConditionLabel" : true,
         "showFeelsLike" : false,
         "showHighLow" : false,
@@ -11733,7 +11730,7 @@
     },
     {
       "component" : {
-        "digest" : "sha256:70078425cf9c2a0dc1516b3f106b7c62c323ebeb70cf7b2c1bdf4b07101bd821",
+        "digest" : "sha256:9ebdfe4bca2eeef209c0104dce67ddfe005e8476263e679543925aae9c972f14",
         "id" : "studio.zone-edge-bar",
         "source" : "bundled",
         "version" : "1.0.0"
@@ -13019,7 +13016,7 @@
     },
     {
       "component" : {
-        "digest" : "sha256:45029427a0025936dc389d8842834b55a6cf5fef3a6d62a439f895ee6619d344",
+        "digest" : "sha256:a24fb0bc83629c863ad883af0cc363db6c0591900e0acac8badb30a74e738d2b",
         "id" : "studio.elevation-chart",
         "source" : "bundled",
         "version" : "1.0.0"
@@ -13033,6 +13030,7 @@
         "backgroundColor" : "#000000",
         "backgroundEnabled" : true,
         "backgroundOpacity" : 0.42,
+        "backgroundRadius" : 18.0,
         "bigNumberFontFamily" : "Monaco",
         "bigNumberFontSize" : 42.0,
         "bigNumberFontWeight" : "semibold",
@@ -13045,7 +13043,6 @@
         "chartPaddingY" : 16.0,
         "chartStyle" : "area",
         "chartWidth" : 792.8859998798853,
-        "cornerRadius" : 18.0,
         "currentMarkerEnabled" : true,
         "dualAreaEnabled" : false,
         "fillEnabled" : true,
@@ -13065,7 +13062,6 @@
         "markerLabelEnabled" : false,
         "markerPlayheadLineEnabled" : false,
         "markerSizeMultiplier" : 1.0,
-        "preset" : "gradientArea",
         "progressMode" : "fullProfile",
         "shadowEnabled" : true,
         "shadowOpacity" : 0.28,

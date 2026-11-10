@@ -55,7 +55,6 @@ struct OverlayComponentDistanceTimelineParityTests {
     }
 
     private static func style(
-        preset: DistanceTimelinePreset = .minimal,
         valueFontSize: Double = 28,
         unitSystem: DistanceTimelineUnitSystem = .metric,
         showValue: Bool = true,
@@ -103,7 +102,7 @@ struct OverlayComponentDistanceTimelineParityTests {
         elevationProfileVisible: Bool = false
     ) -> OverlayStyle {
         var style = OverlayStyle.default
-        var timeline = DistanceTimelineStyle.preset(preset)
+        var timeline = DistanceTimelineStyle.default
         // Attached stats bars are retired; the component and its native oracle
         // must both render the timeline alone (2026-11-09).
         timeline.statsBar.visible = false
@@ -179,7 +178,6 @@ struct OverlayComponentDistanceTimelineParityTests {
     private static func parameters(_ style: OverlayStyle) -> [String: OverlayJSONValue] {
         let t = style.distanceTimeline
         return [
-            "preset": .string(t.preset.rawValue),
             "valueFontSize": .number(style.fontSize),
             "valueUnitSystem": .string(t.valueUnitSystem.rawValue),
             "showValue": .boolean(t.showValue),
@@ -215,7 +213,7 @@ struct OverlayComponentDistanceTimelineParityTests {
             "borderColor": .string(colorHex(t.borderColor)),
             "borderOpacity": .number(t.borderOpacity),
             "borderWidth": .number(t.borderWidth),
-            "cornerRadius": .number(t.cornerRadius),
+            "backgroundRadius": .number(t.cornerRadius),
             "paddingX": .number(t.paddingX),
             "paddingY": .number(t.paddingY),
             "trackHeight": .number(t.trackHeight),
@@ -293,10 +291,6 @@ struct OverlayComponentDistanceTimelineParityTests {
             let canvas = CGSize(width: 1280, height: 720)
             let cases: [(String, OverlayStyle, Double, TimeInterval)] = [
                 ("default", Self.style(), 1, 90),
-                ("dense", Self.style(preset: .dense), 1, 90),
-                ("sport", Self.style(preset: .sport), 1, 90),
-                ("splits", Self.style(preset: .splits), 1, 90),
-                ("route", Self.style(preset: .route), 1, 90),
                 ("axis-labels", Self.style(showAxisLabels: true, showDistancePoints: true), 1, 90),
                 ("marker", Self.style(currentMarkerEnabled: true, currentMarkerStyle: .triangle), 1, 90),
                 ("marker-label", Self.style(markerDistanceLabelEnabled: true,
@@ -309,7 +303,7 @@ struct OverlayComponentDistanceTimelineParityTests {
                 ("crop-value", Self.style(showTotalDistance: false), 1, 90),
                 ("fade", Self.style(fadeEnabled: true, fadeEdge: .both, fadeAmount: 0.4), 1, 90),
                 ("scaled", Self.style(), 1.5, 90),
-                ("late", Self.style(preset: .dense, showAxisLabels: true), 1, 540)
+                ("late", Self.style(showAxisLabels: true), 1, 540)
             ]
             for (label, style, elementScale, time) in cases {
                 let native = OverlayElement(

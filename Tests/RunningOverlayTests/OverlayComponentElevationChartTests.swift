@@ -24,6 +24,13 @@ struct OverlayComponentElevationChartTests {
         #expect(!result.nodes.isEmpty)
     }
 
+    @Test func bundledDefinitionKeepsOnlyTheChartStyleChoice() throws {
+        let package = try OverlayComponentLoader.load(data: Self.data())
+        let ids = Set(package.definition.params.map(\.id))
+        #expect(!ids.contains("preset"))
+        #expect(ids.contains("chartStyle"))
+    }
+
     @Test func smoothingCacheReusesAndInvalidatesByContent() {
         let samples = (0..<200).map { sin(Double($0) / 9) }
         let first = OverlayComponentPlotData.smoothed(samples, amount: 0.85)
@@ -69,7 +76,6 @@ struct OverlayComponentElevationChartParityTests {
     }
 
     private static func style(
-        preset: ElevationChartPreset = .gradientArea,
         chartStyle: ElevationChartRenderStyle = .area,
         smoothingEnabled: Bool = true,
         smoothingAmount: Double = 0.85,
@@ -97,7 +103,7 @@ struct OverlayComponentElevationChartParityTests {
         glowOpacity: Double = 0.25
     ) -> OverlayStyle {
         var style = OverlayStyle.default
-        var chart = ElevationChartStyle.preset(preset)
+        var chart = ElevationChartStyle.default
         // Attached stats bars are retired; the component and its native oracle
         // must both render the chart alone (2026-11-09).
         chart.statsBar.visible = false
@@ -152,7 +158,6 @@ struct OverlayComponentElevationChartParityTests {
     private static func parameters(_ style: OverlayStyle) -> [String: OverlayJSONValue] {
         let c = style.elevationChart
         return [
-            "preset": .string(c.preset.rawValue),
             "chartStyle": .string(c.chartStyle.rawValue),
             "smoothingEnabled": .boolean(c.smoothingEnabled),
             "smoothingAmount": .number(c.smoothingAmount),
@@ -185,7 +190,7 @@ struct OverlayComponentElevationChartParityTests {
             "backgroundEnabled": .boolean(c.backgroundEnabled),
             "backgroundColor": .string(colorHex(c.backgroundColor)),
             "backgroundOpacity": .number(c.backgroundOpacity),
-            "cornerRadius": .number(c.cornerRadius),
+            "backgroundRadius": .number(c.cornerRadius),
             "borderEnabled": .boolean(c.borderEnabled),
             "borderOpacity": .number(c.borderOpacity),
             "shadowEnabled": .boolean(c.shadowEnabled),
@@ -245,10 +250,7 @@ struct OverlayComponentElevationChartParityTests {
             let canvas = CGSize(width: 1280, height: 720)
             let cases: [(String, OverlayStyle, Double, TimeInterval)] = [
                 ("default", Self.style(), 1, 90),
-                ("dual-area", Self.style(preset: .dualArea), 1, 90),
-                ("tech-glow", Self.style(preset: .techGlow), 1, 90),
-                ("minimal-white", Self.style(preset: .minimalWhite), 1, 90),
-                ("big-numbers", Self.style(preset: .bigNumbers, bigNumbersEnabled: true), 1, 90),
+                ("big-numbers", Self.style(bigNumbersEnabled: true), 1, 90),
                 ("line-only", Self.style(chartStyle: .lineOnly), 1, 90),
                 ("progress", Self.style(progressMode: .progressToCurrent), 1, 90),
                 ("grid", Self.style(gridEnabled: true), 1, 90),

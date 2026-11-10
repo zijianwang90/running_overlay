@@ -484,11 +484,8 @@
         "en": "Font",
         "zh-Hans": "字体"
       },
-      "section": {
-        "en": "Value",
-        "zh-Hans": "数值"
-      },
-      "default": "system"
+      "default": "system",
+      "advanced": true
     },
     {
       "id": "valueSize",
@@ -497,15 +494,12 @@
         "en": "Size",
         "zh-Hans": "字号"
       },
-      "section": {
-        "en": "Value",
-        "zh-Hans": "数值"
-      },
       "min": 8,
       "max": 200,
       "step": 1,
       "unit": "pt",
-      "default": 28
+      "default": 28,
+      "advanced": true
     },
     {
       "id": "valueColor",
@@ -554,10 +548,6 @@
         "en": "Position",
         "zh-Hans": "位置"
       },
-      "section": {
-        "en": "Unit",
-        "zh-Hans": "单位"
-      },
       "options": [
         {
           "value": "trailing",
@@ -582,7 +572,8 @@
         }
       ],
       "default": "trailing",
-      "when": "=showUnit"
+      "when": "=showUnit",
+      "advanced": true
     },
     {
       "id": "unitAlign",
@@ -590,10 +581,6 @@
       "label": {
         "en": "Alignment",
         "zh-Hans": "对齐"
-      },
-      "section": {
-        "en": "Unit",
-        "zh-Hans": "单位"
       },
       "options": [
         {
@@ -619,7 +606,8 @@
         }
       ],
       "default": "start",
-      "when": "=showUnit"
+      "when": "=showUnit",
+      "advanced": true
     },
     {
       "id": "unitFont",
@@ -628,12 +616,9 @@
         "en": "Font",
         "zh-Hans": "字体"
       },
-      "section": {
-        "en": "Unit",
-        "zh-Hans": "单位"
-      },
       "default": "system",
-      "when": "=showUnit"
+      "when": "=showUnit",
+      "advanced": true
     },
     {
       "id": "unitSize",
@@ -642,16 +627,13 @@
         "en": "Size",
         "zh-Hans": "字号"
       },
-      "section": {
-        "en": "Unit",
-        "zh-Hans": "单位"
-      },
       "min": 6,
       "max": 200,
       "step": 1,
       "unit": "pt",
       "default": 20,
-      "when": "=showUnit"
+      "when": "=showUnit",
+      "advanced": true
     },
     {
       "id": "unitWeight",
@@ -746,16 +728,13 @@
         "en": "Spacing",
         "zh-Hans": "间距"
       },
-      "section": {
-        "en": "Unit",
-        "zh-Hans": "单位"
-      },
       "min": 0,
       "max": 80,
       "step": 1,
       "unit": "pt",
       "default": 8,
-      "when": "=showUnit"
+      "when": "=showUnit",
+      "advanced": true
     },
     {
       "id": "unitFollowsZone",
@@ -810,10 +789,6 @@
         "en": "Position",
         "zh-Hans": "位置"
       },
-      "section": {
-        "en": "Label",
-        "zh-Hans": "标签"
-      },
       "options": [
         {
           "value": "top",
@@ -845,7 +820,8 @@
         }
       ],
       "default": "top",
-      "when": "=showLabel"
+      "when": "=showLabel",
+      "advanced": true
     },
     {
       "id": "labelFont",
@@ -854,12 +830,9 @@
         "en": "Font",
         "zh-Hans": "字体"
       },
-      "section": {
-        "en": "Label",
-        "zh-Hans": "标签"
-      },
       "default": "system",
-      "when": "=showLabel"
+      "when": "=showLabel",
+      "advanced": true
     },
     {
       "id": "labelSize",
@@ -868,16 +841,13 @@
         "en": "Size",
         "zh-Hans": "字号"
       },
-      "section": {
-        "en": "Label",
-        "zh-Hans": "标签"
-      },
       "min": 6,
       "max": 200,
       "step": 1,
       "unit": "pt",
       "default": 16,
-      "when": "=showLabel"
+      "when": "=showLabel",
+      "advanced": true
     },
     {
       "id": "labelWeight",
@@ -972,16 +942,13 @@
         "en": "Spacing",
         "zh-Hans": "间距"
       },
-      "section": {
-        "en": "Label",
-        "zh-Hans": "标签"
-      },
       "min": 0,
       "max": 80,
       "step": 1,
       "unit": "pt",
       "default": 8,
-      "when": "=showLabel"
+      "when": "=showLabel",
+      "advanced": true
     },
     {
       "id": "labelFollowsZone",
@@ -1036,10 +1003,6 @@
         "en": "Position",
         "zh-Hans": "位置"
       },
-      "section": {
-        "en": "Icon",
-        "zh-Hans": "图标"
-      },
       "options": [
         {
           "value": "top",
@@ -1071,7 +1034,8 @@
         }
       ],
       "default": "leading",
-      "when": "=showIcon"
+      "when": "=showIcon",
+      "advanced": true
     },
     {
       "id": "iconAlign",
@@ -1079,10 +1043,6 @@
       "label": {
         "en": "Alignment",
         "zh-Hans": "对齐"
-      },
-      "section": {
-        "en": "Icon",
-        "zh-Hans": "图标"
       },
       "options": [
         {
@@ -1108,7 +1068,8 @@
         }
       ],
       "default": "center",
-      "when": "=showIcon"
+      "when": "=showIcon",
+      "advanced": true
     },
     {
       "id": "iconSize",
@@ -1149,16 +1110,13 @@
         "en": "Spacing",
         "zh-Hans": "间距"
       },
-      "section": {
-        "en": "Icon",
-        "zh-Hans": "图标"
-      },
       "min": 0,
       "max": 80,
       "step": 1,
       "unit": "pt",
       "default": 8,
-      "when": "=showIcon"
+      "when": "=showIcon",
+      "advanced": true
     },
     {
       "id": "iconFollowsZone",
@@ -1182,8 +1140,8 @@
         "zh-Hans": "显示背景"
       },
       "section": {
-        "en": "Background",
-        "zh-Hans": "背景"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": true
     },
@@ -1191,12 +1149,12 @@
       "id": "backgroundColor",
       "type": "color",
       "label": {
-        "en": "Color",
-        "zh-Hans": "颜色"
+        "en": "Background Color",
+        "zh-Hans": "背景颜色"
       },
       "section": {
-        "en": "Background",
-        "zh-Hans": "背景"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": "#00000038",
       "when": "=showBackground"
@@ -1209,8 +1167,8 @@
         "zh-Hans": "圆角"
       },
       "section": {
-        "en": "Background",
-        "zh-Hans": "背景"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "min": 0,
       "max": 100,
@@ -1226,16 +1184,13 @@
         "en": "Horizontal Padding",
         "zh-Hans": "水平内边距"
       },
-      "section": {
-        "en": "Background",
-        "zh-Hans": "背景"
-      },
       "min": 0,
       "max": 100,
       "step": 1,
       "unit": "pt",
       "default": 10,
-      "when": "=showBackground"
+      "when": "=showBackground",
+      "advanced": true
     },
     {
       "id": "paddingY",
@@ -1244,16 +1199,13 @@
         "en": "Vertical Padding",
         "zh-Hans": "垂直内边距"
       },
-      "section": {
-        "en": "Background",
-        "zh-Hans": "背景"
-      },
       "min": 0,
       "max": 100,
       "step": 1,
       "unit": "pt",
       "default": 6,
-      "when": "=showBackground"
+      "when": "=showBackground",
+      "advanced": true
     },
     {
       "id": "minWidth",

@@ -3,7 +3,7 @@
   "elements" : [
     {
       "component" : {
-        "digest" : "sha256:4702e69c4d10889b6f2595a7d2acd9e473f0682e19fb779cabec026396dc7604",
+        "digest" : "sha256:5903dc2b2e98b6d2239a21c8c54356d826439affbaa0f16353518e424009f4cb",
         "id" : "studio.route-map",
         "source" : "bundled",
         "version" : "1.0.0"
@@ -13,13 +13,13 @@
       "opacity" : 1,
       "params" : {
         "backgroundOpacity" : 0.0,
+        "backgroundRadius" : 12.0,
         "backgroundStyle" : "none",
         "borderColor" : "#FFFFFF",
         "borderEnabled" : false,
         "borderOpacity" : 0.22,
         "borderWidth" : 1.0,
         "colorMode" : "solid",
-        "cornerRadius" : 12.0,
         "edgeFade" : "solid",
         "endMarkerColor" : "#FFFFFF",
         "endMarkerStyle" : "hidden",
@@ -1295,7 +1295,7 @@
     },
     {
       "component" : {
-        "digest" : "sha256:139193d84c61b234563931df92820e62774fcadb812d44fa15257ab22a94c0d2",
+        "digest" : "sha256:14789374c73b4435d4c58288a16e2dd5aea63189f128d391c4e2f7974dec2819",
         "id" : "studio.numeric",
         "source" : "bundled",
         "version" : "1.0.0"
@@ -2596,7 +2596,7 @@
     },
     {
       "component" : {
-        "digest" : "sha256:139193d84c61b234563931df92820e62774fcadb812d44fa15257ab22a94c0d2",
+        "digest" : "sha256:14789374c73b4435d4c58288a16e2dd5aea63189f128d391c4e2f7974dec2819",
         "id" : "studio.numeric",
         "source" : "bundled",
         "version" : "1.0.0"
@@ -3897,7 +3897,7 @@
     },
     {
       "component" : {
-        "digest" : "sha256:5021a64fc334f23db3e3aae63e27f1561af33d303c5d5d13dbdf17cce5ce2b3c",
+        "digest" : "sha256:c66ee84392ca645eae6509281f748a783e4589a79ce33e4e415fde89c80485bf",
         "id" : "studio.weather-widget",
         "source" : "bundled",
         "version" : "1.0.0"
@@ -3906,9 +3906,8 @@
       "isVisible" : true,
       "opacity" : 1,
       "params" : {
-        "cardBackgroundColor" : "#4C9EFF",
-        "cardBackgroundOpacity" : 0.92,
-        "cardCornerRadius" : 10.0,
+        "backgroundOpacity" : 0.92,
+        "backgroundRadius" : 10.0,
         "componentHeight" : 110.0,
         "componentWidth" : 300.0,
         "condition" : "sunny",
@@ -3934,7 +3933,6 @@
         "locationFontWeight" : "bold",
         "locationText" : "",
         "lowC" : 11.0,
-        "palette" : "blueGlass",
         "showConditionLabel" : true,
         "showFeelsLike" : false,
         "showHighLow" : false,
@@ -5213,7 +5211,7 @@
     },
     {
       "component" : {
-        "digest" : "sha256:9639d81fa0095a6e1a3fbee02e43db4eb8f3d447974d73fd155259ca77444847",
+        "digest" : "sha256:caa88fa6e1d93f22ada0cf83f45d5be5bc712419df04bc252221ee1f9e9683de",
         "id" : "studio.interval-hud-bar",
         "source" : "bundled",
         "version" : "1.0.0"
@@ -5227,8 +5225,6 @@
         "backgroundColor" : "#000000",
         "backgroundEnabled" : true,
         "backgroundOpacity" : 0.55,
-        "backgroundPaddingX" : 10.0,
-        "backgroundPaddingY" : 6.0,
         "backgroundRadius" : 10.0,
         "barHeight" : 116.0,
         "barWidth" : 1100.0,
@@ -5262,6 +5258,8 @@
         "metricValueFontFamily" : "Monaco",
         "metricValueFontSize" : 20.0,
         "metricValueFontWeight" : "bold",
+        "paddingX" : 10.0,
+        "paddingY" : 6.0,
         "phaseDetailFontFamily" : "Monaco",
         "phaseDetailFontSize" : 20.0,
         "phaseDetailFontWeight" : "semibold",
@@ -6556,7 +6554,7 @@
     },
     {
       "component" : {
-        "digest" : "sha256:fccdd1adde711173a7c819f132c7a4df2d18cbc6643640e8953c18fefcf0234a",
+        "digest" : "sha256:9fffebdfe32ff563100bfa32a31d579ba2b65e67e7ec75f06c5c76a15e31ae32",
         "id" : "studio.interval-timeline",
         "source" : "bundled",
         "version" : "1.0.0"
@@ -6569,8 +6567,6 @@
         "backgroundColor" : "#000000",
         "backgroundEnabled" : false,
         "backgroundOpacity" : 0.78,
-        "backgroundPaddingX" : 10.0,
-        "backgroundPaddingY" : 6.0,
         "backgroundRadius" : 10.0,
         "borderColor" : "#FFFFFF",
         "borderEnabled" : false,
@@ -6604,6 +6600,8 @@
         "mode" : "centered",
         "neighborLabel" : "distance",
         "overflowHintEnabled" : true,
+        "paddingX" : 10.0,
+        "paddingY" : 6.0,
         "railWidth" : 780.0,
         "repCounterEnabled" : true,
         "restColor" : "#40D161",

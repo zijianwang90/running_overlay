@@ -55,6 +55,8 @@ struct OverlayComponentWeatherWidgetTests {
         let ids = Set(package.definition.params.map(\.id))
         #expect(!ids.contains("preset"))
         #expect(!ids.contains("usePresetSize"))
+        #expect(!ids.contains("palette"))
+        #expect(!ids.contains("cardBackgroundColor"))
 
         let layoutIDs = package.definition.params.compactMap { parameter -> String? in
             guard let section = parameter.section else { return nil }
@@ -174,7 +176,6 @@ struct OverlayComponentWeatherWidgetParityTests {
         cardOpacity: Double = 0.92,
         cardRadius: Double = 10,
         divider: Bool = true,
-        palette: WeatherWidgetPalette = .blueGlass,
         location: String = "",
         cached: WeatherPayload? = nil,
         dataSource: WeatherDataSource = .manual
@@ -203,7 +204,6 @@ struct OverlayComponentWeatherWidgetParityTests {
         style.cardBackgroundOpacity = cardOpacity
         style.cardCornerRadius = cardRadius
         style.dividerEnabled = divider
-        style.palette = palette
         var slots: [WeatherMetricSlotValue] = []
         if showHumidity { slots.append(.humidity) }
         if showHighLow { slots.append(.highLow) }
@@ -260,14 +260,12 @@ struct OverlayComponentWeatherWidgetParityTests {
             "humidityMetricLabel": .string(style.humidityMetricLabel),
             "windMetricLabel": .string(style.windMetricLabel),
             "feelsLikeMetricLabel": .string(style.feelsLikeMetricLabel),
-            "cardBackgroundColor": .string(colorHex(style.cardBackgroundColor)),
-            "cardBackgroundOpacity": .number(style.cardBackgroundOpacity),
-            "cardCornerRadius": .number(style.cardCornerRadius),
+            "backgroundOpacity": .number(style.cardBackgroundOpacity),
+            "backgroundRadius": .number(style.cardCornerRadius),
             "dividerEnabled": .boolean(style.dividerEnabled),
             "dividerColor": .string(colorHex(style.dividerColor)),
             "dividerThickness": .number(style.dividerThickness),
             "dividerOpacity": .number(style.dividerOpacity),
-            "palette": .string(style.palette.rawValue),
             "iconSize": .number(style.iconSize),
             "slotBackgroundColor": .string(colorHex(style.slotBackgroundColor)),
             "slotBackgroundOpacity": .number(style.slotBackgroundOpacity),
@@ -303,7 +301,6 @@ struct OverlayComponentWeatherWidgetParityTests {
                 ("no-location", Self.style(showLocation: false), 1, 90),
                 ("no-weekday", Self.style(showWeekday: false, location: "Shanghai"), 1, 90),
                 ("fahrenheit", Self.style(unit: .fahrenheit, location: "Shanghai"), 1, 90),
-                ("palette-graphite", Self.style(palette: .graphite, location: "Shanghai"), 1, 90),
                 ("all-metrics", Self.style(
                     showHighLow: true, showWind: true, showFeelsLike: true,
                     location: "Shanghai"

@@ -1475,9 +1475,7 @@ struct OverlayComponentResolver {
     ) -> OverlayComponentResolvedNode? {
         let resolved: OverlayComponentResolvedNode
         
-        let presetName = timeline.preset?.evaluate(in: context) ?? "minimal"
-        let preset = DistanceTimelinePreset(rawValue: presetName) ?? .minimal
-        var style = DistanceTimelineStyle.preset(preset)
+        var style = DistanceTimelineStyle.default
         style.width = nodeNumber(timeline.width, default: style.width, context: context)
         style.height = nodeNumber(timeline.height, default: style.height, context: context)
         style.valueUnitSystem = nodeStringEnum(timeline.valueUnitSystem, default: style.valueUnitSystem, context: context)
@@ -1550,9 +1548,7 @@ struct OverlayComponentResolver {
     ) -> OverlayComponentResolvedNode? {
         let resolved: OverlayComponentResolvedNode
         
-        let presetName = chart.preset?.evaluate(in: context) ?? "gradientArea"
-        let preset = ElevationChartPreset(rawValue: presetName) ?? .gradientArea
-        var style = ElevationChartStyle.preset(preset)
+        var style = ElevationChartStyle.default
         style.width = nodeNumber(chart.width, default: style.width, context: context)
         style.height = nodeNumber(chart.height, default: style.height, context: context)
         style.chartStyle = nodeStringEnum(chart.chartStyle, default: style.chartStyle, context: context)
@@ -1654,9 +1650,6 @@ struct OverlayComponentResolver {
         style.windMetricLabel = widget.windMetricLabel?.evaluate(in: context) ?? style.windMetricLabel
         style.feelsLikeMetricLabel = widget.feelsLikeMetricLabel?.evaluate(in: context)
         ?? style.feelsLikeMetricLabel
-        style.cardBackgroundColor = nodeColor(
-        widget.cardBackgroundColor, default: style.cardBackgroundColor, context: context
-        ) ?? style.cardBackgroundColor
         style.cardBackgroundOpacity = nodeNumber(
         widget.cardBackgroundOpacity, default: style.cardBackgroundOpacity, context: context
         )
@@ -1673,7 +1666,6 @@ struct OverlayComponentResolver {
         style.dividerOpacity = nodeNumber(
         widget.dividerOpacity, default: style.dividerOpacity, context: context
         )
-        style.palette = nodeStringEnum(widget.palette, default: style.palette, context: context)
         style.iconSize = nodeNumber(widget.iconSize, default: style.iconSize, context: context)
         style.slotBackgroundColor = nodeColor(
         widget.slotBackgroundColor, default: style.slotBackgroundColor, context: context

@@ -21,6 +21,9 @@ visual-test:
 docs-check:
     ./scripts/check-doc-links.rb
 
+schema-check:
+    python3 scripts/check-component-schema.py
+
 update-snapshots:
     UPDATE_VISUAL_SNAPSHOTS=1 ./scripts/visual-test.sh
 

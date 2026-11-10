@@ -15,41 +15,6 @@
   "size": "content",
   "params": [
     {
-      "id": "preset",
-      "type": "enum",
-      "label": {
-        "en": "preset",
-        "zh-Hans": "preset"
-      },
-      "section": {
-        "en": "Elevation Chart",
-        "zh-Hans": "Elevation Chart"
-      },
-      "default": "gradientArea",
-      "options": [
-        {
-          "value": "gradientArea",
-          "label": "gradientArea"
-        },
-        {
-          "value": "dualArea",
-          "label": "dualArea"
-        },
-        {
-          "value": "techGlow",
-          "label": "techGlow"
-        },
-        {
-          "value": "minimalWhite",
-          "label": "minimalWhite"
-        },
-        {
-          "value": "bigNumbers",
-          "label": "bigNumbers"
-        }
-      ]
-    },
-    {
       "id": "chartStyle",
       "type": "enum",
       "label": {
@@ -130,13 +95,10 @@
         "en": "chartPaddingX",
         "zh-Hans": "chartPaddingX"
       },
-      "section": {
-        "en": "Elevation Chart",
-        "zh-Hans": "Elevation Chart"
-      },
       "default": 18,
       "min": 0,
-      "max": 120
+      "max": 120,
+      "advanced": true
     },
     {
       "id": "chartPaddingY",
@@ -145,13 +107,10 @@
         "en": "chartPaddingY",
         "zh-Hans": "chartPaddingY"
       },
-      "section": {
-        "en": "Elevation Chart",
-        "zh-Hans": "Elevation Chart"
-      },
       "default": 16,
       "min": 0,
-      "max": 120
+      "max": 120,
+      "advanced": true
     },
     {
       "id": "lineColor",
@@ -446,13 +405,10 @@
         "en": "bigNumberFontSize",
         "zh-Hans": "bigNumberFontSize"
       },
-      "section": {
-        "en": "Elevation Chart",
-        "zh-Hans": "Elevation Chart"
-      },
       "default": 42,
       "min": 12,
-      "max": 200
+      "max": 200,
+      "advanced": true
     },
     {
       "id": "bigNumberFontFamily",
@@ -461,12 +417,9 @@
         "en": "bigNumberFontFamily",
         "zh-Hans": "bigNumberFontFamily"
       },
-      "section": {
-        "en": "Elevation Chart",
-        "zh-Hans": "Elevation Chart"
-      },
       "default": "Helvetica Neue",
-      "maxLength": 128
+      "maxLength": 128,
+      "advanced": true
     },
     {
       "id": "bigNumberFontWeight",
@@ -474,10 +427,6 @@
       "label": {
         "en": "bigNumberFontWeight",
         "zh-Hans": "bigNumberFontWeight"
-      },
-      "section": {
-        "en": "Elevation Chart",
-        "zh-Hans": "Elevation Chart"
       },
       "default": "semibold",
       "options": [
@@ -497,18 +446,19 @@
           "value": "bold",
           "label": "bold"
         }
-      ]
+      ],
+      "advanced": true
     },
     {
       "id": "backgroundEnabled",
       "type": "bool",
       "label": {
-        "en": "backgroundEnabled",
-        "zh-Hans": "backgroundEnabled"
+        "en": "Background",
+        "zh-Hans": "背景"
       },
       "section": {
-        "en": "Elevation Chart",
-        "zh-Hans": "Elevation Chart"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": true
     },
@@ -516,12 +466,12 @@
       "id": "backgroundColor",
       "type": "color",
       "label": {
-        "en": "backgroundColor",
-        "zh-Hans": "backgroundColor"
+        "en": "Background Color",
+        "zh-Hans": "背景颜色"
       },
       "section": {
-        "en": "Elevation Chart",
-        "zh-Hans": "Elevation Chart"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": "#000000"
     },
@@ -529,27 +479,27 @@
       "id": "backgroundOpacity",
       "type": "number",
       "label": {
-        "en": "backgroundOpacity",
-        "zh-Hans": "backgroundOpacity"
+        "en": "Background Opacity",
+        "zh-Hans": "背景不透明度"
       },
       "section": {
-        "en": "Elevation Chart",
-        "zh-Hans": "Elevation Chart"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 0.42,
       "min": 0,
       "max": 1
     },
     {
-      "id": "cornerRadius",
+      "id": "backgroundRadius",
       "type": "number",
       "label": {
-        "en": "cornerRadius",
-        "zh-Hans": "cornerRadius"
+        "en": "Corner Radius",
+        "zh-Hans": "圆角"
       },
       "section": {
-        "en": "Elevation Chart",
-        "zh-Hans": "Elevation Chart"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 18,
       "min": 0,
@@ -559,12 +509,12 @@
       "id": "borderEnabled",
       "type": "bool",
       "label": {
-        "en": "borderEnabled",
-        "zh-Hans": "borderEnabled"
+        "en": "Border",
+        "zh-Hans": "边框"
       },
       "section": {
-        "en": "Elevation Chart",
-        "zh-Hans": "Elevation Chart"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": true
     },
@@ -572,12 +522,12 @@
       "id": "borderOpacity",
       "type": "number",
       "label": {
-        "en": "borderOpacity",
-        "zh-Hans": "borderOpacity"
+        "en": "Border Opacity",
+        "zh-Hans": "边框不透明度"
       },
       "section": {
-        "en": "Elevation Chart",
-        "zh-Hans": "Elevation Chart"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 0.1,
       "min": 0,
@@ -587,12 +537,12 @@
       "id": "shadowEnabled",
       "type": "bool",
       "label": {
-        "en": "shadowEnabled",
-        "zh-Hans": "shadowEnabled"
+        "en": "Shadow",
+        "zh-Hans": "阴影"
       },
       "section": {
-        "en": "Elevation Chart",
-        "zh-Hans": "Elevation Chart"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": false
     },
@@ -600,12 +550,12 @@
       "id": "shadowOpacity",
       "type": "number",
       "label": {
-        "en": "shadowOpacity",
-        "zh-Hans": "shadowOpacity"
+        "en": "Shadow Opacity",
+        "zh-Hans": "阴影不透明度"
       },
       "section": {
-        "en": "Elevation Chart",
-        "zh-Hans": "Elevation Chart"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 0.28,
       "min": 0,
@@ -615,12 +565,12 @@
       "id": "shadowRadius",
       "type": "number",
       "label": {
-        "en": "shadowRadius",
-        "zh-Hans": "shadowRadius"
+        "en": "Shadow Radius",
+        "zh-Hans": "阴影半径"
       },
       "section": {
-        "en": "Elevation Chart",
-        "zh-Hans": "Elevation Chart"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 18,
       "min": 0,
@@ -630,12 +580,12 @@
       "id": "glowEnabled",
       "type": "bool",
       "label": {
-        "en": "glowEnabled",
-        "zh-Hans": "glowEnabled"
+        "en": "Glow",
+        "zh-Hans": "发光"
       },
       "section": {
-        "en": "Elevation Chart",
-        "zh-Hans": "Elevation Chart"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": false
     },
@@ -643,12 +593,12 @@
       "id": "glowOpacity",
       "type": "number",
       "label": {
-        "en": "glowOpacity",
-        "zh-Hans": "glowOpacity"
+        "en": "Glow Opacity",
+        "zh-Hans": "发光不透明度"
       },
       "section": {
-        "en": "Elevation Chart",
-        "zh-Hans": "Elevation Chart"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 0.25,
       "min": 0,
@@ -661,12 +611,9 @@
         "en": "fontFamily",
         "zh-Hans": "fontFamily"
       },
-      "section": {
-        "en": "Elevation Chart",
-        "zh-Hans": "Elevation Chart"
-      },
       "default": "Helvetica Neue",
-      "maxLength": 128
+      "maxLength": 128,
+      "advanced": true
     },
     {
       "id": "foregroundColor",
@@ -688,13 +635,10 @@
         "en": "valueFontSize",
         "zh-Hans": "valueFontSize"
       },
-      "section": {
-        "en": "Elevation Chart",
-        "zh-Hans": "Elevation Chart"
-      },
       "default": 28,
       "min": 8,
-      "max": 120
+      "max": 120,
+      "advanced": true
     },
     {
       "id": "chartWidth",
@@ -736,7 +680,6 @@
         "=chartWidth",
         "=chartHeight"
       ],
-      "preset": "=preset",
       "chartStyle": "=chartStyle",
       "smoothingEnabled": "=smoothingEnabled ? 1 : 0",
       "smoothingAmount": "=smoothingAmount",
@@ -769,7 +712,7 @@
       "backgroundEnabled": "=backgroundEnabled ? 1 : 0",
       "backgroundColor": "=backgroundColor",
       "backgroundOpacity": "=backgroundOpacity",
-      "cornerRadius": "=cornerRadius",
+      "cornerRadius": "=backgroundRadius",
       "borderEnabled": "=borderEnabled ? 1 : 0",
       "borderOpacity": "=borderOpacity",
       "shadowEnabled": "=shadowEnabled ? 1 : 0",

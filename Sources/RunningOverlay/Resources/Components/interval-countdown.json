@@ -63,9 +63,6 @@
       "label": {
         "en": "Value Direction"
       },
-      "section": {
-        "en": "Layout"
-      },
       "default": "remaining",
       "options": [
         {
@@ -76,7 +73,8 @@
           "value": "elapsed",
           "label": "0 to End"
         }
-      ]
+      ],
+      "advanced": true
     },
     {
       "id": "ringWidth",
@@ -155,9 +153,6 @@
       "label": {
         "en": "Direction"
       },
-      "section": {
-        "en": "Progress Ring"
-      },
       "default": "clockwise",
       "options": [
         {
@@ -168,18 +163,8 @@
           "value": "counterclockwise",
           "label": "Counterclockwise"
         }
-      ]
-    },
-    {
-      "id": "roundedLineCap",
-      "type": "bool",
-      "label": {
-        "en": "Rounded Caps"
-      },
-      "section": {
-        "en": "Progress Ring"
-      },
-      "default": true
+      ],
+      "advanced": true
     },
     {
       "id": "ringGlowEnabled",
@@ -223,11 +208,9 @@
       "label": {
         "en": "Helper Font"
       },
-      "section": {
-        "en": "Text"
-      },
       "default": "Menlo",
-      "maxLength": 128
+      "maxLength": 128,
+      "advanced": true
     },
     {
       "id": "helperFontSize",
@@ -235,13 +218,11 @@
       "label": {
         "en": "Helper Size"
       },
-      "section": {
-        "en": "Text"
-      },
       "default": 14.0,
       "min": 6,
       "max": 300,
-      "step": 1
+      "step": 1,
+      "advanced": true
     },
     {
       "id": "helperWeight",
@@ -321,11 +302,9 @@
       "label": {
         "en": "Phase Font"
       },
-      "section": {
-        "en": "Text"
-      },
       "default": "Menlo",
-      "maxLength": 128
+      "maxLength": 128,
+      "advanced": true
     },
     {
       "id": "phaseFontSize",
@@ -333,13 +312,11 @@
       "label": {
         "en": "Phase Size"
       },
-      "section": {
-        "en": "Text"
-      },
       "default": 16.0,
       "min": 6,
       "max": 300,
-      "step": 1
+      "step": 1,
+      "advanced": true
     },
     {
       "id": "phaseWeight",
@@ -419,11 +396,9 @@
       "label": {
         "en": "Rep Font"
       },
-      "section": {
-        "en": "Text"
-      },
       "default": "Menlo",
-      "maxLength": 128
+      "maxLength": 128,
+      "advanced": true
     },
     {
       "id": "repFontSize",
@@ -431,13 +406,11 @@
       "label": {
         "en": "Rep Size"
       },
-      "section": {
-        "en": "Text"
-      },
       "default": 16.0,
       "min": 6,
       "max": 300,
-      "step": 1
+      "step": 1,
+      "advanced": true
     },
     {
       "id": "repWeight",
@@ -506,11 +479,9 @@
       "label": {
         "en": "Countdown Font"
       },
-      "section": {
-        "en": "Text"
-      },
       "default": "Menlo",
-      "maxLength": 128
+      "maxLength": 128,
+      "advanced": true
     },
     {
       "id": "countdownFontSize",
@@ -518,13 +489,11 @@
       "label": {
         "en": "Countdown Size"
       },
-      "section": {
-        "en": "Text"
-      },
       "default": 74.0,
       "min": 6,
       "max": 300,
-      "step": 1
+      "step": 1,
+      "advanced": true
     },
     {
       "id": "countdownWeight",
@@ -583,11 +552,9 @@
       "label": {
         "en": "Caption Font"
       },
-      "section": {
-        "en": "Text"
-      },
       "default": "Menlo",
-      "maxLength": 128
+      "maxLength": 128,
+      "advanced": true
     },
     {
       "id": "captionFontSize",
@@ -595,13 +562,11 @@
       "label": {
         "en": "Caption Size"
       },
-      "section": {
-        "en": "Text"
-      },
       "default": 13.0,
       "min": 6,
       "max": 300,
-      "step": 1
+      "step": 1,
+      "advanced": true
     },
     {
       "id": "captionWeight",
@@ -668,10 +633,12 @@
       "id": "backgroundEnabled",
       "type": "bool",
       "label": {
-        "en": "Background"
+        "en": "Background",
+        "zh-Hans": "背景"
       },
       "section": {
-        "en": "Background"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": false
     },
@@ -679,10 +646,12 @@
       "id": "backgroundColor",
       "type": "color",
       "label": {
-        "en": "Background Color"
+        "en": "Background Color",
+        "zh-Hans": "背景颜色"
       },
       "section": {
-        "en": "Background"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": "#000000"
     },
@@ -690,10 +659,12 @@
       "id": "backgroundOpacity",
       "type": "number",
       "label": {
-        "en": "Background Opacity"
+        "en": "Background Opacity",
+        "zh-Hans": "背景不透明度"
       },
       "section": {
-        "en": "Background"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 0.22,
       "min": 0,
@@ -701,41 +672,41 @@
       "step": 0.01
     },
     {
-      "id": "backgroundPaddingX",
+      "id": "paddingX",
       "type": "number",
       "label": {
-        "en": "Horizontal Padding"
-      },
-      "section": {
-        "en": "Background"
+        "en": "Horizontal Padding",
+        "zh-Hans": "水平内边距"
       },
       "default": 10,
       "min": 0,
       "max": 200,
-      "step": 0.5
+      "step": 0.5,
+      "advanced": true
     },
     {
-      "id": "backgroundPaddingY",
+      "id": "paddingY",
       "type": "number",
       "label": {
-        "en": "Vertical Padding"
-      },
-      "section": {
-        "en": "Background"
+        "en": "Vertical Padding",
+        "zh-Hans": "垂直内边距"
       },
       "default": 6,
       "min": 0,
       "max": 200,
-      "step": 0.5
+      "step": 0.5,
+      "advanced": true
     },
     {
       "id": "backgroundRadius",
       "type": "number",
       "label": {
-        "en": "Corner Radius"
+        "en": "Corner Radius",
+        "zh-Hans": "圆角"
       },
       "section": {
-        "en": "Background"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 6,
       "min": 0,
@@ -746,10 +717,12 @@
       "id": "borderEnabled",
       "type": "bool",
       "label": {
-        "en": "Border"
+        "en": "Border",
+        "zh-Hans": "边框"
       },
       "section": {
-        "en": "Border"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": false
     },
@@ -757,10 +730,12 @@
       "id": "borderColor",
       "type": "color",
       "label": {
-        "en": "Border Color"
+        "en": "Border Color",
+        "zh-Hans": "边框颜色"
       },
       "section": {
-        "en": "Border"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": "#FFFFFF"
     },
@@ -768,10 +743,12 @@
       "id": "borderOpacity",
       "type": "number",
       "label": {
-        "en": "Border Opacity"
+        "en": "Border Opacity",
+        "zh-Hans": "边框不透明度"
       },
       "section": {
-        "en": "Border"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 0.22,
       "min": 0,
@@ -782,10 +759,12 @@
       "id": "borderWidth",
       "type": "number",
       "label": {
-        "en": "Border Width"
+        "en": "Border Width",
+        "zh-Hans": "边框粗细"
       },
       "section": {
-        "en": "Border"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 1,
       "min": 0,
@@ -821,12 +800,12 @@
             {
               "type": "rect",
               "frame": [
-                "=-backgroundPaddingX",
-                "=-backgroundPaddingY",
-                "=size + backgroundPaddingX * 2",
-                "=size + backgroundPaddingY * 2"
+                "=-paddingX",
+                "=-paddingY",
+                "=size + paddingX * 2",
+                "=size + paddingY * 2"
               ],
-              "radius": "=min(max(backgroundRadius, 0), min(size + backgroundPaddingX * 2, size + backgroundPaddingY * 2) / 2)",
+              "radius": "=min(max(backgroundRadius, 0), min(size + paddingX * 2, size + paddingY * 2) / 2)",
               "fill": "=backgroundColor",
               "opacity": "=backgroundOpacity"
             },
@@ -834,12 +813,12 @@
               "type": "rect",
               "if": "=borderEnabled",
               "frame": [
-                "=-backgroundPaddingX",
-                "=-backgroundPaddingY",
-                "=size + backgroundPaddingX * 2",
-                "=size + backgroundPaddingY * 2"
+                "=-paddingX",
+                "=-paddingY",
+                "=size + paddingX * 2",
+                "=size + paddingY * 2"
               ],
-              "radius": "=min(max(backgroundRadius, 0), min(size + backgroundPaddingX * 2, size + backgroundPaddingY * 2) / 2)",
+              "radius": "=min(max(backgroundRadius, 0), min(size + paddingX * 2, size + paddingY * 2) / 2)",
               "fill": "transparent",
               "stroke": "=borderColor",
               "strokeWidth": "=borderWidth",

@@ -779,9 +779,9 @@ final class OverlayComponentParser {
             "showHighLow", "showWind", "showFeelsLike", "showIcon",
             "showConditionLabel", "conditionLabelOverride", "humiditySuffix",
             "humidityMetricLabel", "windMetricLabel", "feelsLikeMetricLabel",
-            "cardBackgroundColor", "cardBackgroundOpacity", "cardCornerRadius",
+            "cardBackgroundOpacity", "cardCornerRadius",
             "dividerEnabled", "dividerColor", "dividerThickness", "dividerOpacity",
-            "palette", "iconSize", "slotBackgroundColor", "slotBackgroundOpacity",
+            "iconSize", "slotBackgroundColor", "slotBackgroundOpacity",
             "slotSpacing", "fontFamily",
             "locationFontSize", "locationFontWeight", "locationColor",
             "conditionFontSize", "conditionFontWeight", "conditionColor",
@@ -800,7 +800,7 @@ final class OverlayComponentParser {
             "showsPointsOfInterest", "width", "height"
         ]
         case "elevationChart": typeKeys = [
-            "preset", "chartStyle", "smoothingEnabled", "smoothingAmount",
+            "chartStyle", "smoothingEnabled", "smoothingAmount",
             "progressMode", "chartPaddingX", "chartPaddingY", "lineColor",
             "lineWidth", "lineOpacity", "fillEnabled", "fillStartColor",
             "fillEndColor", "fillOpacity", "dualAreaEnabled", "upperFillColor",
@@ -815,7 +815,7 @@ final class OverlayComponentParser {
             "width", "height"
         ]
         case "distanceTimeline": typeKeys = [
-            "preset", "valueFontSize", "valueUnitSystem", "showValue", "showTotalDistance",
+            "valueFontSize", "valueUnitSystem", "showValue", "showTotalDistance",
             "showLabel", "label", "labelFontFamily", "labelFontSize", "labelFontWeight",
             "labelColor", "labelValueSpacing", "showAxisLabels", "axisLabelMode",
             "axisLabelOffset", "axisLabelFontFamily", "axisLabelFontSize",
@@ -1936,9 +1936,6 @@ final class OverlayComponentParser {
         _ object: [String: OverlayJSONValue],
         at path: String
     ) -> OverlayComponentDistanceTimeline? {
-        let presets: Set<String> = [
-            "minimal", "dense", "sport", "splits", "glass", "neon", "lowerThird", "route"
-        ]
         let unitSystems: Set<String> = ["metric", "imperial"]
         let axisModes: Set<String> = ["startFinish", "distance"]
         let placements: Set<String> = ["below", "above"]
@@ -1963,7 +1960,6 @@ final class OverlayComponentParser {
             }
         }
         return OverlayComponentDistanceTimeline(
-            preset: enumOrNil("preset", allowed: presets),
             valueFontSize: numberOrNil("valueFontSize"),
             valueUnitSystem: enumOrNil("valueUnitSystem", allowed: unitSystems),
             showValue: numberOrNil("showValue"),
@@ -2042,9 +2038,6 @@ final class OverlayComponentParser {
         _ object: [String: OverlayJSONValue],
         at path: String
     ) -> OverlayComponentElevationChart? {
-        let presets: Set<String> = [
-            "gradientArea", "dualArea", "techGlow", "minimalWhite", "bigNumbers"
-        ]
         let renderStyles: Set<String> = ["area", "lineOnly"]
         let progressModes: Set<String> = ["fullProfile", "progressToCurrent"]
         let bigMetrics: Set<String> = [
@@ -2066,7 +2059,6 @@ final class OverlayComponentParser {
             }
         }
         return OverlayComponentElevationChart(
-            preset: enumOrNil("preset", allowed: presets),
             chartStyle: enumOrNil("chartStyle", allowed: renderStyles),
             smoothingEnabled: numberOrNil("smoothingEnabled"),
             smoothingAmount: numberOrNil("smoothingAmount"),
@@ -2208,9 +2200,6 @@ final class OverlayComponentParser {
         let conditions: Set<String> = Set(WeatherCondition.allCases.map(\.rawValue))
         let units: Set<String> = ["celsius", "fahrenheit"]
         let dataSources: Set<String> = ["manual", "openMeteo", "openWeather"]
-        let palettes: Set<String> = [
-            "presetDefault", "blueGlass", "lightGlass", "graphite", "minimalWhite"
-        ]
         let weightValues: Set<String> = Set(OverlayComponentFontWeight.allCases.map(\.rawValue))
         func numberOrNil(_ key: String) -> OverlayComponentNumberSource? {
             object[key].flatMap { numberSource($0, at: "\(path).\(key)") }
@@ -2251,14 +2240,12 @@ final class OverlayComponentParser {
             humidityMetricLabel: stringOrNil("humidityMetricLabel"),
             windMetricLabel: stringOrNil("windMetricLabel"),
             feelsLikeMetricLabel: stringOrNil("feelsLikeMetricLabel"),
-            cardBackgroundColor: colorOrNil("cardBackgroundColor"),
             cardBackgroundOpacity: numberOrNil("cardBackgroundOpacity"),
             cardCornerRadius: numberOrNil("cardCornerRadius"),
             dividerEnabled: numberOrNil("dividerEnabled"),
             dividerColor: colorOrNil("dividerColor"),
             dividerThickness: numberOrNil("dividerThickness"),
             dividerOpacity: numberOrNil("dividerOpacity"),
-            palette: enumOrNil("palette", allowed: palettes),
             iconSize: numberOrNil("iconSize"),
             slotBackgroundColor: colorOrNil("slotBackgroundColor"),
             slotBackgroundOpacity: numberOrNil("slotBackgroundOpacity"),

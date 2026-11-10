@@ -175,14 +175,11 @@
         "en": "Segment Gap",
         "zh-Hans": "分段间距"
       },
-      "section": {
-        "en": "Layout",
-        "zh-Hans": "布局"
-      },
       "default": 4,
       "min": 0,
       "max": 60,
-      "step": 1
+      "step": 1,
+      "advanced": true
     },
     {
       "id": "cornerRadius",
@@ -352,10 +349,6 @@
         "en": "Marker Position",
         "zh-Hans": "标记位置"
       },
-      "section": {
-        "en": "Marker",
-        "zh-Hans": "标记"
-      },
       "default": "liveProgress",
       "options": [
         {
@@ -366,7 +359,8 @@
           "value": "segmentCenter",
           "label": "Segment Center"
         }
-      ]
+      ],
+      "advanced": true
     },
     {
       "id": "markerColor",
@@ -388,14 +382,11 @@
         "en": "Marker Font Size",
         "zh-Hans": "标记字号"
       },
-      "section": {
-        "en": "Marker",
-        "zh-Hans": "标记"
-      },
       "default": 11,
       "min": 6,
       "max": 48,
-      "step": 1
+      "step": 1,
+      "advanced": true
     },
     {
       "id": "markerFontWeight",
@@ -403,10 +394,6 @@
       "label": {
         "en": "Marker Weight",
         "zh-Hans": "标记字重"
-      },
-      "section": {
-        "en": "Marker",
-        "zh-Hans": "标记"
       },
       "default": "bold",
       "options": [
@@ -426,7 +413,8 @@
           "value": "bold",
           "label": "Bold"
         }
-      ]
+      ],
+      "advanced": true
     },
     {
       "id": "markerFontFamily",
@@ -435,11 +423,8 @@
         "en": "Marker Font",
         "zh-Hans": "标记字体"
       },
-      "section": {
-        "en": "Marker",
-        "zh-Hans": "标记"
-      },
-      "default": ""
+      "default": "",
+      "advanced": true
     },
     {
       "id": "fontFamily",
@@ -448,11 +433,8 @@
         "en": "Font",
         "zh-Hans": "字体"
       },
-      "section": {
-        "en": "Labels",
-        "zh-Hans": "标签"
-      },
-      "default": ""
+      "default": "",
+      "advanced": true
     },
     {
       "id": "currentWorkDistance",
@@ -720,8 +702,8 @@
         "zh-Hans": "背景"
       },
       "section": {
-        "en": "Background",
-        "zh-Hans": "背景"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": false
     },
@@ -733,8 +715,8 @@
         "zh-Hans": "背景颜色"
       },
       "section": {
-        "en": "Background",
-        "zh-Hans": "背景"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": "#101820"
     },
@@ -746,8 +728,8 @@
         "zh-Hans": "背景不透明度"
       },
       "section": {
-        "en": "Background",
-        "zh-Hans": "背景"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 0.82,
       "min": 0,
@@ -758,12 +740,12 @@
       "id": "backgroundRadius",
       "type": "number",
       "label": {
-        "en": "Background Radius",
-        "zh-Hans": "背景圆角"
+        "en": "Corner Radius",
+        "zh-Hans": "圆角"
       },
       "section": {
-        "en": "Background",
-        "zh-Hans": "背景"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 18,
       "min": 0,
@@ -771,36 +753,30 @@
       "step": 1
     },
     {
-      "id": "backgroundPaddingX",
+      "id": "paddingX",
       "type": "number",
       "label": {
-        "en": "Background Padding X",
-        "zh-Hans": "背景水平边距"
-      },
-      "section": {
-        "en": "Background",
-        "zh-Hans": "背景"
+        "en": "Horizontal Padding",
+        "zh-Hans": "水平内边距"
       },
       "default": 12,
       "min": 0,
       "max": 80,
-      "step": 1
+      "step": 1,
+      "advanced": true
     },
     {
-      "id": "backgroundPaddingY",
+      "id": "paddingY",
       "type": "number",
       "label": {
-        "en": "Background Padding Y",
-        "zh-Hans": "背景垂直边距"
-      },
-      "section": {
-        "en": "Background",
-        "zh-Hans": "背景"
+        "en": "Vertical Padding",
+        "zh-Hans": "垂直内边距"
       },
       "default": 10,
       "min": 0,
       "max": 80,
-      "step": 1
+      "step": 1,
+      "advanced": true
     },
     {
       "id": "borderEnabled",
@@ -810,8 +786,8 @@
         "zh-Hans": "边框"
       },
       "section": {
-        "en": "Border",
-        "zh-Hans": "边框"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": false
     },
@@ -823,8 +799,8 @@
         "zh-Hans": "边框颜色"
       },
       "section": {
-        "en": "Border",
-        "zh-Hans": "边框"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": "#FFFFFF"
     },
@@ -836,8 +812,8 @@
         "zh-Hans": "边框不透明度"
       },
       "section": {
-        "en": "Border",
-        "zh-Hans": "边框"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 0.3,
       "min": 0,
@@ -849,11 +825,11 @@
       "type": "number",
       "label": {
         "en": "Border Width",
-        "zh-Hans": "边框宽度"
+        "zh-Hans": "边框粗细"
       },
       "section": {
-        "en": "Border",
-        "zh-Hans": "边框"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 2,
       "min": 0,
@@ -923,10 +899,10 @@
       "value": "=6 + innerHeight / 2 + currentHeight / 2 + 4 + (6 + 2 + max(markerFontSize * 1.4, 14)) + 4"
     },
     "padX": {
-      "value": "=backgroundPaddingX"
+      "value": "=paddingX"
     },
     "padY": {
-      "value": "=backgroundPaddingY"
+      "value": "=paddingY"
     },
     "frameW": {
       "value": "=railWidth + padX * 2"

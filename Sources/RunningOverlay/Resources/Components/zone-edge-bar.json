@@ -170,14 +170,11 @@
         "en": "Segment Gap",
         "zh-Hans": "分段间距"
       },
-      "section": {
-        "en": "Zones",
-        "zh-Hans": "分区"
-      },
       "default": 2,
       "min": 0,
       "max": 40,
-      "step": 1
+      "step": 1,
+      "advanced": true
     },
     {
       "id": "cornerRadius",
@@ -215,12 +212,12 @@
       "id": "borderEnabled",
       "type": "bool",
       "label": {
-        "en": "Show Border",
-        "zh-Hans": "显示边框"
-      },
-      "section": {
         "en": "Border",
         "zh-Hans": "边框"
+      },
+      "section": {
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": true
     },
@@ -232,8 +229,8 @@
         "zh-Hans": "边框颜色"
       },
       "section": {
-        "en": "Border",
-        "zh-Hans": "边框"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": "#FFFFFF"
     },
@@ -245,8 +242,8 @@
         "zh-Hans": "边框不透明度"
       },
       "section": {
-        "en": "Border",
-        "zh-Hans": "边框"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 0.12,
       "min": 0,
@@ -258,11 +255,11 @@
       "type": "number",
       "label": {
         "en": "Border Width",
-        "zh-Hans": "边框宽度"
+        "zh-Hans": "边框粗细"
       },
       "section": {
-        "en": "Border",
-        "zh-Hans": "边框"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 1,
       "min": 0,
@@ -277,8 +274,8 @@
         "zh-Hans": "发光"
       },
       "section": {
-        "en": "Glow",
-        "zh-Hans": "发光"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": false
     },
@@ -290,8 +287,8 @@
         "zh-Hans": "发光强度"
       },
       "section": {
-        "en": "Glow",
-        "zh-Hans": "发光"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 0.45,
       "min": 0,
@@ -376,11 +373,8 @@
         "en": "Font",
         "zh-Hans": "字体"
       },
-      "section": {
-        "en": "Markers",
-        "zh-Hans": "标记"
-      },
-      "default": "SF Pro"
+      "default": "SF Pro",
+      "advanced": true
     },
     {
       "id": "fontSize",
@@ -389,14 +383,11 @@
         "en": "Font Size",
         "zh-Hans": "字号"
       },
-      "section": {
-        "en": "Markers",
-        "zh-Hans": "标记"
-      },
       "default": 12,
       "min": 6,
       "max": 48,
-      "step": 1
+      "step": 1,
+      "advanced": true
     },
     {
       "id": "fontWeight",
@@ -404,10 +395,6 @@
       "label": {
         "en": "Font Weight",
         "zh-Hans": "字重"
-      },
-      "section": {
-        "en": "Markers",
-        "zh-Hans": "标记"
       },
       "default": "semibold",
       "options": [
@@ -427,7 +414,8 @@
           "value": "bold",
           "label": "Bold"
         }
-      ]
+      ],
+      "advanced": true
     }
   ],
   "bindings": {

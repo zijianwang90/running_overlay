@@ -393,11 +393,11 @@
       "step": 0.01
     },
     {
-      "id": "dividerWidth",
+      "id": "dividerThickness",
       "type": "number",
       "label": {
-        "en": "Divider Width",
-        "zh-Hans": "Divider Width"
+        "en": "Divider Thickness",
+        "zh-Hans": "分隔线粗细"
       },
       "section": {
         "en": "Dial",
@@ -415,11 +415,8 @@
         "en": "Font",
         "zh-Hans": "Font"
       },
-      "section": {
-        "en": "Typography",
-        "zh-Hans": "Typography"
-      },
-      "default": "Menlo"
+      "default": "Menlo",
+      "advanced": true
     },
     {
       "id": "monospacedDigits",
@@ -441,10 +438,6 @@
         "en": "Primary Weight",
         "zh-Hans": "Primary Weight"
       },
-      "section": {
-        "en": "Typography",
-        "zh-Hans": "Typography"
-      },
       "default": "bold",
       "options": [
         {
@@ -463,7 +456,8 @@
           "value": "bold",
           "label": "Bold"
         }
-      ]
+      ],
+      "advanced": true
     },
     {
       "id": "secondaryFontWeight",
@@ -471,10 +465,6 @@
       "label": {
         "en": "Secondary Weight",
         "zh-Hans": "Secondary Weight"
-      },
-      "section": {
-        "en": "Typography",
-        "zh-Hans": "Typography"
       },
       "default": "medium",
       "options": [
@@ -494,7 +484,8 @@
           "value": "bold",
           "label": "Bold"
         }
-      ]
+      ],
+      "advanced": true
     },
     {
       "id": "primaryTextColor",
@@ -629,14 +620,11 @@
         "en": "top Value Size",
         "zh-Hans": "top Value Size"
       },
-      "section": {
-        "en": "Regions",
-        "zh-Hans": "Regions"
-      },
       "default": 1.0,
       "min": 0.1,
       "max": 3,
-      "step": 0.01
+      "step": 0.01,
+      "advanced": true
     },
     {
       "id": "topShowLabel",
@@ -771,14 +759,11 @@
         "en": "middle Value Size",
         "zh-Hans": "middle Value Size"
       },
-      "section": {
-        "en": "Regions",
-        "zh-Hans": "Regions"
-      },
       "default": 1.0,
       "min": 0.1,
       "max": 3,
-      "step": 0.01
+      "step": 0.01,
+      "advanced": true
     },
     {
       "id": "middleShowLabel",
@@ -913,14 +898,11 @@
         "en": "bottom Value Size",
         "zh-Hans": "bottom Value Size"
       },
-      "section": {
-        "en": "Regions",
-        "zh-Hans": "Regions"
-      },
       "default": 0.66,
       "min": 0.1,
       "max": 3,
-      "step": 0.01
+      "step": 0.01,
+      "advanced": true
     },
     {
       "id": "bottomShowLabel",
@@ -1055,14 +1037,11 @@
         "en": "middleLeft Value Size",
         "zh-Hans": "middleLeft Value Size"
       },
-      "section": {
-        "en": "Regions",
-        "zh-Hans": "Regions"
-      },
       "default": 0.62,
       "min": 0.1,
       "max": 3,
-      "step": 0.01
+      "step": 0.01,
+      "advanced": true
     },
     {
       "id": "middleLeftShowLabel",
@@ -1197,14 +1176,11 @@
         "en": "middleRight Value Size",
         "zh-Hans": "middleRight Value Size"
       },
-      "section": {
-        "en": "Regions",
-        "zh-Hans": "Regions"
-      },
       "default": 0.62,
       "min": 0.1,
       "max": 3,
-      "step": 0.01
+      "step": 0.01,
+      "advanced": true
     },
     {
       "id": "middleRightShowLabel",
@@ -1339,14 +1315,11 @@
         "en": "middleCenter Value Size",
         "zh-Hans": "middleCenter Value Size"
       },
-      "section": {
-        "en": "Regions",
-        "zh-Hans": "Regions"
-      },
       "default": 0.5,
       "min": 0.1,
       "max": 3,
-      "step": 0.01
+      "step": 0.01,
+      "advanced": true
     },
     {
       "id": "middleCenterShowLabel",
@@ -1481,14 +1454,11 @@
         "en": "topLeft Value Size",
         "zh-Hans": "topLeft Value Size"
       },
-      "section": {
-        "en": "Regions",
-        "zh-Hans": "Regions"
-      },
       "default": 0.78,
       "min": 0.1,
       "max": 3,
-      "step": 0.01
+      "step": 0.01,
+      "advanced": true
     },
     {
       "id": "topLeftShowLabel",
@@ -1623,14 +1593,11 @@
         "en": "topRight Value Size",
         "zh-Hans": "topRight Value Size"
       },
-      "section": {
-        "en": "Regions",
-        "zh-Hans": "Regions"
-      },
       "default": 0.78,
       "min": 0.1,
       "max": 3,
-      "step": 0.01
+      "step": 0.01,
+      "advanced": true
     },
     {
       "id": "topRightShowLabel",
@@ -1765,14 +1732,11 @@
         "en": "bottomLeft Value Size",
         "zh-Hans": "bottomLeft Value Size"
       },
-      "section": {
-        "en": "Regions",
-        "zh-Hans": "Regions"
-      },
       "default": 0.78,
       "min": 0.1,
       "max": 3,
-      "step": 0.01
+      "step": 0.01,
+      "advanced": true
     },
     {
       "id": "bottomLeftShowLabel",
@@ -1907,14 +1871,11 @@
         "en": "bottomRight Value Size",
         "zh-Hans": "bottomRight Value Size"
       },
-      "section": {
-        "en": "Regions",
-        "zh-Hans": "Regions"
-      },
       "default": 0.78,
       "min": 0.1,
       "max": 3,
-      "step": 0.01
+      "step": 0.01,
+      "advanced": true
     },
     {
       "id": "bottomRightShowLabel",
@@ -1990,7 +1951,7 @@
       "dividerEnabled": "=dividerEnabled ? 1 : 0",
       "dividerColor": "=dividerColor",
       "dividerOpacity": "=dividerOpacity",
-      "dividerWidth": "=dividerWidth",
+      "dividerWidth": "=dividerThickness",
       "font": {
         "family": "=fontFamily",
         "size": 300,

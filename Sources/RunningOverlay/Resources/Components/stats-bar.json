@@ -508,11 +508,8 @@
         "en": "Value Font",
         "zh-Hans": "数值字体"
       },
-      "section": {
-        "en": "Typography",
-        "zh-Hans": "文字"
-      },
-      "default": "system"
+      "default": "system",
+      "advanced": true
     },
     {
       "id": "valueFontSize",
@@ -521,14 +518,11 @@
         "en": "Value Size",
         "zh-Hans": "数值字号"
       },
-      "section": {
-        "en": "Typography",
-        "zh-Hans": "文字"
-      },
       "min": 6,
       "max": 200,
       "step": 1,
-      "default": 22
+      "default": 22,
+      "advanced": true
     },
     {
       "id": "valueFontWeight",
@@ -536,10 +530,6 @@
       "label": {
         "en": "Value Weight",
         "zh-Hans": "数值字重"
-      },
-      "section": {
-        "en": "Typography",
-        "zh-Hans": "文字"
       },
       "default": "semibold",
       "options": [
@@ -559,7 +549,8 @@
           "value": "bold",
           "label": "Bold"
         }
-      ]
+      ],
+      "advanced": true
     },
     {
       "id": "valueColor",
@@ -581,11 +572,8 @@
         "en": "Label Font",
         "zh-Hans": "标签字体"
       },
-      "section": {
-        "en": "Typography",
-        "zh-Hans": "文字"
-      },
-      "default": "system"
+      "default": "system",
+      "advanced": true
     },
     {
       "id": "labelFontSize",
@@ -594,14 +582,11 @@
         "en": "Label Size",
         "zh-Hans": "标签字号"
       },
-      "section": {
-        "en": "Typography",
-        "zh-Hans": "文字"
-      },
       "min": 6,
       "max": 120,
       "step": 1,
-      "default": 10
+      "default": 10,
+      "advanced": true
     },
     {
       "id": "labelFontWeight",
@@ -609,10 +594,6 @@
       "label": {
         "en": "Label Weight",
         "zh-Hans": "标签字重"
-      },
-      "section": {
-        "en": "Typography",
-        "zh-Hans": "文字"
       },
       "default": "medium",
       "options": [
@@ -632,7 +613,8 @@
           "value": "bold",
           "label": "Bold"
         }
-      ]
+      ],
+      "advanced": true
     },
     {
       "id": "labelColor",
@@ -670,14 +652,11 @@
         "en": "Value / Label Spacing",
         "zh-Hans": "数值与标签间距"
       },
-      "section": {
-        "en": "Typography",
-        "zh-Hans": "文字"
-      },
       "min": 0,
       "max": 40,
       "step": 1,
-      "default": 2
+      "default": 2,
+      "advanced": true
     },
     {
       "id": "unitScale",
@@ -703,12 +682,12 @@
       "id": "backgroundEnabled",
       "type": "bool",
       "label": {
-        "en": "Show Background",
-        "zh-Hans": "显示背景"
+        "en": "Background",
+        "zh-Hans": "背景"
       },
       "section": {
-        "en": "Surface",
-        "zh-Hans": "表面"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": true
     },
@@ -720,8 +699,8 @@
         "zh-Hans": "背景颜色"
       },
       "section": {
-        "en": "Surface",
-        "zh-Hans": "表面"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": "#000000"
     },
@@ -733,8 +712,8 @@
         "zh-Hans": "背景不透明度"
       },
       "section": {
-        "en": "Surface",
-        "zh-Hans": "表面"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "min": 0,
       "max": 1,
@@ -742,15 +721,15 @@
       "default": 0.62
     },
     {
-      "id": "cornerRadius",
+      "id": "backgroundRadius",
       "type": "number",
       "label": {
         "en": "Corner Radius",
         "zh-Hans": "圆角"
       },
       "section": {
-        "en": "Surface",
-        "zh-Hans": "表面"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "min": 0,
       "max": 200,
@@ -761,25 +740,25 @@
       "id": "dividerEnabled",
       "type": "bool",
       "label": {
-        "en": "Show Dividers",
-        "zh-Hans": "显示分隔线"
+        "en": "Dividers",
+        "zh-Hans": "分隔线"
       },
       "section": {
-        "en": "Surface",
-        "zh-Hans": "表面"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": true
     },
     {
-      "id": "dividerWidth",
+      "id": "dividerThickness",
       "type": "number",
       "label": {
-        "en": "Divider Width",
-        "zh-Hans": "分隔线宽度"
+        "en": "Divider Thickness",
+        "zh-Hans": "分隔线粗细"
       },
       "section": {
-        "en": "Surface",
-        "zh-Hans": "表面"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "min": 0,
       "max": 20,
@@ -794,8 +773,8 @@
         "zh-Hans": "分隔线高度"
       },
       "section": {
-        "en": "Surface",
-        "zh-Hans": "表面"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "min": 0,
       "max": 400,
@@ -810,8 +789,8 @@
         "zh-Hans": "分隔线不透明度"
       },
       "section": {
-        "en": "Surface",
-        "zh-Hans": "表面"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "min": 0,
       "max": 1,
@@ -825,14 +804,11 @@
         "en": "Side Padding",
         "zh-Hans": "水平内边距"
       },
-      "section": {
-        "en": "Surface",
-        "zh-Hans": "表面"
-      },
       "min": 0,
       "max": 120,
       "step": 1,
-      "default": 14
+      "default": 14,
+      "advanced": true
     },
     {
       "id": "barWidth",
@@ -884,7 +860,7 @@
       "value": "=(slot1Metric != \"none\" ? 1 : 0) + (slot2Metric != \"none\" ? 1 : 0) + (slot3Metric != \"none\" ? 1 : 0) + (slot4Metric != \"none\" ? 1 : 0)"
     },
     "dividerW": {
-      "value": "=dividerEnabled && visibleCount > 1 ? dividerWidth : 0"
+      "value": "=dividerEnabled && visibleCount > 1 ? dividerThickness : 0"
     },
     "innerWidth": {
       "value": "=barWidth - 2 * paddingX"
@@ -902,7 +878,7 @@
         "=barWidth",
         "=barHeight"
       ],
-      "radius": "=cornerRadius",
+      "radius": "=backgroundRadius",
       "fill": "=backgroundColor",
       "opacity": "=backgroundEnabled ? backgroundOpacity : 0"
     },

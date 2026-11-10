@@ -41,6 +41,10 @@ before proposing a protocol change.
   bounded graphics. Content sizing cannot reference its own width/height.
 - Expose requested appearance/content controls as typed `params` with defaults,
   labels and limits. Do not invent Inspector views or mutate Swift code.
+- Keep the default Inspector semantic (metric, unit, text). Positional,
+  alignment, spacing and per-role typography controls belong in `advanced`
+  with no `section`, or should be baked into the design. Ship alternative
+  looks as separate components; do not add preset or style selectors.
 - Keep repeats bounded and unnested. Use only documented nodes, signal paths,
   builtins and color syntax. Components have no scripts or network access.
 - Package declared PNG/JPEG assets with provenance. Do not bundle fonts,

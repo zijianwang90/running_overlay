@@ -73,15 +73,15 @@
       ]
     },
     {
-      "id": "cornerRadius",
+      "id": "backgroundRadius",
       "type": "number",
       "label": {
-        "en": "cornerRadius",
-        "zh-Hans": "cornerRadius"
+        "en": "Corner Radius",
+        "zh-Hans": "圆角"
       },
       "section": {
-        "en": "Route Map",
-        "zh-Hans": "Route Map"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 12,
       "min": 0,
@@ -91,12 +91,12 @@
       "id": "backgroundOpacity",
       "type": "number",
       "label": {
-        "en": "backgroundOpacity",
-        "zh-Hans": "backgroundOpacity"
+        "en": "Background Opacity",
+        "zh-Hans": "背景不透明度"
       },
       "section": {
-        "en": "Route Map",
-        "zh-Hans": "Route Map"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 1,
       "min": 0,
@@ -238,12 +238,12 @@
       "id": "glowEnabled",
       "type": "bool",
       "label": {
-        "en": "glowEnabled",
-        "zh-Hans": "glowEnabled"
+        "en": "Glow",
+        "zh-Hans": "发光"
       },
       "section": {
-        "en": "Route Map",
-        "zh-Hans": "Route Map"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": false
     },
@@ -266,12 +266,12 @@
       "id": "borderEnabled",
       "type": "bool",
       "label": {
-        "en": "borderEnabled",
-        "zh-Hans": "borderEnabled"
+        "en": "Border",
+        "zh-Hans": "边框"
       },
       "section": {
-        "en": "Route Map",
-        "zh-Hans": "Route Map"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": true
     },
@@ -279,12 +279,12 @@
       "id": "borderOpacity",
       "type": "number",
       "label": {
-        "en": "borderOpacity",
-        "zh-Hans": "borderOpacity"
+        "en": "Border Opacity",
+        "zh-Hans": "边框不透明度"
       },
       "section": {
-        "en": "Route Map",
-        "zh-Hans": "Route Map"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 0.18,
       "min": 0,
@@ -310,12 +310,9 @@
         "en": "fontFamily",
         "zh-Hans": "fontFamily"
       },
-      "section": {
-        "en": "Route Map",
-        "zh-Hans": "Route Map"
-      },
       "default": "Helvetica Neue",
-      "maxLength": 128
+      "maxLength": 128,
+      "advanced": true
     },
     {
       "id": "mapWidth",
@@ -354,13 +351,10 @@
         "en": "fontSize",
         "zh-Hans": "fontSize"
       },
-      "section": {
-        "en": "Route Map",
-        "zh-Hans": "Route Map"
-      },
       "default": 28,
       "min": 1,
-      "max": 400
+      "max": 400,
+      "advanced": true
     },
     {
       "id": "fontWeight",
@@ -368,10 +362,6 @@
       "label": {
         "en": "fontWeight",
         "zh-Hans": "fontWeight"
-      },
-      "section": {
-        "en": "Route Map",
-        "zh-Hans": "Route Map"
       },
       "default": "semibold",
       "options": [
@@ -411,7 +401,8 @@
           "value": "black",
           "label": "black"
         }
-      ]
+      ],
+      "advanced": true
     },
     {
       "id": "edgeFade",
@@ -545,12 +536,12 @@
       "id": "borderColor",
       "type": "color",
       "label": {
-        "en": "borderColor",
-        "zh-Hans": "borderColor"
+        "en": "Border Color",
+        "zh-Hans": "边框颜色"
       },
       "section": {
-        "en": "Route Map",
-        "zh-Hans": "Route Map"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": "#FFFFFF"
     },
@@ -558,12 +549,12 @@
       "id": "borderWidth",
       "type": "number",
       "label": {
-        "en": "borderWidth",
-        "zh-Hans": "borderWidth"
+        "en": "Border Width",
+        "zh-Hans": "边框粗细"
       },
       "section": {
-        "en": "Route Map",
-        "zh-Hans": "Route Map"
+        "en": "Appearance",
+        "zh-Hans": "外观"
       },
       "default": 1,
       "min": 0,
@@ -581,7 +572,7 @@
       ],
       "shape": "=shape",
       "backgroundStyle": "=backgroundStyle",
-      "cornerRadius": "=cornerRadius",
+      "cornerRadius": "=backgroundRadius",
       "backgroundOpacity": "=backgroundOpacity",
       "startMarkerStyle": "=startMarkerStyle",
       "endMarkerStyle": "=endMarkerStyle",
