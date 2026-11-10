@@ -12,7 +12,7 @@ struct OverlayComponentRouteMapTests {
 
     @Test func bundledDefinitionResolves() throws {
         let package = try OverlayComponentLoader.load(data: Self.data())
-        let activity = OverlayComponentRouteMapParityTests.activity()
+        let activity = routeMapTestActivity()
         let data = OverlayComponentActivityData(
             activity: activity, elapsedTime: 90, zoneSnapshot: nil,
             canvasSize: CGSize(width: 1280, height: 720), elementScale: 1
@@ -25,31 +25,31 @@ struct OverlayComponentRouteMapTests {
     }
 }
 
+private func routeMapTestActivity() -> ActivityTimeline {
+    let start = Date(timeIntervalSince1970: 1_735_689_600)
+    var records: [ActivityRecord] = []
+    var t: TimeInterval = 0
+    while t <= 600 {
+        let phase = t / 600
+        records.append(ActivityRecord(
+            elapsedTime: t, timestamp: start.addingTimeInterval(t),
+            distanceMeters: t * 3.2, heartRate: 148 + Int(t / 120),
+            paceSecondsPerKilometer: 312, elevationMeters: 20 + sin(t / 90) * 6,
+            cadence: 176, powerWatts: 245, calories: t / 4,
+            latitude: 31.2304 + phase * 0.012 + sin(phase * 6) * 0.003,
+            longitude: 121.4737 + phase * 0.008 + cos(phase * 5) * 0.002
+        ))
+        t += 5
+    }
+    return ActivityTimeline(
+        startDate: start, duration: 600, distanceMeters: 1920,
+        records: records, laps: []
+    )
+}
+
 #if canImport(CSkiaBridge)
 @Suite(.serialized, .skiaSerialized)
 struct OverlayComponentRouteMapParityTests {
-    static func activity() -> ActivityTimeline {
-        let start = Date(timeIntervalSince1970: 1_735_689_600)
-        var records: [ActivityRecord] = []
-        var t: TimeInterval = 0
-        while t <= 600 {
-            let phase = t / 600
-            records.append(ActivityRecord(
-                elapsedTime: t, timestamp: start.addingTimeInterval(t),
-                distanceMeters: t * 3.2, heartRate: 148 + Int(t / 120),
-                paceSecondsPerKilometer: 312, elevationMeters: 20 + sin(t / 90) * 6,
-                cadence: 176, powerWatts: 245, calories: t / 4,
-                latitude: 31.2304 + phase * 0.012 + sin(phase * 6) * 0.003,
-                longitude: 121.4737 + phase * 0.008 + cos(phase * 5) * 0.002
-            ))
-            t += 5
-        }
-        return ActivityTimeline(
-            startDate: start, duration: 600, distanceMeters: 1920,
-            records: records, laps: []
-        )
-    }
-
     private static func style(
         shape: OverlayRouteMapShape = .square,
         backgroundStyle: OverlayRouteMapBackgroundStyle = .dark,
@@ -120,7 +120,7 @@ struct OverlayComponentRouteMapParityTests {
             let reference = try OverlayComponentReference(
                 definitionData: OverlayComponentRouteMapTests.data(), source: .bundled
             )
-            let activity = Self.activity()
+            let activity = routeMapTestActivity()
             let canvas = CGSize(width: 1280, height: 720)
             let cases: [(String, OverlayStyle, Double, TimeInterval)] = [
                 ("square", Self.style(), 1, 90),

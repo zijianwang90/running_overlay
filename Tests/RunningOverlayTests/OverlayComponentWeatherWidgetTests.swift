@@ -12,7 +12,7 @@ struct OverlayComponentWeatherWidgetTests {
 
     @Test func bundledDefinitionResolves() throws {
         let package = try OverlayComponentLoader.load(data: Self.data())
-        let activity = OverlayComponentWeatherWidgetParityTests.activity()
+        let activity = weatherWidgetTestActivity()
         let data = OverlayComponentActivityData(
             activity: activity, elapsedTime: 90, zoneSnapshot: nil,
             canvasSize: CGSize(width: 1280, height: 720), elementScale: 1
@@ -27,7 +27,7 @@ struct OverlayComponentWeatherWidgetTests {
     @Test func defaultSizeAndOverrides() throws {
         let package = try OverlayComponentLoader.load(data: Self.data())
         let data = OverlayComponentActivityData(
-            activity: OverlayComponentWeatherWidgetParityTests.activity(),
+            activity: weatherWidgetTestActivity(),
             elapsedTime: 90, zoneSnapshot: nil,
             canvasSize: CGSize(width: 1280, height: 720), elementScale: 1
         )
@@ -77,7 +77,7 @@ struct OverlayComponentWeatherWidgetTests {
             sourceDate: nil
         )
         let data = OverlayComponentActivityData(
-            activity: OverlayComponentWeatherWidgetParityTests.activity(),
+            activity: weatherWidgetTestActivity(),
             elapsedTime: 90, zoneSnapshot: nil,
             canvasSize: CGSize(width: 1280, height: 720), elementScale: 1,
             weatherPayload: payload
@@ -109,7 +109,7 @@ struct OverlayComponentWeatherWidgetTests {
             sourceDate: nil
         )
         let data = OverlayComponentActivityData(
-            activity: OverlayComponentWeatherWidgetParityTests.activity(),
+            activity: weatherWidgetTestActivity(),
             elapsedTime: 90, zoneSnapshot: nil,
             canvasSize: CGSize(width: 1280, height: 720), elementScale: 1,
             weatherPayload: payload
@@ -125,36 +125,36 @@ struct OverlayComponentWeatherWidgetTests {
     }
 }
 
+private func weatherWidgetTestActivity() -> ActivityTimeline {
+    let start = Date(timeIntervalSince1970: 1_735_689_600)
+    var records: [ActivityRecord] = []
+    var t: TimeInterval = 0
+    while t <= 600 {
+        records.append(ActivityRecord(
+            elapsedTime: t, timestamp: start.addingTimeInterval(t),
+            distanceMeters: t * 3.2, heartRate: 148,
+            paceSecondsPerKilometer: 312, elevationMeters: 20,
+            cadence: 176, powerWatts: 245, calories: t / 4,
+            temperatureCelsius: 17
+        ))
+        t += 1
+    }
+    return ActivityTimeline(
+        startDate: start, duration: 600, distanceMeters: 1920,
+        records: records,
+        laps: [LapRecord(
+            lapIndex: 0, startElapsedTime: 0, endElapsedTime: 600,
+            startDistanceMeters: 0, totalDistanceMeters: 1920,
+            totalElapsedTime: 600, avgPaceSecondsPerKm: 312,
+            avgHeartRate: 152, maxHeartRate: 160, avgCadenceSPM: 176,
+            avgPowerWatts: 245, totalAscent: 30, kind: .active
+        )]
+    )
+}
+
 #if canImport(CSkiaBridge)
 @Suite(.serialized, .skiaSerialized)
 struct OverlayComponentWeatherWidgetParityTests {
-    static func activity() -> ActivityTimeline {
-        let start = Date(timeIntervalSince1970: 1_735_689_600)
-        var records: [ActivityRecord] = []
-        var t: TimeInterval = 0
-        while t <= 600 {
-            records.append(ActivityRecord(
-                elapsedTime: t, timestamp: start.addingTimeInterval(t),
-                distanceMeters: t * 3.2, heartRate: 148,
-                paceSecondsPerKilometer: 312, elevationMeters: 20,
-                cadence: 176, powerWatts: 245, calories: t / 4,
-                temperatureCelsius: 17
-            ))
-            t += 1
-        }
-        return ActivityTimeline(
-            startDate: start, duration: 600, distanceMeters: 1920,
-            records: records,
-            laps: [LapRecord(
-                lapIndex: 0, startElapsedTime: 0, endElapsedTime: 600,
-                startDistanceMeters: 0, totalDistanceMeters: 1920,
-                totalElapsedTime: 600, avgPaceSecondsPerKm: 312,
-                avgHeartRate: 152, maxHeartRate: 160, avgCadenceSPM: 176,
-                avgPowerWatts: 245, totalAscent: 30, kind: .active
-            )]
-        )
-    }
-
     private static func style(
         condition: WeatherCondition = .sunny,
         temperature: Double = 13,
@@ -285,7 +285,7 @@ struct OverlayComponentWeatherWidgetParityTests {
             let reference = try OverlayComponentReference(
                 definitionData: OverlayComponentWeatherWidgetTests.data(), source: .bundled
             )
-            let activity = Self.activity()
+            let activity = weatherWidgetTestActivity()
             let canvas = CGSize(width: 1280, height: 720)
             let snapshot = WeatherPayload(
                 condition: .cloudy, temperatureCelsius: 9, humidity: 71,

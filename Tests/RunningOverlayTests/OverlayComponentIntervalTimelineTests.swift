@@ -12,7 +12,7 @@ struct OverlayComponentIntervalTimelineTests {
 
     @Test func bundledDefinitionResolvesLaps() throws {
         let package = try OverlayComponentLoader.load(data: Self.data())
-        let activity = OverlayComponentIntervalTimelineParityTests.activity()
+        let activity = intervalTimelineTestActivity()
         let data = OverlayComponentActivityData(
             activity: activity, elapsedTime: 90, zoneSnapshot: nil,
             canvasSize: CGSize(width: 1280, height: 720), elementScale: 1
@@ -25,50 +25,50 @@ struct OverlayComponentIntervalTimelineTests {
     }
 }
 
+private func intervalTimelineTestActivity() -> ActivityTimeline {
+    let start = Date(timeIntervalSince1970: 1_735_689_600)
+    let specs: [(LapKind, TimeInterval, Int, Double)] = [
+        (.warmup, 60, 130, 340),
+        (.active, 60, 176, 240), (.rest, 45, 145, 420),
+        (.active, 60, 178, 235), (.rest, 45, 147, 430),
+        (.active, 60, 180, 232), (.rest, 45, 149, 440),
+        (.cooldown, 60, 140, 360)
+    ]
+    var laps: [LapRecord] = []
+    var records: [ActivityRecord] = []
+    var elapsed: TimeInterval = 0
+    var distance: Double = 0
+    for (index, spec) in specs.enumerated() {
+        let lapDistance = spec.1 * 1000 / spec.3
+        laps.append(LapRecord(
+            lapIndex: index, startElapsedTime: elapsed, endElapsedTime: elapsed + spec.1,
+            startDistanceMeters: distance, totalDistanceMeters: lapDistance,
+            totalElapsedTime: spec.1, avgPaceSecondsPerKm: spec.3,
+            avgHeartRate: spec.2, maxHeartRate: spec.2 + 4, avgCadenceSPM: 176,
+            avgPowerWatts: 240, totalAscent: nil, kind: spec.0
+        ))
+        var t = elapsed
+        while t <= elapsed + spec.1 {
+            records.append(ActivityRecord(
+                elapsedTime: t, timestamp: start.addingTimeInterval(t),
+                distanceMeters: distance + lapDistance * (t - elapsed) / spec.1,
+                heartRate: spec.2, paceSecondsPerKilometer: spec.3,
+                elevationMeters: 20, cadence: 176, powerWatts: 240, calories: t / 4
+            ))
+            t += 1
+        }
+        elapsed += spec.1
+        distance += lapDistance
+    }
+    return ActivityTimeline(
+        startDate: start, duration: elapsed, distanceMeters: distance,
+        records: records, laps: laps
+    )
+}
+
 #if canImport(CSkiaBridge)
 @Suite(.serialized, .skiaSerialized)
 struct OverlayComponentIntervalTimelineParityTests {
-    static func activity() -> ActivityTimeline {
-        let start = Date(timeIntervalSince1970: 1_735_689_600)
-        let specs: [(LapKind, TimeInterval, Int, Double)] = [
-            (.warmup, 60, 130, 340),
-            (.active, 60, 176, 240), (.rest, 45, 145, 420),
-            (.active, 60, 178, 235), (.rest, 45, 147, 430),
-            (.active, 60, 180, 232), (.rest, 45, 149, 440),
-            (.cooldown, 60, 140, 360)
-        ]
-        var laps: [LapRecord] = []
-        var records: [ActivityRecord] = []
-        var elapsed: TimeInterval = 0
-        var distance: Double = 0
-        for (index, spec) in specs.enumerated() {
-            let lapDistance = spec.1 * 1000 / spec.3
-            laps.append(LapRecord(
-                lapIndex: index, startElapsedTime: elapsed, endElapsedTime: elapsed + spec.1,
-                startDistanceMeters: distance, totalDistanceMeters: lapDistance,
-                totalElapsedTime: spec.1, avgPaceSecondsPerKm: spec.3,
-                avgHeartRate: spec.2, maxHeartRate: spec.2 + 4, avgCadenceSPM: 176,
-                avgPowerWatts: 240, totalAscent: nil, kind: spec.0
-            ))
-            var t = elapsed
-            while t <= elapsed + spec.1 {
-                records.append(ActivityRecord(
-                    elapsedTime: t, timestamp: start.addingTimeInterval(t),
-                    distanceMeters: distance + lapDistance * (t - elapsed) / spec.1,
-                    heartRate: spec.2, paceSecondsPerKilometer: spec.3,
-                    elevationMeters: 20, cadence: 176, powerWatts: 240, calories: t / 4
-                ))
-                t += 1
-            }
-            elapsed += spec.1
-            distance += lapDistance
-        }
-        return ActivityTimeline(
-            startDate: start, duration: elapsed, distanceMeters: distance,
-            records: records, laps: laps
-        )
-    }
-
     private static func style(
         mode: IntervalTimelineMode = .centeredWindow,
         visibleNeighbors: Int = 3,
@@ -235,7 +235,7 @@ struct OverlayComponentIntervalTimelineParityTests {
             let reference = try OverlayComponentReference(
                 definitionData: OverlayComponentIntervalTimelineTests.data(), source: .bundled
             )
-            let activity = Self.activity()
+            let activity = intervalTimelineTestActivity()
             let canvas = CGSize(width: 1280, height: 720)
             let cases: [(String, OverlayStyle, Double, TimeInterval)] = [
                 ("centered", Self.style(), 1, 90),
